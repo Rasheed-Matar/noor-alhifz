@@ -1,0 +1,19 @@
+{
+  "name": "مركز الكتاب - نور الحفظ",
+  "short_name": "نور الحفظ",
+  "start_url": "./login.html",
+  "display": "standalone",
+  "background_color": "#0a4a3a",
+  "theme_color": "#0a4a3a",
+  "orientation": "portrait",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
