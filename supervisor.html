@@ -19,6 +19,7 @@
   --border:#d4c89a;--bg:#f5f0e8;
   --sidebar:248px;
   --shadow:rgba(27,107,74,.12);
+  --red:#c0392b;
 }
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
 
@@ -119,6 +120,13 @@ td{padding:11px 14px;font-size:13px;vertical-align:middle;}
 .badge-gold{background:#faeeda;color:#854f0b;}
 .badge-red{background:#fde8e5;color:#8a2a1a;}
 .badge-blue{background:#e6f1fb;color:#185fa5;}
+.badge-ok{background:#eafaf1;color:#1a6b4a;}
+.badge-warn{background:#fef9e7;color:#b7770d;}
+.badge-bad{background:#fef2f0;color:#c0392b;}
+.btn-tbl-act{background:var(--em);color:#fff;border:none;border-radius:7px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer;transition:all .2s;}
+.btn-tbl-act:hover{opacity:.85;}
+.btn-tbl-act.bad{background:var(--red,#c0392b);}
+.form-group{margin-bottom:12px;}
 .prog-wrap{width:72px;background:#eee;border-radius:10px;height:5px;overflow:hidden;}
 .prog-bar{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--em),var(--em2));}
 .td-action{display:flex;gap:4px;}
@@ -285,6 +293,11 @@ select.form-input{cursor:pointer;}
       <button class="nav-item" id="nav-students" onclick="showPage('students')">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         الطلاب
+      </button>
+      <button class="nav-item" id="nav-quality" onclick="showPage('quality')" style="color:var(--gold3);">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        مختبر الجودة
+        <span class="nav-badge" id="navExamNotifBadge" style="display:none;background:var(--gold3);color:#fff;">0</span>
       </button>
     </div>
     <div class="sidebar-divider"></div>
@@ -498,6 +511,58 @@ select.form-input{cursor:pointer;}
     </div>
 
     <!-- ═══ SETTINGS ═══ -->
+    <!-- ═══ QUALITY LAB ═══ -->
+    <div class="page-view" id="page-quality">
+      <div class="page-header">
+        <div><div class="page-title">🔬 مختبر الجودة</div><div class="page-subtitle">إدارة مختبري الجودة، وتحديد علامة النجاح، ومتابعة نتائج الاختبارات</div></div>
+      </div>
+
+      <!-- Passing grade card -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">🏆 علامة النجاح للجان الجودة</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label-s">علامة النجاح (من 100)</label>
+              <input class="form-inp-s" id="passingGradeInput" type="number" min="1" max="100" value="70" style="width:120px;margin-top:6px;">
+            </div>
+            <button class="btn-save" onclick="savePassingGrade()">💾 حفظ علامة النجاح</button>
+          </div>
+          <div id="passingGradeNote" style="margin-top:8px;font-size:13px;color:var(--gold3);"></div>
+        </div>
+      </div>
+
+      <!-- Examiners management -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title">مختبرو الجودة</div>
+          <button class="card-action" onclick="om('modal-add-examiner')">+ إضافة مختبر</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>الجوال</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="examinersTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Exam results -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 نتائج الاختبارات الأخيرة</div>
+          <button class="card-action" onclick="loadExamResultsAdmin()">تحديث</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الطالب</th><th>المحفّظ</th><th>المختبر</th><th>الجزء</th><th>العلامة</th><th>النتيجة</th><th>التاريخ</th></tr></thead>
+            <tbody id="examResultsAdminTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="page-view" id="page-settings">
       <div class="page-header">
         <div><div class="page-title">الإعدادات</div><div class="page-subtitle">إدارة بيانات حساب المشرف</div></div>
@@ -518,8 +583,34 @@ select.form-input{cursor:pointer;}
   </main>
 </div>
 
-<!-- MODAL: Confirm -->
-<div class="modal-overlay" id="modal-confirm">
+<!-- MODAL: Add Examiner -->
+<div class="modal-overlay" id="modal-add-examiner">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-head-title">إضافة مختبر جودة جديد</span><button class="modal-close" onclick="closeModal('modal-add-examiner')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label class="form-label-s">الاسم الرباعي <span style="color:red">*</span></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+            <input class="form-inp-s" id="ae-fname" placeholder="الاسم الأول">
+            <input class="form-inp-s" id="ae-father" placeholder="اسم الأب">
+            <input class="form-inp-s" id="ae-grand" placeholder="اسم الجد">
+            <input class="form-inp-s" id="ae-family" placeholder="العائلة">
+          </div>
+        </div>
+        <div class="form-group-s" style="margin-bottom:12px;"><label class="form-label-s">رقم الهوية (يُستخدم للدخول) <span style="color:red">*</span></label><input class="form-inp-s" id="ae-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;margin-top:6px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+        <div class="form-group-s" style="margin-bottom:12px;"><label class="form-label-s">رقم الجوال <span style="color:red">*</span></label><input class="form-inp-s" id="ae-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;margin-top:6px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+        <div class="form-group-s" style="margin-bottom:12px;grid-column:1/-1;"><label class="form-label-s">كلمة مرور مؤقتة (6 أحرف فأكثر) <span style="color:red">*</span></label><input class="form-inp-s" id="ae-pass" type="text" placeholder="سيتمكن المختبر من تغييرها لاحقاً" style="margin-top:6px;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveNewExaminer()">إضافة المختبر</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-add-examiner')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm -->\n<div class="modal-overlay" id="modal-confirm">
   <div class="modal" style="max-width:380px;">
     <div class="modal-head"><span class="modal-head-title" id="confirmTitle">تأكيد</span><button class="modal-close" onclick="closeModal('modal-confirm')">✕</button></div>
     <div class="modal-body"><p id="confirmMsg" style="color:var(--ink2);font-size:14px;"></p></div>
@@ -1247,9 +1338,134 @@ function renderStats(){
     </div>`).join('');
 }
 
-['modal-confirm','modal-detail'].forEach(id=>{
+['modal-confirm','modal-detail','modal-add-examiner'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
+
+// ════════════════════════════════════════
+//  QUALITY LAB — مختبر الجودة
+// ════════════════════════════════════════
+function nidToEmailExaminer(nid){ return nid.trim()+'@examiner.nooralhifz.app'; }
+
+async function savePassingGrade(){
+  const val=parseInt(document.getElementById('passingGradeInput').value);
+  if(!val||val<1||val>100){toast('⚠️ أدخل قيمة بين 1 و 100');return;}
+  try{
+    await db.collection('settings').doc('global').set({passingGrade:val},{merge:true});
+    document.getElementById('passingGradeNote').textContent='✅ تم حفظ علامة النجاح: '+val+'%';
+    toast('✅ تم حفظ علامة النجاح: '+val+'%');
+  } catch(e){ toast('⚠️ خطأ: '+e.message); }
+}
+
+async function renderExaminers(){
+  try{
+    const snap=await db.collection('users').where('role','==','examiner').get();
+    const examiners=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const tb=document.getElementById('examinersTable');
+    if(!examiners.length){
+      tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مختبرون بعد</td></tr>';
+      return;
+    }
+    const statusLabel={approved:'نشط',pending:'معلّق',rejected:'موقوف'};
+    const statusCls={approved:'badge-ok',pending:'badge-warn',rejected:'badge-bad'};
+    tb.innerHTML=examiners.map(e=>`
+      <tr>
+        <td><b>${e.name||'—'}</b></td>
+        <td style="direction:ltr;text-align:right;">${e.nationalId||'—'}</td>
+        <td style="direction:ltr;text-align:right;">${e.phone||'—'}</td>
+        <td><span class="badge ${statusCls[e.status]||'badge-warn'}">${statusLabel[e.status]||e.status}</span></td>
+        <td>
+          ${e.status!=='approved'?`<button class="btn-tbl-act" onclick="setExaminerStatus('${e.id}','approved')">تفعيل</button>`:''}
+          ${e.status==='approved'?`<button class="btn-tbl-act bad" onclick="setExaminerStatus('${e.id}','rejected')">إيقاف</button>`:''}
+        </td>
+      </tr>
+    `).join('');
+    const badge=document.getElementById('navExamNotifBadge');
+    if(badge){badge.textContent=examiners.length;badge.style.display=examiners.length?'':'none';}
+  } catch(e){ console.log('renderExaminers err',e); }
+}
+
+async function setExaminerStatus(uid,status){
+  try{
+    await db.collection('users').doc(uid).update({status});
+    toast(status==='approved'?'✅ تم تفعيل المختبر':'تم إيقاف المختبر');
+    renderExaminers();
+  } catch(e){ toast('⚠️ خطأ: '+e.message); }
+}
+
+async function saveNewExaminer(){
+  const fname=document.getElementById('ae-fname').value.trim();
+  const father=document.getElementById('ae-father').value.trim();
+  const grand=document.getElementById('ae-grand').value.trim();
+  const family=document.getElementById('ae-family').value.trim();
+  const nid=document.getElementById('ae-nid').value.trim();
+  const phone=document.getElementById('ae-phone').value.trim();
+  const pass=document.getElementById('ae-pass').value;
+  if(!fname||!father||!grand||!family){toast('⚠️ أكمل الاسم الرباعي');return;}
+  if(!isValidNid(nid)){toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام');return;}
+  if(!/^05[0-9]{8}$/.test(phone)){toast('⚠️ رقم الجوال غير صحيح');return;}
+  if(!pass||pass.length<6){toast('⚠️ كلمة المرور 6 أحرف فأكثر');return;}
+  const name=buildFullName(fname,father,grand,family);
+  const email=nidToEmailExaminer(nid);
+  const btn=event.target; btn.textContent='⏳ جارٍ الإنشاء...'; btn.disabled=true;
+  secondaryAuth.createUserWithEmailAndPassword(email,pass).then(cred=>{
+    const newUid=cred.user.uid;
+    return secondaryAuth.signOut().then(()=>{
+      return db.collection('users').doc(newUid).set({
+        name,firstName:fname,fatherName:father,grandfatherName:grand,familyName:family,
+        nationalId:nid,phone,
+        role:'examiner',status:'approved',
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+  }).then(()=>{
+    toast('✅ تم إضافة المختبر بنجاح');
+    closeModal('modal-add-examiner');
+    renderExaminers();
+  }).catch(e=>{
+    let msg=e.message;
+    if(e.code==='auth/email-already-in-use') msg='رقم الهوية مسجّل بالفعل';
+    toast('⚠️ خطأ: '+msg);
+  }).finally(()=>{btn.textContent='إضافة المختبر';btn.disabled=false;});
+}
+
+async function loadExamResultsAdmin(){
+  try{
+    const snap=await db.collection('examResults').get();
+    const results=snap.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate)).slice(0,50);
+    const tb=document.getElementById('examResultsAdminTable');
+    if(!results.length){
+      tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">لا توجد نتائج بعد</td></tr>';
+      return;
+    }
+    const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+    tb.innerHTML=results.map(r=>`
+      <tr>
+        <td><b>${r.studentName||'—'}</b></td>
+        <td>${r.teacherName||'—'}</td>
+        <td>${r.examinerName||'—'}</td>
+        <td>الجزء ${r.juzNum}</td>
+        <td><b>${r.totalScore}%</b></td>
+        <td><span class="badge ${r.passed?'badge-ok':'badge-bad'}">${r.passed?'ناجح ✓':'لم ينجح ✕'}</span></td>
+        <td>${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+      </tr>
+    `).join('');
+  } catch(e){ toast('⚠️ خطأ تحميل النتائج: '+e.message); }
+}
+
+// Load passing grade on init
+db.collection('settings').doc('global').get().then(doc=>{
+  if(doc.exists&&doc.data().passingGrade){
+    document.getElementById('passingGradeInput').value=doc.data().passingGrade;
+  }
+}).catch(()=>{});
+
+// Override showPage to load quality data
+const _origShowPage=showPage;
+showPage=function(page){
+  _origShowPage(page);
+  if(page==='quality'){renderExaminers();loadExamResultsAdmin();}
+};
 </script>
 
 </body>
