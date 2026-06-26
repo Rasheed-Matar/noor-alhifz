@@ -847,7 +847,16 @@ function openAddTeacher(){
 function isValidNid(v){ return /^[0-9]{9}$/.test((v||'').trim()); }
 function buildFullName(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
 
-function saveNewTeacher(){
+// فحص ما إذا كان رقم الهوية مسجلاً مسبقاً بأي دور (محفّظ / مختبر جودة / أدمن)
+// يمنع تسجيل نفس الشخص بدورين مختلفين بنفس رقم الهوية
+const roleLabelAr = {teacher:'محفّظ', examiner:'مختبر جودة', admin:'مشرف'};
+async function findExistingUserByNid(nid){
+  const snap = await db.collection('users').where('nationalId','==',nid).limit(1).get();
+  if(snap.empty) return null;
+  return {id:snap.docs[0].id, ...snap.docs[0].data()};
+}
+
+async function saveNewTeacher(){
   const fname  = document.getElementById('at-fname').value.trim();
   const father = document.getElementById('at-father').value.trim();
   const grand  = document.getElementById('at-grand').value.trim();
@@ -866,10 +875,19 @@ function saveNewTeacher(){
   if(!/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
   if(!pass || pass.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف فأكثر'); return; }
 
+  const btn = event.target;
+  btn.textContent = '⏳ جارٍ التحقق...'; btn.disabled = true;
+
+  const existing = await findExistingUserByNid(nid).catch(()=>null);
+  if(existing){
+    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    btn.textContent='إضافة المحفّظ'; btn.disabled=false;
+    return;
+  }
+
   const name = buildFullName(fname,father,grand,family);
   const email = nidToEmail(nid);
-  const btn = event.target;
-  btn.textContent = '⏳ جارٍ الإنشاء...'; btn.disabled = true;
+  btn.textContent = '⏳ جارٍ الإنشاء...';
 
   secondaryAuth.createUserWithEmailAndPassword(email, pass).then(cred=>{
     const newUid = cred.user.uid;
@@ -1345,7 +1363,7 @@ function renderStats(){
 // ════════════════════════════════════════
 //  QUALITY LAB — مختبر الجودة
 // ════════════════════════════════════════
-function nidToEmailExaminer(nid){ return nid.trim()+'@examiner.nooralhifz.app'; }
+function nidToEmailExaminer(nid){ return nid.trim()+'@noor-alhifz.app'; }
 
 async function savePassingGrade(){
   const val=parseInt(document.getElementById('passingGradeInput').value);
@@ -1405,9 +1423,19 @@ async function saveNewExaminer(){
   if(!isValidNid(nid)){toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام');return;}
   if(!/^05[0-9]{8}$/.test(phone)){toast('⚠️ رقم الجوال غير صحيح');return;}
   if(!pass||pass.length<6){toast('⚠️ كلمة المرور 6 أحرف فأكثر');return;}
+
+  const btn=event.target; btn.textContent='⏳ جارٍ التحقق...'; btn.disabled=true;
+
+  const existing = await findExistingUserByNid(nid).catch(()=>null);
+  if(existing){
+    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    btn.textContent='إضافة المختبر'; btn.disabled=false;
+    return;
+  }
+
   const name=buildFullName(fname,father,grand,family);
   const email=nidToEmailExaminer(nid);
-  const btn=event.target; btn.textContent='⏳ جارٍ الإنشاء...'; btn.disabled=true;
+  btn.textContent='⏳ جارٍ الإنشاء...';
   secondaryAuth.createUserWithEmailAndPassword(email,pass).then(cred=>{
     const newUid=cred.user.uid;
     return secondaryAuth.signOut().then(()=>{
