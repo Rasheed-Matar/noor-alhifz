@@ -2356,6 +2356,44 @@ function exportReportPDF(){
     toast('⚠️ تعذر إنشاء الملف','error');
   });
 }
+
+// ════════════════════════════════════════
+//  EXAM RESULT NOTIFICATIONS (from examiner)
+// ════════════════════════════════════════
+let unsubNotif=null;
+function listenForExamNotifications(){
+  if(!currentUser) return;
+  unsubNotif=db.collection('notifications')
+    .where('targetTeacherId','==',currentUser.uid)
+    .where('read','==',false)
+    .onSnapshot(snap=>{
+      snap.docs.forEach(doc=>{
+        const n=doc.data();
+        if(n.type==='examResult'){
+          const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+          const msg=`🔬 نتيجة اختبار الطالب ${n.studentName}: ${n.totalScore}% — ${n.passed?'ناجح ✓':'لم ينجح ✕'} (الجزء ${n.juzNum} ${typeLabel[n.type_exam]||''})`;
+          toast(msg);
+          // Mark as read
+          doc.ref.update({read:true}).catch(()=>{});
+          // Also update the exam record in local data
+          const exIdx=exams.findIndex(e=>e.studentId===n.studentId&&e.status==='pending');
+          if(exIdx>=0){
+            exams[exIdx].status=n.passed?'passed':'failed';
+            exams[exIdx].score=n.totalScore+'%';
+            renderExamsList();
+            updateDashExamStat();
+          }
+        }
+      });
+    },()=>{});
+}
+
+// Hook into auth state to start listening
+const _origOnAuthDone=window._afterAuthReady;
+// Start listening after auth
+setTimeout(()=>{
+  if(currentUser) listenForExamNotifications();
+},3000);
 </script>
 
 </body>
