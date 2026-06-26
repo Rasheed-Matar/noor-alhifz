@@ -791,8 +791,6 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <div class="mf"><label>الجزء الحالي *</label><input type="number" id="ns-juz" value="0" min="0" max="30" required></div>
         <div class="mf"><label>رقم جوال الطالب (واتساب) *</label><input type="tel" inputmode="numeric" id="ns-phone" placeholder="05xxxxxxxx" maxlength="10" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" required></div>
       </div>
-      <div class="mf"><label>رقم هوية ولي الأمر *</label><input type="tel" inputmode="numeric" id="ns-guardian-nid" placeholder="٩ أرقام" maxlength="9" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)" required></div>
-      </div>
       <div class="mf"><label>ملاحظات (اختياري)</label><textarea id="ns-notes" rows="2"></textarea></div>
       <button class="btn-submit-modal" onclick="saveNewStudent()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -814,6 +812,30 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
       <button class="modal-close" onclick="cm('mStudentDetail')">×</button>
     </div>
     <div class="modal-body" id="student-detail-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: DELETE STUDENT REQUEST -->
+<div class="modal-bg" id="mDeleteRequest">
+  <div class="modal">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        طلب حذف الطالب نهائياً
+      </div>
+      <button class="modal-close" onclick="cm('mDeleteRequest')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:12px;line-height:1.6;">
+        سيتم إرسال طلب حذف الطالب <b id="del-req-student-name"></b> إلى المشرف لمراجعته. لن يتم حذف الطالب فعلياً إلا بعد موافقة المشرف، ويمكن للمشرف رفض الطلب.
+      </div>
+      <div class="mf"><label>سبب الحذف (سيُسجَّل في ملاحظات الطالب) *</label><textarea id="del-req-reason" rows="3" placeholder="اذكر سبب طلب حذف هذا الطالب..."></textarea></div>
+      <button class="btn-submit-modal" style="background:var(--red);" onclick="submitDeleteRequest()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        إرسال طلب الحذف للمشرف
+      </button>
+    </div>
   </div>
 </div>
 
@@ -878,7 +900,7 @@ const db = firebase.firestore();
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
-let students=[], sessions=[], attendance={}, exams=[];
+let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[];
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 
 const uid=()=>'_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
@@ -963,7 +985,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
-  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];
+  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];
   auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
@@ -1000,11 +1022,11 @@ function enterApp(user,data){
     if(snap.exists){
       suppressSave=true;
       const d=snap.data();
-      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[];
+      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[];
       renderAll();
       suppressSave=false;
     } else {
-      students=[];sessions=[];attendance={};exams=[];
+      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];
       renderAll();
     }
   },e=>console.log('snap err',e));
@@ -1012,7 +1034,7 @@ function enterApp(user,data){
 
 function save(){
   if(suppressSave||!userDocRef) return;
-  userDocRef.set({students,sessions,attendance,exams},{merge:true}).catch(e=>{
+  userDocRef.set({students,sessions,attendance,exams,deletionRequests},{merge:true}).catch(e=>{
     console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
 }
@@ -1451,7 +1473,7 @@ function renderStudentsList(){
       ${s.parentPhone?`<button class="att-wa-btn" onclick='event.stopPropagation();sendQuickReport("${s.id}")' title="إرسال تقرير اليوم عبر واتساب">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
       </button>`:''}
-      <span class="month-badge ${s.archived?'badge-bad':'badge-ok'}">${s.archived?'مؤرشف':'نشط'}</span>
+      <span class="month-badge ${s.pendingDeletion?'badge-warn':s.archived?'badge-bad':'badge-ok'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span>
     </div>`;
   }).join('');
 }
@@ -1502,16 +1524,16 @@ function isValidPastDate(v){
 function buildFullName(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
 
 function openAddStudent(){
-  ['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-phone','ns-guardian-nid','ns-notes'].forEach(i=>document.getElementById(i).value='');
+  ['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-phone','ns-notes'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('ns-juz').value='0';
   document.getElementById('ns-gender').value='ذكر';
   document.getElementById('ns-dob').max=TODAY();
-  clearFieldErrors(['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone','ns-guardian-nid']);
+  clearFieldErrors(['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone']);
   om('mAddStudent');
 }
 
 function saveNewStudent(){
-  const ids=['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone','ns-guardian-nid'];
+  const ids=['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone'];
   clearFieldErrors(ids);
 
   const fname=document.getElementById('ns-fname').value.trim();
@@ -1524,7 +1546,6 @@ function saveNewStudent(){
   const gender=document.getElementById('ns-gender').value;
   const juzRaw=document.getElementById('ns-juz').value;
   const phone=document.getElementById('ns-phone').value.trim();
-  const guardianNid=document.getElementById('ns-guardian-nid').value.trim();
   const notes=document.getElementById('ns-notes').value.trim();
 
   let firstErrorId=null;
@@ -1556,9 +1577,6 @@ function saveNewStudent(){
   if(!phone) fail('ns-phone','أدخل رقم جوال الطالب');
   else if(!isValidPSPhone(phone)) fail('ns-phone','رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام');
 
-  if(!guardianNid) fail('ns-guardian-nid','أدخل رقم هوية ولي الأمر');
-  else if(!isValidNationalIdVal(guardianNid)) fail('ns-guardian-nid','رقم الهوية يجب أن يكون 9 أرقام بالضبط');
-
   if(firstErrorId){
     document.getElementById(firstErrorId).focus();
     toast('⚠️ تحقّق من الحقول المظلّلة باللون الأحمر وأكمِلها بشكل صحيح','error');
@@ -1574,7 +1592,6 @@ function saveNewStudent(){
     placeOfBirth:pob,
     gender,
     parentPhone:phone,
-    guardianNationalId:guardianNid,
     juz,
     notes,
     archived:false, addedAt:new Date().toISOString()
@@ -1606,16 +1623,21 @@ function openStudentDetail(studentId){
       <div class="mf"><label>رقم هوية الطالب</label><input type="tel" inputmode="numeric" id="es-nid" value="${s.nationalId||''}" maxlength="9" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
       <div class="mf"><label>تاريخ الميلاد</label><input type="date" id="es-dob" value="${s.dob||''}"></div>
     </div>
-    <div class="mf-row">
-      <div class="mf"><label>رقم جوال الطالب</label><input type="tel" id="es-phone" value="${s.parentPhone||''}" style="direction:ltr;text-align:right;"></div>
-      <div class="mf"><label>رقم هوية ولي الأمر</label><input type="tel" inputmode="numeric" id="es-guardian-nid" value="${s.guardianNationalId||''}" maxlength="9" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
-    </div>
+    <div class="mf"><label>رقم جوال الطالب</label><input type="tel" id="es-phone" value="${s.parentPhone||''}" style="direction:ltr;text-align:right;"></div>
     <button class="btn-submit-modal" onclick="updateStudent('${s.id}')">حفظ التعديلات</button>
     <div class="modal-divider"></div>
+    ${s.pendingDeletion?`
+    <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:10px;line-height:1.6;">
+      ⏳ طلب حذف هذا الطالب قيد المراجعة من المشرف، ولن يتم حذفه إلا بعد الموافقة.
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="toggleArchive('${s.id}')">${s.archived?'إعادة تفعيل':'أرشفة'}</button>
-      <button class="qbtn" style="flex:1;justify-content:center;background:var(--redb);color:var(--red);" onclick="deleteStudent('${s.id}')">حذف نهائي</button>
-    </div>
+      <button class="qbtn" style="flex:1;justify-content:center;background:var(--bg2,#f1f1f1);color:var(--txm);" onclick="cancelDeleteRequest('${s.id}')">إلغاء طلب الحذف</button>
+    </div>`:`
+    <div style="display:flex;gap:8px;">
+      <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="toggleArchive('${s.id}')">${s.archived?'إعادة تفعيل':'أرشفة'}</button>
+      <button class="qbtn" style="flex:1;justify-content:center;background:var(--redb);color:var(--red);" onclick="openDeleteRequest('${s.id}')">حذف نهائي</button>
+    </div>`}
     <div class="modal-divider"></div>
     <div class="section-title-sm">آخر الجلسات (${stdSess.length})</div>
     ${stdSess.length?[...stdSess].reverse().slice(0,5).map(sess=>`
@@ -1651,7 +1673,6 @@ function updateStudent(studentId){
   s.nationalId=document.getElementById('es-nid').value.trim();
   s.dob=document.getElementById('es-dob').value;
   s.parentPhone=document.getElementById('es-phone').value.trim();
-  s.guardianNationalId=document.getElementById('es-guardian-nid').value.trim();
   save(); renderAll(); cm('mStudentDetail');
   toast('✅ تم تحديث بيانات الطالب');
 }
@@ -1663,12 +1684,42 @@ function toggleArchive(studentId){
   toast(s.archived?'📦 تم أرشفة الطالب':'✅ تم إعادة تفعيل الطالب');
 }
 
-function deleteStudent(studentId){
-  if(!confirm('حذف الطالب نهائياً؟ لا يمكن التراجع.')) return;
-  students=students.filter(x=>x.id!==studentId);
-  sessions=sessions.filter(x=>x.studentId!==studentId);
+let pendingDeleteStudentId=null;
+function openDeleteRequest(studentId){
+  const s=students.find(x=>x.id===studentId); if(!s) return;
+  if(s.pendingDeletion){ toast('⚠️ يوجد طلب حذف معلّق لهذا الطالب بالفعل','error'); return; }
+  pendingDeleteStudentId=studentId;
+  document.getElementById('del-req-student-name').textContent=s.name;
+  document.getElementById('del-req-reason').value='';
+  om('mDeleteRequest');
+}
+
+function submitDeleteRequest(){
+  const s=students.find(x=>x.id===pendingDeleteStudentId); if(!s) return;
+  const reason=document.getElementById('del-req-reason').value.trim();
+  if(!reason){ toast('⚠️ يجب كتابة سبب الحذف','error'); return; }
+
+  deletionRequests.push({
+    id:uid(), studentId:s.id, studentName:s.name,
+    reason, status:'pending',
+    requestedAt:new Date().toISOString(), resolvedAt:null
+  });
+  s.pendingDeletion=true;
+  s.notes=(s.notes?s.notes+'\n':'')+'سبب طلب الحذف: '+reason;
+
+  save(); renderAll();
+  cm('mDeleteRequest'); cm('mStudentDetail');
+  toast('✅ تم إرسال طلب الحذف إلى المشرف');
+}
+
+function cancelDeleteRequest(studentId){
+  if(!confirm('إلغاء طلب الحذف والاحتفاظ بالطالب؟')) return;
+  const s=students.find(x=>x.id===studentId); if(!s) return;
+  s.pendingDeletion=false;
+  const req=[...deletionRequests].reverse().find(r=>r.studentId===studentId&&r.status==='pending');
+  if(req){ req.status='rejected'; req.resolvedAt=new Date().toISOString(); }
   save(); renderAll(); cm('mStudentDetail');
-  toast('🗑️ تم حذف الطالب');
+  toast('↩️ تم إلغاء طلب الحذف');
 }
 
 // ════════════════════════════════════════
