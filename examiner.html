@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#1a6b4a">
+<title>نور الحفظ — مختبر الجودة</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --em:#1a6b4a;--em2:#25906a;--em3:#0f4a33;
+  --gold:#c9a84c;--gold2:#e8c96a;--gold3:#a07828;
+  --cream:#fdfaf3;--ink:#1a1a2e;--ink2:#3d4a3d;
+  --border:#d4c89a;--bg:#f5f0e8;
+  --shadow:rgba(27,107,74,.12);
+  --red:#c0392b;--redb:#fef2f0;
+  --grn:#1a6b4a;--grnb:#eafaf1;
+  --amb:#b7770d;--ambb:#fef9e7;
+  --blue:#1565c0;--blueb:#e3f2fd;
+}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+
+/* Loading */
+#loadingScreen{position:fixed;inset:0;background:linear-gradient(135deg,var(--em3),var(--em));display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;}
+#loadingScreen.hide{display:none;}
+.ld-spin{width:42px;height:42px;border:3px solid rgba(232,201,106,.3);border-top-color:var(--gold2);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadingScreen .ld-txt{color:var(--gold2);font-size:15px;font-weight:600;font-family:'Amiri',serif;}
+
+/* Topnav */
+.topnav{height:60px;background:linear-gradient(135deg,var(--em3),var(--em));display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-shadow:0 2px 16px rgba(27,107,74,.3);position:sticky;top:0;z-index:200;gap:12px;}
+.nav-logo{display:flex;align-items:center;gap:10px;}
+.nav-logo-text strong{font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;color:#fff;display:block;line-height:1.2;}
+.nav-logo-text span{font-size:11px;color:rgba(255,255,255,.8);}
+.nav-badge-ql{background:rgba(201,168,76,.25);border:1px solid rgba(201,168,76,.5);border-radius:12px;padding:3px 12px;color:var(--gold2);font-size:12px;font-weight:600;}
+.topnav-left{display:flex;align-items:center;gap:10px;}
+.nav-date{color:rgba(255,255,255,.85);font-size:13px;}
+.nav-user{display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;}
+.nav-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;}
+.logout-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:9px;color:rgba(255,255,255,.85);padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;}
+.logout-btn:hover{background:rgba(255,255,255,.22);}
+
+/* Main layout */
+.main{max-width:1000px;margin:0 auto;padding:20px;}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px 16px;text-align:center;box-shadow:0 2px 8px var(--shadow);}
+.stat-num{font-size:28px;font-weight:800;color:var(--em);line-height:1;}
+.stat-lbl{font-size:12px;color:var(--ink2);margin-top:4px;}
+.stat-card.gold .stat-num{color:var(--gold3);}
+.stat-card.red .stat-num{color:var(--red);}
+.stat-card.blue .stat-num{color:var(--blue);}
+
+/* Cards */
+.card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:0;box-shadow:0 2px 12px var(--shadow);overflow:hidden;margin-bottom:20px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f0e8d4;}
+.card-title{font-weight:700;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:8px;}
+.card-title-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.card-title-dot.green{background:var(--em2);}
+.card-title-dot.gold{background:var(--gold);}
+.card-body{padding:16px 20px;}
+
+/* Nomination cards */
+.nom-list{display:flex;flex-direction:column;gap:10px;padding:16px 20px;}
+.nom-card{background:var(--cream);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all .2s;cursor:pointer;}
+.nom-card:hover{border-color:var(--em2);box-shadow:0 4px 14px var(--shadow);transform:translateY(-1px);}
+.nom-card.no-cursor{cursor:default;}
+.nom-card.no-cursor:hover{transform:none;box-shadow:none;}
+.nom-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--em),var(--em2));display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0;}
+.nom-info{flex:1;min-width:0;}
+.nom-name{font-weight:700;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nom-meta{font-size:12px;color:var(--ink2);margin-top:2px;}
+.nom-action{flex-shrink:0;}
+.btn-start{background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:10px;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-start:hover{box-shadow:0 4px 12px rgba(27,107,74,.35);}
+.btn-secondary{background:none;border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-family:inherit;font-size:13px;color:var(--ink2);cursor:pointer;transition:all .2s;}
+.btn-secondary:hover{border-color:var(--em2);color:var(--em);}
+
+/* Badge */
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:8px;}
+.badge-warn{background:var(--ambb);color:var(--amb);}
+.badge-ok{background:var(--grnb);color:var(--grn);}
+.badge-bad{background:var(--redb);color:var(--red);}
+.badge-blue{background:var(--blueb);color:var(--blue);}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--ink2);}
+.empty-icon{font-size:40px;margin-bottom:10px;}
+.empty-txt{font-size:14px;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,26,46,.6);backdrop-filter:blur(7px);z-index:500;display:none;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--cream);border-radius:22px;padding:0;width:100%;max-width:560px;border:1px solid var(--border);box-shadow:0 16px 50px rgba(27,107,74,.25);animation:modalIn .3s cubic-bezier(.22,.68,0,1.2) both;max-height:90vh;overflow-y:auto;}
+@keyframes modalIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
+.modal-head-title{font-family:'Amiri',serif;font-size:18px;color:var(--em);font-weight:700;}
+.modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink2);width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background .2s;}
+.modal-close:hover{background:#f0e8d4;}
+.modal-body{padding:20px 22px;}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+
+/* Form */
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:5px;}
+.form-label span{color:var(--red);}
+.form-input{width:100%;padding:11px 14px;border:1.5px solid #ddd5b8;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--ink);background:#fff;outline:none;transition:all .2s;}
+.form-input:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(27,107,74,.08);}
+select.form-input{cursor:pointer;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid .full{grid-column:1/-1;}
+
+/* Questions builder */
+.q-builder{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding:4px 0;}
+.q-row{display:grid;grid-template-columns:1fr 80px 80px 36px;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.q-row input{width:100%;padding:7px 10px;border:1.5px solid #ddd5b8;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;}
+.q-row input:focus{border-color:var(--em);}
+.q-row input[type=number]{text-align:center;}
+.q-lbl{font-size:11px;color:var(--ink2);text-align:center;}
+.q-total{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f5f0;border-radius:10px;font-size:13px;font-weight:600;}
+.q-total .tot-val{font-size:18px;font-weight:800;color:var(--em);}
+.q-total .tot-val.over{color:var(--red);}
+.q-add-btn{background:none;border:1.5px dashed var(--border);border-radius:10px;padding:8px;width:100%;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--em2);cursor:pointer;transition:all .2s;}
+.q-add-btn:hover{border-color:var(--em2);background:var(--grnb);}
+.del-btn{width:28px;height:28px;background:var(--redb);border:none;border-radius:7px;cursor:pointer;color:var(--red);font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.del-btn:hover{background:var(--red);color:#fff;}
+
+/* Results table */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:11px 14px;font-size:13px;text-align:right;border-bottom:1px solid #f0e8d4;}
+th{font-weight:700;color:var(--ink2);background:#fdf9f2;font-size:12px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fdf9f2;}
+
+/* Toast */
+#toastWrap{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:var(--ink);color:#fff;border-radius:12px;padding:10px 22px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .4s;}
+
+/* Section tabs */
+.tabs{display:flex;gap:6px;margin-bottom:16px;}
+.tab-btn{padding:8px 18px;border-radius:10px;border:1.5px solid var(--border);background:none;font-family:inherit;font-size:13px;color:var(--ink2);cursor:pointer;transition:all .2s;font-weight:500;}
+.tab-btn.active{background:var(--em);border-color:var(--em);color:#fff;font-weight:700;}
+
+/* Passing grade banner */
+.pass-banner{background:linear-gradient(135deg,#1a3a2a,var(--em3));border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px;color:#fff;}
+.pass-banner .pb-icon{font-size:28px;}
+.pass-banner .pb-info{flex:1;}
+.pass-banner .pb-title{font-size:14px;font-weight:700;}
+.pass-banner .pb-val{font-size:24px;font-weight:800;color:var(--gold2);}
+
+/* Score display */
+.score-display{text-align:center;padding:18px;background:linear-gradient(135deg,var(--em3),var(--em));border-radius:14px;color:#fff;margin-bottom:16px;}
+.score-display .sd-score{font-size:52px;font-weight:800;line-height:1;color:var(--gold2);}
+.score-display .sd-label{font-size:13px;opacity:.8;margin-top:4px;}
+.score-display .sd-status{margin-top:8px;display:inline-block;padding:4px 18px;border-radius:20px;font-size:13px;font-weight:700;}
+.score-display .sd-status.pass{background:rgba(26,212,100,.2);color:#4afa8a;}
+.score-display .sd-status.fail{background:rgba(255,80,80,.2);color:#ff8080;}
+
+@media(max-width:600px){
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid .full{grid-column:1;}
+  .q-row{grid-template-columns:1fr 60px 60px 30px;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="ld-spin"></div>
+  <div class="ld-txt">نور الحفظ — مختبر الجودة</div>
+</div>
+
+<div id="toastWrap"></div>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="nav-logo">
+    <div style="font-family:'Amiri',serif;font-size:18px;color:#fff;font-weight:700;">نور الحفظ</div>
+    <span class="nav-badge-ql">🔬 مختبر الجودة</span>
+  </div>
+  <div class="topnav-left">
+    <div class="nav-date" id="navDate"></div>
+    <div class="nav-user">
+      <div class="nav-avatar" id="navAvatar">م</div>
+      <span id="navUserName">المختبر</span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">خروج</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Passing grade banner -->
+  <div class="pass-banner" id="passBanner">
+    <div class="pb-icon">🏆</div>
+    <div class="pb-info">
+      <div class="pb-title">علامة النجاح المحددة من المشرف</div>
+      <div class="pb-val" id="passBannerVal">—</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="stPending">0</div>
+      <div class="stat-lbl">ترشيحات بانتظار الاختبار</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-num" id="stDone">0</div>
+      <div class="stat-lbl">اختبارات منجزة</div>
+    </div>
+    <div class="stat-card" style="--em:#1565c0;">
+      <div class="stat-num" id="stPass" style="color:#1565c0;">0</div>
+      <div class="stat-lbl">ناجح</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-num" id="stFail">0</div>
+      <div class="stat-lbl">لم ينجح</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('nominated',this)">الترشيحات المعلّقة</button>
+    <button class="tab-btn" onclick="switchTab('manual',this)">اختبار مباشر</button>
+    <button class="tab-btn" onclick="switchTab('results',this)">سجل النتائج</button>
+  </div>
+
+  <!-- TAB: Nominated -->
+  <div id="tab-nominated">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-dot green"></span>الطلاب المرشّحون للاختبار</div>
+        <span id="nomCountBadge" class="badge badge-warn">0</span>
+      </div>
+      <div class="nom-list" id="nomList">
+        <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-txt">لا توجد ترشيحات حالياً</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Manual exam -->
+  <div id="tab-manual" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-dot gold"></span>إنشاء اختبار مباشر</div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">المحفّظ <span>*</span></label>
+          <select class="form-input" id="manTeacher" onchange="onManTeacherChange()">
+            <option value="">— اختر المحفّظ —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">الطالب <span>*</span></label>
+          <select class="form-input" id="manStudent">
+            <option value="">— اختر الطالب —</option>
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">نوع الاختبار <span>*</span></label>
+            <select class="form-input" id="manType" onchange="renderManJuz()">
+              <option value="scattered">متفرّق</option>
+              <option value="combined">مجتمع</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">الجزء / الأجزاء <span>*</span></label>
+            <select class="form-input" id="manJuz"></select>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px;">
+          <button class="btn-start" onclick="openExamBuilderManual()">🚀 إنشاء الاختبار</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Results -->
+  <div id="tab-results" style="display:none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-dot gold"></span>سجل نتائج الاختبارات</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الطالب</th><th>المحفّظ</th><th>نوع الاختبار</th><th>الجزء</th><th>العلامة</th><th>النتيجة</th><th>التاريخ</th></tr></thead>
+          <tbody id="resultsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: Exam Builder -->
+<div class="modal-overlay" id="modal-exam-builder">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-head-title" id="ebTitle">إنشاء الاختبار</span>
+      <button class="modal-close" onclick="closeModal('modal-exam-builder')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ebStudentInfo" style="background:var(--grnb);border:1px solid #aee6c4;border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--grn);font-weight:600;"></div>
+      <div id="ebExamInfo" style="margin-bottom:14px;font-size:13px;color:var(--ink2);"></div>
+
+      <div style="font-weight:700;font-size:14px;color:var(--ink);margin-bottom:8px;">أسئلة الاختبار</div>
+      <div style="display:grid;grid-template-columns:1fr 80px 80px 36px;gap:8px;margin-bottom:4px;padding:0 12px;">
+        <div class="q-lbl" style="text-align:right;">وصف السؤال</div>
+        <div class="q-lbl">الدرجة</div>
+        <div class="q-lbl">من 100</div>
+        <div></div>
+      </div>
+      <div class="q-builder" id="qBuilder"></div>
+      <button class="q-add-btn" onclick="addQRow()" style="margin-top:8px;">+ إضافة سؤال</button>
+
+      <div class="q-total" style="margin-top:12px;">
+        <span>المجموع:</span>
+        <span class="tot-val" id="qTotal">0</span>
+        <span>/ 100</span>
+        <span id="qTotalNote" style="font-size:12px;color:var(--ink2);margin-right:auto;"></span>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">ملاحظات (اختياري)</label>
+        <textarea class="form-input" id="ebNotes" rows="2" placeholder="أي ملاحظات للمختبر أو للمحفظ..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-start" onclick="submitExam()">✅ رصد النتيجة</button>
+      <button class="btn-secondary" onclick="closeModal('modal-exam-builder')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Result Detail -->
+<div class="modal-overlay" id="modal-result-detail">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-head-title">تفاصيل نتيجة الاختبار</span>
+      <button class="modal-close" onclick="closeModal('modal-result-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="resultDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-result-detail')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+//  FIREBASE CONFIG
+// ════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyAJuRiluapshZAego74Pmu-fK5EsT5UhJ0",
+  authDomain: "noor-alhifz.firebaseapp.com",
+  databaseURL: "https://noor-alhifz-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "noor-alhifz",
+  storageBucket: "noor-alhifz.firebasestorage.app",
+  messagingSenderId: "581069233423",
+  appId: "1:581069233423:web:d62ad40c001a60acb7727a",
+  measurementId: "G-P3BM91H62E"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let currentUser = null, currentExaminerDoc = null;
+let allTeachers = [], allTeacherData = {};
+let passingGrade = 70;
+let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
+
+// JUZ DATA (same as teacher.html)
+const SCATTERED_JUZ=[{num:'30',name:'جزء عم'},{num:'29',name:'جزء تبارك'},{num:'28',name:'جزء قد سمع'},{num:'27',name:'جزء قال فما خطبكم'},{num:'26',name:'جزء حم'},{num:'25',name:'جزء إليه يرد'},{num:'24',name:'جزء فمن أظلم'},{num:'23',name:'جزء ومالي'},{num:'22',name:'جزء ومن يقنت'},{num:'21',name:'جزء اتل ما أوحي'},{num:'20',name:'جزء أمن خلق'},{num:'19',name:'جزء وقال الذين'},{num:'18',name:'جزء قد أفلح'},{num:'17',name:'جزء اقترب'},{num:'16',name:'جزء قال ألم'},{num:'15',name:'جزء سبحان'},{num:'14',name:'جزء ربما'},{num:'13',name:'جزء وما أبرئ'},{num:'12',name:'جزء وما من دابة'},{num:'11',name:'جزء يعتذرون'},{num:'10',name:'جزء واعلموا'},{num:'9',name:'جزء قال الملأ'},{num:'8',name:'جزء ولو أننا'},{num:'7',name:'جزء وإذا سمعوا'},{num:'6',name:'جزء لا يحب الله'},{num:'5',name:'جزء والمحصنات'},{num:'4',name:'جزء لن تنالوا'},{num:'3',name:'جزء تلك الرسل'},{num:'2',name:'جزء سيقول'},{num:'1',name:'جزء الم'}];
+const COMBINED_JUZ=[{num:'30-28',name:'المجادلة - الناس'},{num:'30-26',name:'الأحقاف - الناس'},{num:'25-23',name:'ياسين - الجاثية'},{num:'25-21',name:'العنكبوت - الجاثية'},{num:'30-21',name:'العنكبوت - الناس'},{num:'20-18',name:'المؤمنون - القصص'},{num:'20-16',name:'مريم - القصص'},{num:'15-13',name:'يوسف - الكهف'},{num:'15-11',name:'يونس - الكهف'},{num:'20-11',name:'يونس - القصص'},{num:'10-8',name:'الأعراف - التوبة'},{num:'10-6',name:'المائدة - التوبة'},{num:'5-3',name:'آل عمران - النساء'},{num:'5-1',name:'البقرة - النساء'},{num:'10-1',name:'البقرة - التوبة'}];
+
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+function ini(n){const p=(n||'').trim().split(' ');return p.length>=2?p[0][0]+p[1][0]:(n||'?')[0]||'?';}
+function uid(){return '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
+function TODAY(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function toast(msg,type=''){
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');el.className='toast';
+  if(type==='error')el.style.background='var(--red)';
+  el.textContent=msg;wrap.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),400);},3200);
+}
+function om(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════
+function doLogout(){
+  auth.signOut().then(()=>window.location.href='login.html');
+}
+
+const authTimeout = setTimeout(()=>window.location.href='login.html',8000);
+auth.onAuthStateChanged(user=>{
+  clearTimeout(authTimeout);
+  if(!user){window.location.href='login.html';return;}
+  db.collection('users').doc(user.uid).get().then(doc=>{
+    if(!doc.exists||doc.data().role!=='examiner'){window.location.href='login.html';return;}
+    currentUser=user;
+    currentExaminerDoc=doc.data();
+    document.getElementById('navAvatar').textContent=ini(currentExaminerDoc.name||'مخ');
+    document.getElementById('navUserName').textContent=currentExaminerDoc.name||'المختبر';
+    document.getElementById('loadingScreen').classList.add('hide');
+    initDate();
+    loadData();
+  }).catch(()=>window.location.href='login.html');
+});
+
+function initDate(){
+  const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const months=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const now=new Date();
+  document.getElementById('navDate').textContent=days[now.getDay()]+' '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
+}
+
+// ════════════════════════════════════════
+//  LOAD DATA
+// ════════════════════════════════════════
+async function loadData(){
+  try{
+    // Load passing grade from global settings
+    const settingsDoc = await db.collection('settings').doc('global').get();
+    if(settingsDoc.exists){
+      const s=settingsDoc.data();
+      if(s.passingGrade) passingGrade = s.passingGrade;
+    }
+    document.getElementById('passBannerVal').textContent = passingGrade + ' / 100';
+
+    // Load all teachers and their data
+    const usersSnap = await db.collection('users').get();
+    allTeachers = [];
+    allTeacherData = {};
+    const promises = [];
+    usersSnap.docs.forEach(d=>{
+      const u={id:d.id,...d.data()};
+      if(u.status==='approved' && u.role==='teacher'){
+        allTeachers.push(u);
+        promises.push(
+          db.collection('userdata').doc(u.id).get().then(ds=>{
+            if(ds.exists) allTeacherData[u.id]=ds.data();
+          })
+        );
+      }
+    });
+    await Promise.all(promises);
+
+    renderAll();
+    populateManualTeachers();
+  } catch(e){
+    toast('⚠️ خطأ في تحميل البيانات: '+e.message,'error');
+  }
+}
+
+function getAllNominations(){
+  const noms=[];
+  allTeachers.forEach(t=>{
+    const td=allTeacherData[t.id]||{};
+    (td.exams||[]).forEach(e=>{
+      if(e.status==='pending'){
+        const s=(td.students||[]).find(x=>x.id===e.studentId);
+        noms.push({...e, teacherId:t.id, teacherName:t.name, student:s});
+      }
+    });
+  });
+  return noms.sort((a,b)=>new Date(a.nominatedAt)-new Date(b.nominatedAt));
+}
+
+function getAllResults(){
+  const results=[];
+  allTeachers.forEach(t=>{
+    const td=allTeacherData[t.id]||{};
+    (td.examResults||[]).forEach(r=>{
+      results.push({...r, teacherName:t.name});
+    });
+  });
+  return results.sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+}
+
+// ════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════
+function renderAll(){
+  const noms = getAllNominations();
+  const results = getAllResults();
+
+  // Stats
+  const done=results.length;
+  const pass=results.filter(r=>r.passed).length;
+  const fail=results.filter(r=>!r.passed).length;
+  document.getElementById('stPending').textContent=noms.length;
+  document.getElementById('stDone').textContent=done;
+  document.getElementById('stPass').textContent=pass;
+  document.getElementById('stFail').textContent=fail;
+  document.getElementById('nomCountBadge').textContent=noms.length;
+
+  renderNominations(noms);
+  renderResults(results);
+}
+
+function renderNominations(noms){
+  const el=document.getElementById('nomList');
+  if(!noms.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-txt">لا توجد ترشيحات معلّقة حالياً</div></div>';
+    return;
+  }
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+  el.innerHTML=noms.map(n=>`
+    <div class="nom-card" onclick="openExamBuilderFromNom('${n.teacherId}','${n.id}')">
+      <div class="nom-avatar">${ini(n.student?n.student.name:'?')}</div>
+      <div class="nom-info">
+        <div class="nom-name">${n.student?n.student.name:'طالب غير معروف'}</div>
+        <div class="nom-meta">المحفّظ: ${n.teacherName} &nbsp;|&nbsp; ${typeLabel[n.type]||n.type} — الجزء ${n.juzNum} (${n.juzName})</div>
+        <div class="nom-meta" style="margin-top:3px;">${n.notes?'📝 '+n.notes:''} &nbsp; تاريخ الترشيح: ${new Date(n.nominatedAt).toLocaleDateString('ar-EG')}</div>
+      </div>
+      <div class="nom-action">
+        <button class="btn-start" onclick="event.stopPropagation();openExamBuilderFromNom('${n.teacherId}','${n.id}')">بدء الاختبار</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderResults(results){
+  const tb=document.getElementById('resultsTable');
+  if(!results.length){
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:30px;">لا توجد نتائج بعد</td></tr>';
+    return;
+  }
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+  tb.innerHTML=results.map(r=>`
+    <tr onclick="showResultDetail('${r.id}')" style="cursor:pointer;">
+      <td><b>${r.studentName}</b></td>
+      <td>${r.teacherName}</td>
+      <td><span class="badge badge-blue">${typeLabel[r.type]||r.type}</span></td>
+      <td>الجزء ${r.juzNum}</td>
+      <td><b style="font-size:16px;">${r.totalScore}%</b></td>
+      <td><span class="badge ${r.passed?'badge-ok':'badge-bad'}">${r.passed?'ناجح ✓':'لم ينجح ✕'}</span></td>
+      <td>${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+    </tr>
+  `).join('');
+}
+
+// ════════════════════════════════════════
+//  EXAM BUILDER — from nomination
+// ════════════════════════════════════════
+function openExamBuilderFromNom(teacherId, nomId){
+  const td=allTeacherData[teacherId]||{};
+  const nom=(td.exams||[]).find(e=>e.id===nomId);
+  const teacher=allTeachers.find(t=>t.id===teacherId);
+  if(!nom||!teacher){toast('⚠️ لم يتم العثور على الترشيح','error');return;}
+  const student=(td.students||[]).find(s=>s.id===nom.studentId);
+
+  pendingExam={
+    nominationId: nomId,
+    teacherId,
+    studentId: nom.studentId,
+    studentName: student?student.name:'غير معروف',
+    teacherName: teacher.name,
+    type: nom.type,
+    juzNum: nom.juzNum,
+    juzName: nom.juzName
+  };
+  openExamBuilder();
+}
+
+// ════════════════════════════════════════
+//  EXAM BUILDER — manual
+// ════════════════════════════════════════
+function openExamBuilderManual(){
+  const teacherId=document.getElementById('manTeacher').value;
+  const studentId=document.getElementById('manStudent').value;
+  const type=document.getElementById('manType').value;
+  const juzVal=document.getElementById('manJuz').value;
+  if(!teacherId||!studentId||!juzVal){toast('⚠️ يرجى تعبئة جميع الحقول','error');return;}
+  const [juzNum,juzName]=juzVal.split('|');
+  const teacher=allTeachers.find(t=>t.id===teacherId);
+  const td=allTeacherData[teacherId]||{};
+  const student=(td.students||[]).find(s=>s.id===studentId);
+
+  pendingExam={
+    nominationId: null,
+    teacherId,
+    studentId,
+    studentName: student?student.name:'غير معروف',
+    teacherName: teacher?teacher.name:'',
+    type,
+    juzNum,
+    juzName
+  };
+  openExamBuilder();
+}
+
+function openExamBuilder(){
+  if(!pendingExam) return;
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+  document.getElementById('ebTitle').textContent='اختبار: '+pendingExam.studentName;
+  document.getElementById('ebStudentInfo').textContent=
+    `👤 ${pendingExam.studentName}  ·  المحفّظ: ${pendingExam.teacherName}`;
+  document.getElementById('ebExamInfo').innerHTML=
+    `📖 نوع: <b>${typeLabel[pendingExam.type]||pendingExam.type}</b>  ·  الجزء: <b>${pendingExam.juzNum} — ${pendingExam.juzName}</b>`;
+  document.getElementById('ebNotes').value='';
+  // Init with 3 default questions
+  document.getElementById('qBuilder').innerHTML='';
+  addQRow('التلاوة والأداء','',40);
+  addQRow('الحفظ والإتقان','',40);
+  addQRow('الأحكام التجويدية','',20);
+  updateQTotal();
+  om('modal-exam-builder');
+}
+
+// ════════════════════════════════════════
+//  QUESTION BUILDER
+// ════════════════════════════════════════
+let qRowId=0;
+function addQRow(desc='',score='',maxScore=''){
+  const id='qr'+qRowId++;
+  const row=document.createElement('div');
+  row.className='q-row';
+  row.id=id;
+  row.innerHTML=`
+    <input type="text" placeholder="وصف السؤال أو المحور" value="${desc}" oninput="updateQTotal()">
+    <input type="number" min="0" max="100" placeholder="0" value="${score}" oninput="updateQTotal()">
+    <input type="number" min="0" max="100" placeholder="0" value="${maxScore}" oninput="updateQTotal()">
+    <button class="del-btn" onclick="document.getElementById('${id}').remove();updateQTotal()">✕</button>
+  `;
+  document.getElementById('qBuilder').appendChild(row);
+}
+
+function updateQTotal(){
+  const rows=document.querySelectorAll('#qBuilder .q-row');
+  let total=0;
+  rows.forEach(r=>{
+    const inputs=r.querySelectorAll('input[type=number]');
+    const maxVal=parseFloat(inputs[1]?.value)||0;
+    total+=maxVal;
+  });
+  const el=document.getElementById('qTotal');
+  el.textContent=total;
+  el.className='tot-val'+(total>100?' over':'');
+  document.getElementById('qTotalNote').textContent=total===100?'✅ مجموع صحيح':total>100?'⚠️ المجموع يتجاوز 100':'المجموع يجب أن يساوي 100';
+}
+
+function getQRows(){
+  const rows=document.querySelectorAll('#qBuilder .q-row');
+  const result=[];
+  rows.forEach(r=>{
+    const inputs=r.querySelectorAll('input');
+    const desc=inputs[0]?.value?.trim()||'';
+    const score=parseFloat(inputs[1]?.value)||0;
+    const max=parseFloat(inputs[2]?.value)||0;
+    if(desc||max>0) result.push({desc,score,maxScore:max});
+  });
+  return result;
+}
+
+function calcTotal(qrows){
+  let total=0,maxTotal=0;
+  qrows.forEach(q=>{total+=q.score;maxTotal+=q.maxScore;});
+  return maxTotal>0? Math.round(total/maxTotal*100):0;
+}
+
+// ════════════════════════════════════════
+//  SUBMIT EXAM
+// ════════════════════════════════════════
+async function submitExam(){
+  if(!pendingExam){toast('⚠️ خطأ في البيانات','error');return;}
+  const qrows=getQRows();
+  if(!qrows.length){toast('⚠️ أضف سؤالاً واحداً على الأقل','error');return;}
+  const totalMax=qrows.reduce((s,q)=>s+q.maxScore,0);
+  if(totalMax!==100){toast('⚠️ مجموع الدرجات القصوى يجب أن يساوي 100','error');return;}
+  const totalScore=calcTotal(qrows);
+  const passed=totalScore>=passingGrade;
+  const notes=document.getElementById('ebNotes').value.trim();
+
+  const resultRecord={
+    id:uid(),
+    nominationId:pendingExam.nominationId,
+    teacherId:pendingExam.teacherId,
+    studentId:pendingExam.studentId,
+    studentName:pendingExam.studentName,
+    teacherName:pendingExam.teacherName,
+    type:pendingExam.type,
+    juzNum:pendingExam.juzNum,
+    juzName:pendingExam.juzName,
+    questions:qrows,
+    totalScore,
+    passed,
+    notes,
+    examinerId:currentUser.uid,
+    examinerName:currentExaminerDoc.name||'المختبر',
+    examDate:new Date().toISOString(),
+    passingGradeUsed:passingGrade
+  };
+
+  try{
+    // 1. Save result in examResults collection
+    await db.collection('examResults').doc(resultRecord.id).set(resultRecord);
+
+    // 2. Update teacher's exam nomination status
+    if(pendingExam.nominationId){
+      const td=allTeacherData[pendingExam.teacherId]||{};
+      const exams=(td.exams||[]).map(e=>{
+        if(e.id===pendingExam.nominationId){
+          return {...e,status:passed?'passed':'failed',score:totalScore+'%',gradedAt:new Date().toISOString(),examinerId:currentUser.uid};
+        }
+        return e;
+      });
+      await db.collection('userdata').doc(pendingExam.teacherId).set({exams},{merge:true});
+      if(allTeacherData[pendingExam.teacherId]) allTeacherData[pendingExam.teacherId].exams=exams;
+    }
+
+    // 3. Send notification to teacher and admin
+    await sendNotification(resultRecord);
+
+    closeModal('modal-exam-builder');
+    await loadData();
+    toast(`✅ تم رصد النتيجة: ${passed?'ناجح 🎉':'لم ينجح'} — العلامة ${totalScore}%`);
+    showResultDetailById(resultRecord.id);
+  } catch(e){
+    toast('⚠️ خطأ في الحفظ: '+e.message,'error');
+  }
+}
+
+async function sendNotification(r){
+  const notif={
+    id:uid(),
+    type:'examResult',
+    targetTeacherId:r.teacherId,
+    studentName:r.studentName,
+    totalScore:r.totalScore,
+    passed:r.passed,
+    type_exam:r.type,
+    juzNum:r.juzNum,
+    juzName:r.juzName,
+    examinerName:r.examinerName,
+    examDate:r.examDate,
+    read:false,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await db.collection('notifications').add(notif);
+}
+
+// ════════════════════════════════════════
+//  RESULT DETAIL
+// ════════════════════════════════════════
+async function showResultDetail(resultId){
+  const doc=await db.collection('examResults').doc(resultId).get();
+  if(!doc.exists) return;
+  showResultDetailFromData(doc.data());
+}
+
+function showResultDetailById(id){
+  db.collection('examResults').doc(id).get().then(doc=>{
+    if(doc.exists) showResultDetailFromData(doc.data());
+  });
+}
+
+function showResultDetailFromData(r){
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+  const statusCls=r.passed?'pass':'fail';
+  const statusTxt=r.passed?'ناجح ✓':'لم ينجح ✕';
+  let html=`
+    <div class="score-display">
+      <div class="sd-score">${r.totalScore}<span style="font-size:22px;">%</span></div>
+      <div class="sd-label">${r.studentName}  ·  ${typeLabel[r.type]||r.type}  ·  الجزء ${r.juzNum}</div>
+      <span class="sd-status ${statusCls}">${statusTxt}</span>
+    </div>
+    <table style="margin-bottom:12px;">
+      <thead><tr><th>السؤال</th><th>الدرجة</th><th>من</th><th>النسبة</th></tr></thead>
+      <tbody>
+        ${(r.questions||[]).map(q=>`
+          <tr>
+            <td>${q.desc}</td>
+            <td><b>${q.score}</b></td>
+            <td>${q.maxScore}</td>
+            <td>${q.maxScore?Math.round(q.score/q.maxScore*100):'—'}%</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:13px;color:var(--ink2);display:grid;gap:6px;">
+      <div>👤 المحفّظ: <b>${r.teacherName}</b></div>
+      <div>🔬 المختبر: <b>${r.examinerName}</b></div>
+      <div>📅 تاريخ الاختبار: <b>${new Date(r.examDate).toLocaleDateString('ar-EG')}</b></div>
+      <div>🏆 علامة النجاح المطلوبة: <b>${r.passingGradeUsed}%</b></div>
+      ${r.notes?`<div>📝 ملاحظات: <b>${r.notes}</b></div>`:''}
+    </div>
+  `;
+  document.getElementById('resultDetailBody').innerHTML=html;
+  om('modal-result-detail');
+}
+
+// ════════════════════════════════════════
+//  MANUAL EXAM FORM
+// ════════════════════════════════════════
+function populateManualTeachers(){
+  const sel=document.getElementById('manTeacher');
+  sel.innerHTML='<option value="">— اختر المحفّظ —</option>'+
+    allTeachers.map(t=>`<option value="${t.id}">${t.name}${t.circle?' — '+t.circle:''}</option>`).join('');
+}
+
+function onManTeacherChange(){
+  const tid=document.getElementById('manTeacher').value;
+  const sel=document.getElementById('manStudent');
+  if(!tid){sel.innerHTML='<option value="">— اختر الطالب —</option>';return;}
+  const td=allTeacherData[tid]||{};
+  const students=(td.students||[]).filter(s=>!s.archived);
+  sel.innerHTML='<option value="">— اختر الطالب —</option>'+
+    students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  renderManJuz();
+}
+
+function renderManJuz(){
+  const type=document.getElementById('manType').value;
+  const list=type==='scattered'?SCATTERED_JUZ:COMBINED_JUZ;
+  document.getElementById('manJuz').innerHTML=
+    list.map(j=>`<option value="${j.num}|${j.name}">الجزء ${j.num} — ${j.name}</option>`).join('');
+}
+
+// ════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════
+function switchTab(name, btn){
+  ['nominated','manual','results'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===name?'':'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(name==='results') loadResultsFromFirestore();
+}
+
+async function loadResultsFromFirestore(){
+  try{
+    const snap=await db.collection('examResults').orderBy('examDate','desc').limit(100).get();
+    const results=snap.docs.map(d=>d.data());
+    renderResults(results);
+  } catch(e){
+    // orderBy may fail if no index, fallback to unordered
+    try{
+      const snap2=await db.collection('examResults').get();
+      const results=snap2.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+      renderResults(results);
+    } catch(e2){toast('⚠️ خطأ تحميل النتائج','error');}
+  }
+}
+
+// Close modals on overlay click
+['modal-exam-builder','modal-result-detail'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
+});
+
+// Init juz
+renderManJuz();
+</script>
+</body>
+</html>
