@@ -137,6 +137,10 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 .switch-row a{color:var(--em2);font-weight:700;cursor:pointer;text-decoration:none;}
 .switch-row a:hover{text-decoration:underline;}
 
+/* Name grid (4 boxes, 2x2) */
+.name-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.name-grid input.fi{padding:11px 10px;text-align:center;letter-spacing:0;font-size:13.5px;min-width:0;}
+
 /* Modal (forgot password) */
 .modal-overlay{
   position:fixed;inset:0;
@@ -208,9 +212,48 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 
     <button class="btn" id="loginBtn" onclick="doLogin()">دخول إلى النظام ←</button>
 
+    <div class="switch-row" style="margin-top:14px;">ليس لديك حساب؟ <a onclick="showView('signup')">تسجيل محفّظ جديد</a></div>
+
 
 
     <div class="card-foot"><span class="gem">❖</span> مركز الكتاب &mdash; المسجد الكبير، النصيرات <span class="gem">❖</span></div>
+  </div>
+
+  <!-- SIGNUP -->
+  <div id="auth-signup" style="display:none;">
+    <div class="logo-area">
+      <div class="logo-name" style="font-size:20px;">تسجيل محفّظ جديد</div>
+      <div class="logo-sub">سيتم مراجعة طلبك من المشرف قبل الدخول</div>
+    </div>
+    <div class="div"><div class="div-line"></div><div class="div-gem"></div><div class="div-line r"></div></div>
+    <div class="err" id="signup-err"><span id="signup-err-txt"></span></div>
+
+    <div class="form-group">
+      <label>الاسم الرباعي</label>
+      <div class="name-grid">
+        <input class="fi" id="signup-fname" type="text" placeholder="الاسم الأول">
+        <input class="fi" id="signup-father" type="text" placeholder="اسم الأب">
+        <input class="fi" id="signup-grand" type="text" placeholder="اسم الجد">
+        <input class="fi" id="signup-family" type="text" placeholder="العائلة">
+      </div>
+    </div>
+
+    <div class="form-group"><label>رقم الهوية الوطنية</label><input class="fi" id="signup-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;letter-spacing:2px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+    <div class="form-group"><label>تاريخ الميلاد</label><input class="fi" id="signup-dob" type="date"></div>
+    <div class="form-group"><label>مكان الميلاد</label><input class="fi" id="signup-pob" type="text" placeholder="مثال: نابلس"></div>
+    <div class="form-group"><label>رقم الجوال (للتواصل عبر واتساب)</label><input class="fi" id="signup-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+    <div class="form-group"><label>اسم الحلقة</label><input class="fi" id="signup-circle" type="text" placeholder="مثال: حلقة البقرة"></div>
+    <div class="form-group">
+      <label>كلمة المرور (6 أحرف فأكثر)</label>
+      <div class="inp-wrap">
+        <input class="fi" id="signup-pass" type="password" placeholder="••••••••" style="padding-left:40px;">
+        <button class="eye-btn" onclick="togglePw('signup-pass',this)" type="button" tabindex="-1">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+    <button class="btn" onclick="doSignup()">إنشاء الحساب</button>
+    <div class="switch-row" style="margin-top:14px;">لديك حساب؟ <a onclick="showView('login')">تسجيل الدخول</a></div>
   </div>
 
   <!-- PENDING -->
@@ -271,7 +314,7 @@ const db = firebase.firestore();
 //  VIEW SWITCHING
 // ════════════════════════════════════════
 function showView(view) {
-  ['loading','login','pending','rejected'].forEach(v => {
+  ['loading','login','signup','pending','rejected'].forEach(v => {
     document.getElementById('auth-'+v).style.display = (v===view) ? 'block':'none';
   });
 }
@@ -335,6 +378,49 @@ function doLogin() {
     showView('login');
     btn.textContent = 'دخول إلى النظام ←'; btn.classList.remove('loading');
     showErr('login-err','login-err-txt', friendlyErr(e.code));
+  });
+}
+
+// ════════════════════════════════════════
+//  SIGNUP
+// ════════════════════════════════════════
+function isValidNidLogin(v){ return /^[0-9]{9}$/.test((v||'').trim()); }
+function buildFullNameLogin(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
+
+function doSignup() {
+  clearErr('signup-err');
+  const fname  = document.getElementById('signup-fname').value.trim();
+  const father = document.getElementById('signup-father').value.trim();
+  const grand  = document.getElementById('signup-grand').value.trim();
+  const family = document.getElementById('signup-family').value.trim();
+  const nid    = document.getElementById('signup-nid').value.trim();
+  const dob    = document.getElementById('signup-dob').value;
+  const pob    = document.getElementById('signup-pob').value.trim();
+  const phone  = document.getElementById('signup-phone').value.trim();
+  const circle = document.getElementById('signup-circle').value.trim();
+  const pass   = document.getElementById('signup-pass').value;
+
+  if (!fname || !father || !grand || !family) { showErr('signup-err','signup-err-txt','أكمل الاسم الرباعي كاملاً'); return; }
+  if (!isValidNidLogin(nid)) { showErr('signup-err','signup-err-txt','رقم الهوية يجب أن يكون 9 أرقام بالضبط'); return; }
+  if (!dob) { showErr('signup-err','signup-err-txt','أدخل تاريخ الميلاد'); return; }
+  if (!pob) { showErr('signup-err','signup-err-txt','أدخل مكان الميلاد'); return; }
+  if (!pass) { showErr('signup-err','signup-err-txt','أدخل كلمة المرور'); return; }
+  if (pass.length < 6) { showErr('signup-err','signup-err-txt','كلمة المرور قصيرة جداً'); return; }
+
+  const name = buildFullNameLogin(fname,father,grand,family);
+
+  showView('loading');
+  auth.createUserWithEmailAndPassword(nidToEmail(nid), pass).then(cred => {
+    return db.collection('users').doc(cred.user.uid).set({
+      name, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+      nationalId: nid, dob, placeOfBirth: pob,
+      phone: phone || '', circle: circle || 'حلقة القرآن',
+      role: 'teacher', status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }).catch(e => {
+    showView('signup');
+    showErr('signup-err','signup-err-txt', friendlyErr(e.code));
   });
 }
 
