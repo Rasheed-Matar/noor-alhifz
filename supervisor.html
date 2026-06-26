@@ -791,7 +791,7 @@ function startListening(){
     const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[]}));
     allUsers=users;
     unsubData.forEach(u=>u()); unsubData=[];
-    users.filter(u=>u.status==='approved'&&u.role!=='admin').forEach(user=>{
+    users.filter(u=>u.status==='approved'&&u.role==='teacher').forEach(user=>{
       const u2=db.collection('userdata').doc(user.id).onSnapshot(dSnap=>{
         const idx=allUsers.findIndex(x=>x.id===user.id);
         if(idx>=0&&dSnap.exists){
@@ -819,7 +819,7 @@ function renderEverything(){
   renderStats();
 }
 
-function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role!=='admin'); }
+function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role==='teacher'); }
 function getAllStudents(){
   let rows=[];
   getTeachers().forEach(t=>{
