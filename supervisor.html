@@ -171,6 +171,9 @@ td{padding:11px 14px;font-size:13px;vertical-align:middle;}
 .modal-close{background:rgba(255,255,255,.15);border:none;border-radius:8px;width:30px;height:30px;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
 .modal-body{padding:22px;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.name-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;grid-column:1/-1;}
+.name-grid .form-input{font-size:13px;padding:10px 8px;text-align:center;}
+@media(max-width:560px){.name-grid{grid-template-columns:1fr 1fr;}}
 .form-group{display:flex;flex-direction:column;gap:6px;}
 .form-group.full{grid-column:1/-1;}
 .form-label{font-size:13px;font-weight:500;color:var(--ink2);}
@@ -511,9 +514,19 @@ select.form-input{cursor:pointer;}
     <div class="modal-head"><span class="modal-head-title">إضافة محفّظ جديد</span><button class="modal-close" onclick="closeModal('modal-add-teacher')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group full"><label class="form-label">الاسم الكامل <span>*</span></label><input class="form-input" id="at-name" placeholder="مثال: محمد أحمد خالد العمري"></div>
+        <div class="form-group full">
+          <label class="form-label">الاسم الرباعي <span>*</span></label>
+          <div class="name-grid">
+            <input class="form-input" id="at-fname" placeholder="الاسم الأول">
+            <input class="form-input" id="at-father" placeholder="اسم الأب">
+            <input class="form-input" id="at-grand" placeholder="اسم الجد">
+            <input class="form-input" id="at-family" placeholder="العائلة">
+          </div>
+        </div>
         <div class="form-group"><label class="form-label">رقم الهوية (يُستخدم للدخول) <span>*</span></label><input class="form-input" id="at-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
-        <div class="form-group"><label class="form-label">رقم الجوال</label><input class="form-input" id="at-phone" type="tel" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;"></div>
+        <div class="form-group"><label class="form-label">تاريخ الميلاد <span>*</span></label><input class="form-input" id="at-dob" type="date"></div>
+        <div class="form-group"><label class="form-label">مكان الميلاد <span>*</span></label><input class="form-input" id="at-pob" placeholder="مثال: نابلس"></div>
+        <div class="form-group"><label class="form-label">رقم الجوال (واتساب) <span>*</span></label><input class="form-input" id="at-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group full"><label class="form-label">اسم الحلقة</label><input class="form-input" id="at-circle" placeholder="مثال: حلقة البقرة"></div>
         <div class="form-group full"><label class="form-label">كلمة مرور مؤقتة (6 أحرف فأكثر) <span>*</span></label><input class="form-input" id="at-pass" type="text" placeholder="سيتمكن المحفّظ من تغييرها بعد الدخول"></div>
       </div>
@@ -534,13 +547,22 @@ select.form-input{cursor:pointer;}
         <div class="form-group full"><label class="form-label">المحفّظ المسؤول <span>*</span></label>
           <select class="form-input" id="as-teacher"></select>
         </div>
-        <div class="form-group full"><label class="form-label">اسم الطالب الرباعي <span>*</span></label><input class="form-input" id="as-name" placeholder="مثال: أحمد محمد خالد العمري"></div>
+        <div class="form-group full">
+          <label class="form-label">الاسم الرباعي <span>*</span></label>
+          <div class="name-grid">
+            <input class="form-input" id="as-fname" placeholder="الاسم الأول">
+            <input class="form-input" id="as-father" placeholder="اسم الأب">
+            <input class="form-input" id="as-grand" placeholder="اسم الجد">
+            <input class="form-input" id="as-family" placeholder="العائلة">
+          </div>
+        </div>
         <div class="form-group"><label class="form-label">رقم هوية الطالب <span>*</span></label><input class="form-input" id="as-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
         <div class="form-group"><label class="form-label">تاريخ الميلاد <span>*</span></label><input class="form-input" id="as-dob" type="date"></div>
+        <div class="form-group"><label class="form-label">مكان الميلاد <span>*</span></label><input class="form-input" id="as-pob" placeholder="مثال: نابلس"></div>
         <div class="form-group"><label class="form-label">الجنس <span>*</span></label><select class="form-input" id="as-gender"><option>ذكر</option><option>أنثى</option></select></div>
         <div class="form-group"><label class="form-label">الجزء الحالي <span>*</span></label><input class="form-input" id="as-juz" type="number" value="0" min="0" max="30"></div>
-        <div class="form-group"><label class="form-label">رقم جوال الطالب (واتساب) <span>*</span></label><input class="form-input" id="as-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group"><label class="form-label">رقم هوية ولي الأمر <span>*</span></label><input class="form-input" id="as-guardian-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+        <div class="form-group"><label class="form-label">رقم جوال الطالب (واتساب) <span>*</span></label><input class="form-input" id="as-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group full"><label class="form-label">ملاحظات (اختياري)</label><textarea class="form-input" id="as-notes" rows="2"></textarea></div>
       </div>
     </div>
@@ -687,23 +709,34 @@ function getAllStudents(){
 //  ADD TEACHER (محفّظ جديد) — admin only
 // ════════════════════════════════════════
 function openAddTeacher(){
-  ['at-name','at-nid','at-phone','at-circle','at-pass'].forEach(i=>document.getElementById(i).value='');
+  ['at-fname','at-father','at-grand','at-family','at-nid','at-dob','at-pob','at-phone','at-circle','at-pass'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('at-dob').max = todayISO();
   om('modal-add-teacher');
 }
 
 function isValidNid(v){ return /^[0-9]{9}$/.test((v||'').trim()); }
+function buildFullName(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
 
 function saveNewTeacher(){
-  const name   = document.getElementById('at-name').value.trim();
+  const fname  = document.getElementById('at-fname').value.trim();
+  const father = document.getElementById('at-father').value.trim();
+  const grand  = document.getElementById('at-grand').value.trim();
+  const family = document.getElementById('at-family').value.trim();
   const nid    = document.getElementById('at-nid').value.trim();
+  const dob    = document.getElementById('at-dob').value;
+  const pob    = document.getElementById('at-pob').value.trim();
   const phone  = document.getElementById('at-phone').value.trim();
   const circle = document.getElementById('at-circle').value.trim();
   const pass   = document.getElementById('at-pass').value;
 
-  if(!name){ toast('⚠️ أدخل اسم المحفّظ'); return; }
+  if(!fname||!father||!grand||!family){ toast('⚠️ أكمل الاسم الرباعي كاملاً'); return; }
   if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام بالضبط'); return; }
+  if(!dob){ toast('⚠️ أدخل تاريخ الميلاد'); return; }
+  if(!pob){ toast('⚠️ أدخل مكان الميلاد'); return; }
+  if(!/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
   if(!pass || pass.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف فأكثر'); return; }
 
+  const name = buildFullName(fname,father,grand,family);
   const email = nidToEmail(nid);
   const btn = event.target;
   btn.textContent = '⏳ جارٍ الإنشاء...'; btn.disabled = true;
@@ -712,7 +745,9 @@ function saveNewTeacher(){
     const newUid = cred.user.uid;
     return secondaryAuth.signOut().then(()=>{
       return db.collection('users').doc(newUid).set({
-        name, nationalId: nid, phone: phone||'', circle: circle||'حلقة القرآن',
+        name, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+        nationalId: nid, dob, placeOfBirth: pob,
+        phone, circle: circle||'حلقة القرآن',
         role: 'teacher', status: 'approved',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -735,7 +770,7 @@ function saveNewTeacher(){
 function openAddStudentAdmin(){
   const sel = document.getElementById('as-teacher');
   sel.innerHTML = getTeachers().map(t=>`<option value="${t.id}">${t.name} — ${t.circle||'حلقة القرآن'}</option>`).join('') || '<option value="">لا يوجد محفّظون معتمدون</option>';
-  ['as-name','as-nid','as-dob','as-phone','as-guardian-nid','as-notes'].forEach(i=>document.getElementById(i).value='');
+  ['as-fname','as-father','as-grand','as-family','as-nid','as-dob','as-pob','as-phone','as-guardian-nid','as-notes'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('as-juz').value='0';
   document.getElementById('as-gender').value='ذكر';
   document.getElementById('as-dob').max = todayISO();
@@ -744,9 +779,13 @@ function openAddStudentAdmin(){
 
 function saveNewStudentAdmin(){
   const teacherId = document.getElementById('as-teacher').value;
-  const name   = document.getElementById('as-name').value.trim();
+  const fname  = document.getElementById('as-fname').value.trim();
+  const father = document.getElementById('as-father').value.trim();
+  const grand  = document.getElementById('as-grand').value.trim();
+  const family = document.getElementById('as-family').value.trim();
   const nid    = document.getElementById('as-nid').value.trim();
   const dob    = document.getElementById('as-dob').value;
+  const pob    = document.getElementById('as-pob').value.trim();
   const gender = document.getElementById('as-gender').value;
   const juz    = parseInt(document.getElementById('as-juz').value);
   const phone  = document.getElementById('as-phone').value.trim();
@@ -754,15 +793,19 @@ function saveNewStudentAdmin(){
   const notes  = document.getElementById('as-notes').value.trim();
 
   if(!teacherId){ toast('⚠️ اختر المحفّظ المسؤول'); return; }
-  if(!name){ toast('⚠️ أدخل اسم الطالب'); return; }
+  if(!fname||!father||!grand||!family){ toast('⚠️ أكمل اسم الطالب الرباعي كاملاً'); return; }
   if(!isValidNid(nid)){ toast('⚠️ رقم هوية الطالب يجب أن يكون 9 أرقام'); return; }
   if(!dob){ toast('⚠️ أدخل تاريخ الميلاد'); return; }
+  if(!pob){ toast('⚠️ أدخل مكان الميلاد'); return; }
   if(isNaN(juz)||juz<0||juz>30){ toast('⚠️ الجزء يجب أن يكون رقماً بين 0 و30'); return; }
   if(!/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم جوال الطالب يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
   if(!isValidNid(guardianNid)){ toast('⚠️ رقم هوية ولي الأمر يجب أن يكون 9 أرقام'); return; }
 
   const newStudent = {
-    id: uidGen(), name, nationalId: nid, dob, gender,
+    id: uidGen(),
+    name: buildFullName(fname,father,grand,family),
+    firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+    nationalId: nid, dob, placeOfBirth: pob, gender,
     parentPhone: phone, guardianNationalId: guardianNid,
     juz, notes, archived: false, addedAt: new Date().toISOString()
   };
