@@ -469,6 +469,10 @@ function checkUserStatus(user) {
       window.location.href = 'supervisor.html';
       return;
     }
+    if (d.role === 'examiner' && d.status === 'approved') {
+      window.location.href = 'examiner.html';
+      return;
+    }
     if (d.status === 'approved') {
       window.location.href = 'teacher.html';
       return;
