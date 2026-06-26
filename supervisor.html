@@ -171,9 +171,8 @@ td{padding:11px 14px;font-size:13px;vertical-align:middle;}
 .modal-close{background:rgba(255,255,255,.15);border:none;border-radius:8px;width:30px;height:30px;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
 .modal-body{padding:22px;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
-.name-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;grid-column:1/-1;}
-.name-grid .form-input{font-size:13px;padding:10px 8px;text-align:center;}
-@media(max-width:560px){.name-grid{grid-template-columns:1fr 1fr;}}
+.name-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;grid-column:1/-1;}
+.name-grid .form-input{font-size:13.5px;padding:11px 10px;text-align:center;min-width:0;}
 .form-group{display:flex;flex-direction:column;gap:6px;}
 .form-group.full{grid-column:1/-1;}
 .form-label{font-size:13px;font-weight:500;color:var(--ink2);}
