@@ -98,6 +98,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .card-title-dot{width:7px;height:7px;border-radius:50%;}
 .card-title-dot.green{background:var(--em);}
 .card-title-dot.gold{background:var(--gold);}
+.card-title-dot.coral{background:#8a2a1a;}
+.card-title-dot.red{background:#dc2626;}
 .card-action{font-size:12px;color:var(--em);cursor:pointer;font-weight:500;background:none;border:none;font-family:'Tajawal',sans-serif;}
 .card-action:hover{text-decoration:underline;}
 
@@ -382,13 +384,27 @@ select.form-input{cursor:pointer;}
     <!-- ═══ REQUESTS ═══ -->
     <div class="page-view" id="page-requests">
       <div class="page-header">
-        <div><div class="page-title">طلبات التسجيل</div><div class="page-subtitle">مراجعة طلبات تسجيل المحفظين الجدد</div></div>
+        <div><div class="page-title">الطلبات المعلّقة</div><div class="page-subtitle">مراجعة طلبات تسجيل المحفظين الجدد وطلبات حذف الطلاب</div></div>
       </div>
       <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-dot coral"></span>طلبات تسجيل محفظين جدد</div>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>المحفظ</th><th>رقم الهوية</th><th>الحلقة</th><th>تاريخ الطلب</th><th></th></tr></thead>
             <tbody id="requestsTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-dot red"></span>طلبات حذف الطلاب</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الطالب</th><th>المحفظ</th><th>سبب الحذف</th><th>تاريخ الطلب</th><th></th></tr></thead>
+            <tbody id="deleteRequestsTable"></tbody>
           </table>
         </div>
       </div>
@@ -575,7 +591,6 @@ select.form-input{cursor:pointer;}
         <div class="form-group"><label class="form-label">مكان الميلاد <span>*</span></label><input class="form-input" id="as-pob" placeholder="مثال: نابلس"></div>
         <div class="form-group"><label class="form-label">الجنس <span>*</span></label><select class="form-input" id="as-gender"><option>ذكر</option><option>أنثى</option></select></div>
         <div class="form-group"><label class="form-label">الجزء الحالي <span>*</span></label><input class="form-input" id="as-juz" type="number" value="0" min="0" max="30"></div>
-        <div class="form-group"><label class="form-label">رقم هوية ولي الأمر <span>*</span></label><input class="form-input" id="as-guardian-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
         <div class="form-group"><label class="form-label">رقم جوال الطالب (واتساب) <span>*</span></label><input class="form-input" id="as-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group full"><label class="form-label">ملاحظات (اختياري)</label><textarea class="form-input" id="as-notes" rows="2"></textarea></div>
       </div>
@@ -682,7 +697,7 @@ function saveAdminSettings(){
 // ════════════════════════════════════════
 function startListening(){
   unsubUsers=db.collection('users').onSnapshot(snap=>{
-    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{}}));
+    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[]}));
     allUsers=users;
     unsubData.forEach(u=>u()); unsubData=[];
     users.filter(u=>u.status==='approved'&&u.role!=='admin').forEach(user=>{
@@ -693,6 +708,7 @@ function startListening(){
           allUsers[idx].students=d.students||[];
           allUsers[idx].sessions=d.sessions||[];
           allUsers[idx].attendance=d.attendance||{};
+          allUsers[idx].deletionRequests=d.deletionRequests||[];
         }
         renderEverything();
       },e=>console.log('userdata err',e));
@@ -719,6 +735,13 @@ function getAllStudents(){
     (t.students||[]).forEach(s=>rows.push({...s,teacherName:t.name,teacherId:t.id}));
   });
   return rows;
+}
+function getPendingDeleteRequests(){
+  let rows=[];
+  getTeachers().forEach(t=>{
+    (t.deletionRequests||[]).filter(r=>r.status==='pending').forEach(r=>rows.push({...r,teacherId:t.id,teacherName:t.name}));
+  });
+  return rows.sort((a,b)=>new Date(b.requestedAt)-new Date(a.requestedAt));
 }
 
 // ════════════════════════════════════════
@@ -786,7 +809,7 @@ function saveNewTeacher(){
 function openAddStudentAdmin(){
   const sel = document.getElementById('as-teacher');
   sel.innerHTML = getTeachers().map(t=>`<option value="${t.id}">${t.name} — ${t.circle||'حلقة القرآن'}</option>`).join('') || '<option value="">لا يوجد محفّظون معتمدون</option>';
-  ['as-fname','as-father','as-grand','as-family','as-nid','as-dob','as-pob','as-phone','as-guardian-nid','as-notes'].forEach(i=>document.getElementById(i).value='');
+  ['as-fname','as-father','as-grand','as-family','as-nid','as-dob','as-pob','as-phone','as-notes'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('as-juz').value='0';
   document.getElementById('as-gender').value='ذكر';
   document.getElementById('as-dob').max = todayISO();
@@ -805,7 +828,6 @@ function saveNewStudentAdmin(){
   const gender = document.getElementById('as-gender').value;
   const juz    = parseInt(document.getElementById('as-juz').value);
   const phone  = document.getElementById('as-phone').value.trim();
-  const guardianNid = document.getElementById('as-guardian-nid').value.trim();
   const notes  = document.getElementById('as-notes').value.trim();
 
   if(!teacherId){ toast('⚠️ اختر المحفّظ المسؤول'); return; }
@@ -815,14 +837,13 @@ function saveNewStudentAdmin(){
   if(!pob){ toast('⚠️ أدخل مكان الميلاد'); return; }
   if(isNaN(juz)||juz<0||juz>30){ toast('⚠️ الجزء يجب أن يكون رقماً بين 0 و30'); return; }
   if(!/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم جوال الطالب يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
-  if(!isValidNid(guardianNid)){ toast('⚠️ رقم هوية ولي الأمر يجب أن يكون 9 أرقام'); return; }
 
   const newStudent = {
     id: uidGen(),
     name: buildFullName(fname,father,grand,family),
     firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
     nationalId: nid, dob, placeOfBirth: pob, gender,
-    parentPhone: phone, guardianNationalId: guardianNid,
+    parentPhone: phone,
     juz, notes, archived: false, addedAt: new Date().toISOString()
   };
 
@@ -861,6 +882,7 @@ function showPage(page){
 function renderDashboard(){
   const teachers=getTeachers();
   const pending=allUsers.filter(u=>u.status==='pending');
+  const pendingDeletes=getPendingDeleteRequests();
   const allStudents=getAllStudents();
   const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   let weekSessions=0;
@@ -869,12 +891,13 @@ function renderDashboard(){
   document.getElementById('dStatTeachers').textContent=teachers.length;
   document.getElementById('dStatStudents').textContent=allStudents.length;
   document.getElementById('dStatSessions').textContent=weekSessions;
-  document.getElementById('dStatPending').textContent=pending.length;
+  document.getElementById('dStatPending').textContent=pending.length+pendingDeletes.length;
 
   const navDot=document.getElementById('navNotifDot');
   const reqBadge=document.getElementById('navReqBadge');
-  if(pending.length){
-    navDot.style.display='block'; reqBadge.style.display='inline-block'; reqBadge.textContent=pending.length;
+  const totalPending=pending.length+pendingDeletes.length;
+  if(totalPending){
+    navDot.style.display='block'; reqBadge.style.display='inline-block'; reqBadge.textContent=totalPending;
   } else { navDot.style.display='none'; reqBadge.style.display='none'; }
 
   const tb=document.getElementById('dashTeachersTable');
@@ -932,19 +955,65 @@ function renderRequests(){
   const tb=document.getElementById('requestsTable');
   if(!pending.length){
     tb.innerHTML='<tr><td colspan="5"><div class="empty-state">لا توجد طلبات معلّقة</div></td></tr>';
-    return;
+  } else {
+    tb.innerHTML=pending.map(u=>`
+      <tr>
+        <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(u.name)}</div><div><div class="teacher-name">${u.name||'—'}</div></div></div></td>
+        <td style="font-size:12px;color:#7a8a7a;direction:ltr;text-align:right;">${u.nationalId||'—'}</td>
+        <td>${u.circle||'—'}</td>
+        <td style="font-size:12px;color:#7a8a7a;">${u.createdAt&&u.createdAt.toDate?u.createdAt.toDate().toLocaleDateString('ar-EG'):'—'}</td>
+        <td><div class="td-action">
+          <button class="td-btn edit" onclick="approveUser('${u.id}')">قبول</button>
+          <button class="td-btn del" onclick="rejectUser('${u.id}')">رفض</button>
+        </div></td>
+      </tr>`).join('');
   }
-  tb.innerHTML=pending.map(u=>`
-    <tr>
-      <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(u.name)}</div><div><div class="teacher-name">${u.name||'—'}</div></div></div></td>
-      <td style="font-size:12px;color:#7a8a7a;direction:ltr;text-align:right;">${u.nationalId||'—'}</td>
-      <td>${u.circle||'—'}</td>
-      <td style="font-size:12px;color:#7a8a7a;">${u.createdAt&&u.createdAt.toDate?u.createdAt.toDate().toLocaleDateString('ar-EG'):'—'}</td>
-      <td><div class="td-action">
-        <button class="td-btn edit" onclick="approveUser('${u.id}')">قبول</button>
-        <button class="td-btn del" onclick="rejectUser('${u.id}')">رفض</button>
-      </div></td>
-    </tr>`).join('');
+
+  const delTb=document.getElementById('deleteRequestsTable');
+  const pendingDeletes=getPendingDeleteRequests();
+  if(!pendingDeletes.length){
+    delTb.innerHTML='<tr><td colspan="5"><div class="empty-state">لا توجد طلبات حذف معلّقة</div></td></tr>';
+  } else {
+    delTb.innerHTML=pendingDeletes.map(r=>`
+      <tr>
+        <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,#8a2a1a,#cc5a3a);">${ini(r.studentName)}</div><div><div class="teacher-name">${r.studentName||'—'}</div></div></div></td>
+        <td>${r.teacherName||'—'}</td>
+        <td style="font-size:12.5px;color:#7a8a7a;max-width:220px;">${(r.reason||'—')}</td>
+        <td style="font-size:12px;color:#7a8a7a;">${r.requestedAt?new Date(r.requestedAt).toLocaleDateString('ar-EG'):'—'}</td>
+        <td><div class="td-action">
+          <button class="td-btn edit" onclick="approveDeleteRequest('${r.teacherId}','${r.id}')">موافقة وحذف</button>
+          <button class="td-btn del" onclick="rejectDeleteRequest('${r.teacherId}','${r.id}')">رفض</button>
+        </div></td>
+      </tr>`).join('');
+  }
+}
+
+// ════════════════════════════════════════
+//  STUDENT DELETION REQUESTS (approve = حذف فعلي, reject = استعادة)
+// ════════════════════════════════════════
+function approveDeleteRequest(teacherId,requestId){
+  const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
+  const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
+  confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',()=>{
+    const updatedStudents=(teacher.students||[]).filter(s=>s.id!==req.studentId);
+    const updatedSessions=(teacher.sessions||[]).filter(s=>s.studentId!==req.studentId);
+    const updatedRequests=(teacher.deletionRequests||[]).map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
+    db.collection('userdata').doc(teacherId).set({
+      students:updatedStudents, sessions:updatedSessions, deletionRequests:updatedRequests
+    },{merge:true}).then(()=>toast('🗑️ تم حذف الطالب نهائياً')).catch(e=>toast('⚠️ خطأ: '+e.message));
+  });
+}
+
+function rejectDeleteRequest(teacherId,requestId){
+  const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
+  const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
+  confirmAction('رفض طلب الحذف','هل تريد رفض طلب حذف الطالب "'+req.studentName+'" والاحتفاظ به؟',()=>{
+    const updatedStudents=(teacher.students||[]).map(s=>s.id===req.studentId?{...s,pendingDeletion:false}:s);
+    const updatedRequests=(teacher.deletionRequests||[]).map(r=>r.id===requestId?{...r,status:'rejected',resolvedAt:new Date().toISOString()}:r);
+    db.collection('userdata').doc(teacherId).set({
+      students:updatedStudents, deletionRequests:updatedRequests
+    },{merge:true}).then(()=>toast('↩️ تم رفض طلب الحذف')).catch(e=>toast('⚠️ خطأ: '+e.message));
+  });
 }
 
 function approveUser(uid){
@@ -1052,7 +1121,7 @@ function renderStudents(data){
       <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(s.name)}</div><div><div class="teacher-name">${s.name}</div></div></div></td>
       <td>${s.teacherName||'—'}</td><td>${s.juz||0}</td>
       <td>${s.parentPhone?`<button class="td-btn msg" onclick="quickMsgParent('${s.parentPhone}','${(s.name||'').replace(/'/g,"")}')">واتساب</button>`:'—'}</td>
-      <td><span class="badge ${s.archived?'badge-red':'badge-green'}">${s.archived?'مؤرشف':'نشط'}</span></td>
+      <td><span class="badge ${s.pendingDeletion?'badge-gold':s.archived?'badge-red':'badge-green'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span></td>
     </tr>`).join('');
 }
 function filterStudents(q){
