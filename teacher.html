@@ -207,6 +207,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .mf{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem}
 .mf label{font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px}
 .mf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.name-grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+.name-grid4 input{font-size:12.5px;text-align:center;padding:0 4px;}
+@media(max-width:480px){.name-grid4{grid-template-columns:1fr 1fr;}}
 .mf input,.mf select,.mf textarea{width:100%;height:44px;border:1.5px solid var(--bdr);border-radius:9px;padding:0 12px;font-size:13.5px;font-family:inherit;color:var(--tx);outline:none;background:var(--wh);transition:border-color .2s,box-shadow .2s}
 .mf input:focus,.mf select:focus{border-color:var(--gd);box-shadow:0 0 0 3px rgba(10,61,43,.08)}
 .mf textarea{height:auto;padding:10px 12px;resize:vertical}
@@ -772,20 +775,29 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
       <button class="modal-close" onclick="cm('mAddStudent')">×</button>
     </div>
     <div class="modal-body">
-      <div class="mf"><label>اسم الطالب الرباعي *</label><input type="text" id="ns-name" placeholder="مثال: أحمد محمد خالد العمري" required></div>
+      <div class="mf"><label>اسم الطالب الرباعي *</label>
+        <div class="name-grid4">
+          <input type="text" id="ns-fname" placeholder="الاسم الأول" required>
+          <input type="text" id="ns-father" placeholder="اسم الأب" required>
+          <input type="text" id="ns-grand" placeholder="اسم الجد" required>
+          <input type="text" id="ns-family" placeholder="العائلة" required>
+        </div>
+      </div>
       <div class="mf-row">
         <div class="mf"><label>رقم هوية الطالب *</label><input type="tel" inputmode="numeric" id="ns-nid" placeholder="٩ أرقام" maxlength="9" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)" required></div>
         <div class="mf"><label>تاريخ الميلاد *</label><input type="date" id="ns-dob" required></div>
       </div>
       <div class="mf-row">
+        <div class="mf"><label>مكان الميلاد *</label><input type="text" id="ns-pob" placeholder="مثال: نابلس" required></div>
         <div class="mf"><label>الجنس *</label>
           <select id="ns-gender" required><option>ذكر</option><option>أنثى</option></select>
         </div>
-        <div class="mf"><label>الجزء الحالي *</label><input type="number" id="ns-juz" value="0" min="0" max="30" required></div>
       </div>
       <div class="mf-row">
+        <div class="mf"><label>الجزء الحالي *</label><input type="number" id="ns-juz" value="0" min="0" max="30" required></div>
         <div class="mf"><label>رقم جوال الطالب (واتساب) *</label><input type="tel" inputmode="numeric" id="ns-phone" placeholder="05xxxxxxxx" maxlength="10" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" required></div>
-        <div class="mf"><label>رقم هوية ولي الأمر *</label><input type="tel" inputmode="numeric" id="ns-guardian-nid" placeholder="٩ أرقام" maxlength="9" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)" required></div>
+      </div>
+      <div class="mf"><label>رقم هوية ولي الأمر *</label><input type="tel" inputmode="numeric" id="ns-guardian-nid" placeholder="٩ أرقام" maxlength="9" style="direction:ltr;text-align:right;letter-spacing:1px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)" required></div>
       </div>
       <div class="mf"><label>ملاحظات (اختياري)</label><textarea id="ns-notes" rows="2"></textarea></div>
       <button class="btn-submit-modal" onclick="saveNewStudent()">
@@ -1486,11 +1498,7 @@ function clearFieldError(id){
 }
 function clearFieldErrors(ids){ ids.forEach(clearFieldError); }
 
-function isValidFullName(v){
-  const parts=(v||'').trim().split(/\s+/).filter(Boolean);
-  if(parts.length<4) return false;
-  return parts.every(p=>/^[\u0621-\u064A\u0660-\u0669']+$/.test(p));
-}
+function isValidNamePart(v){ return /^[\u0621-\u064A\u0660-\u0669']+$/.test((v||'').trim()); }
 function isValidNationalIdVal(v){ return /^[0-9]{9}$/.test((v||'').trim()); }
 function isValidPSPhone(v){ return /^05[0-9]{8}$/.test((v||'').replace(/\D/g,'')); }
 function isValidPastDate(v){
@@ -1499,23 +1507,28 @@ function isValidPastDate(v){
   const today=new Date(); today.setHours(0,0,0,0);
   return d<=today && d.getFullYear()>=1920;
 }
+function buildFullName(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
 
 function openAddStudent(){
-  ['ns-name','ns-nid','ns-dob','ns-phone','ns-guardian-nid','ns-notes'].forEach(i=>document.getElementById(i).value='');
+  ['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-phone','ns-guardian-nid','ns-notes'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('ns-juz').value='0';
   document.getElementById('ns-gender').value='ذكر';
   document.getElementById('ns-dob').max=TODAY();
-  clearFieldErrors(['ns-name','ns-nid','ns-dob','ns-gender','ns-juz','ns-phone','ns-guardian-nid']);
+  clearFieldErrors(['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone','ns-guardian-nid']);
   om('mAddStudent');
 }
 
 function saveNewStudent(){
-  const ids=['ns-name','ns-nid','ns-dob','ns-gender','ns-juz','ns-phone','ns-guardian-nid'];
+  const ids=['ns-fname','ns-father','ns-grand','ns-family','ns-nid','ns-dob','ns-pob','ns-gender','ns-juz','ns-phone','ns-guardian-nid'];
   clearFieldErrors(ids);
 
-  const name=document.getElementById('ns-name').value.trim();
+  const fname=document.getElementById('ns-fname').value.trim();
+  const father=document.getElementById('ns-father').value.trim();
+  const grand=document.getElementById('ns-grand').value.trim();
+  const family=document.getElementById('ns-family').value.trim();
   const nid=document.getElementById('ns-nid').value.trim();
   const dob=document.getElementById('ns-dob').value;
+  const pob=document.getElementById('ns-pob').value.trim();
   const gender=document.getElementById('ns-gender').value;
   const juzRaw=document.getElementById('ns-juz').value;
   const phone=document.getElementById('ns-phone').value.trim();
@@ -1525,14 +1538,22 @@ function saveNewStudent(){
   let firstErrorId=null;
   const fail=(id,msg)=>{ setFieldError(id,msg); if(!firstErrorId) firstErrorId=id; };
 
-  if(!name) fail('ns-name','أدخل اسم الطالب الرباعي');
-  else if(!isValidFullName(name)) fail('ns-name','أدخل الاسم الرباعي كاملاً (4 أسماء عربية على الأقل)');
+  if(!fname) fail('ns-fname','أدخل الاسم الأول');
+  else if(!isValidNamePart(fname)) fail('ns-fname','اسم غير صحيح');
+  if(!father) fail('ns-father','أدخل اسم الأب');
+  else if(!isValidNamePart(father)) fail('ns-father','اسم غير صحيح');
+  if(!grand) fail('ns-grand','أدخل اسم الجد');
+  else if(!isValidNamePart(grand)) fail('ns-grand','اسم غير صحيح');
+  if(!family) fail('ns-family','أدخل اسم العائلة');
+  else if(!isValidNamePart(family)) fail('ns-family','اسم غير صحيح');
 
   if(!nid) fail('ns-nid','أدخل رقم هوية الطالب');
   else if(!isValidNationalIdVal(nid)) fail('ns-nid','رقم الهوية يجب أن يكون 9 أرقام بالضبط');
 
   if(!dob) fail('ns-dob','أدخل تاريخ الميلاد');
   else if(!isValidPastDate(dob)) fail('ns-dob','تاريخ الميلاد غير صحيح (لا يمكن أن يكون في المستقبل)');
+
+  if(!pob) fail('ns-pob','أدخل مكان الميلاد');
 
   if(!gender) fail('ns-gender','اختر الجنس');
 
@@ -1553,9 +1574,12 @@ function saveNewStudent(){
   }
 
   const s={
-    id:uid(), name,
+    id:uid(),
+    name: buildFullName(fname,father,grand,family),
+    firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
     nationalId:nid,
     dob,
+    placeOfBirth:pob,
     gender,
     parentPhone:phone,
     guardianNationalId:guardianNid,
