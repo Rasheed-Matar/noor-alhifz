@@ -380,7 +380,8 @@ const db = firebase.firestore();
 //  STATE
 // ════════════════════════════════════════
 let currentUser = null, currentExaminerDoc = null;
-let allTeachers = [], allTeacherData = {};
+let allTeachers = [], allTeacherData = {}, allExamResults = [];
+let unsubUsers=null, unsubTeacherData=[], unsubResults=null, unsubSettings=null;
 let passingGrade = 70;
 let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
 
@@ -423,7 +424,7 @@ auth.onAuthStateChanged(user=>{
     document.getElementById('navUserName').textContent=currentExaminerDoc.name||'المختبر';
     document.getElementById('loadingScreen').classList.add('hide');
     initDate();
-    loadData();
+    initLiveListeners();
   }).catch(()=>window.location.href='login.html');
 });
 
@@ -438,38 +439,54 @@ function initDate(){
 //  LOAD DATA
 // ════════════════════════════════════════
 async function loadData(){
-  try{
-    // Load passing grade from global settings
-    const settingsDoc = await db.collection('settings').doc('global').get();
-    if(settingsDoc.exists){
-      const s=settingsDoc.data();
-      if(s.passingGrade) passingGrade = s.passingGrade;
+  // أُبقيت كاحتياط (تُستخدم عند الحاجة لإعادة تحميل فورية بعد عملية يدوية)
+  initLiveListeners();
+}
+
+function initLiveListeners(){
+  // 1) علامة النجاح — لحظي، لو غيّرها المشرف بينما الصفحة مفتوحة
+  if(unsubSettings) unsubSettings();
+  unsubSettings = db.collection('settings').doc('global').onSnapshot(doc=>{
+    if(doc.exists){
+      const s=doc.data();
+      if(s.passingGrade) passingGrade=s.passingGrade;
     }
     document.getElementById('passBannerVal').textContent = passingGrade + ' / 100';
+    renderAll();
+  }, err=>toast('⚠️ خطأ تحميل علامة النجاح: '+err.message,'error'));
 
-    // Load all teachers and their data
-    const usersSnap = await db.collection('users').get();
-    allTeachers = [];
-    allTeacherData = {};
-    const promises = [];
-    usersSnap.docs.forEach(d=>{
+  // 2) المحفّظون وبياناتهم (الطلاب + الترشيحات) — لحظي
+  if(unsubUsers) unsubUsers();
+  unsubUsers = db.collection('users').onSnapshot(snap=>{
+    // تنظيف المستمعين القدامى الخاصين ببيانات كل محفّظ قبل إعادة بنائهم
+    unsubTeacherData.forEach(u=>u());
+    unsubTeacherData=[];
+    allTeachers=[];
+    allTeacherData={};
+
+    snap.docs.forEach(d=>{
       const u={id:d.id,...d.data()};
       if(u.status==='approved' && u.role==='teacher'){
         allTeachers.push(u);
-        promises.push(
-          db.collection('userdata').doc(u.id).get().then(ds=>{
-            if(ds.exists) allTeacherData[u.id]=ds.data();
-          })
-        );
+        const unsub = db.collection('userdata').doc(u.id).onSnapshot(ds=>{
+          allTeacherData[u.id] = ds.exists? ds.data() : {};
+          renderAll();
+        }, err=>toast('⚠️ خطأ تحميل بيانات محفّظ: '+err.message,'error'));
+        unsubTeacherData.push(unsub);
       }
     });
-    await Promise.all(promises);
-
-    renderAll();
     populateManualTeachers();
-  } catch(e){
-    toast('⚠️ خطأ في تحميل البيانات: '+e.message,'error');
-  }
+    renderAll();
+  }, err=>toast('⚠️ خطأ تحميل المحفّظين: '+err.message,'error'));
+
+  // 3) نتائج الاختبارات — لحظي، ومن المصدر الصحيح (مجموعة examResults نفسها)
+  if(unsubResults) unsubResults();
+  unsubResults = db.collection('examResults').onSnapshot(snap=>{
+    allExamResults = snap.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+    renderAll();
+    const resultsTabVisible = document.getElementById('tab-results').style.display!=='none';
+    if(resultsTabVisible) renderResults(allExamResults);
+  }, err=>toast('⚠️ خطأ تحميل النتائج: '+err.message,'error'));
 }
 
 function getAllNominations(){
@@ -487,14 +504,7 @@ function getAllNominations(){
 }
 
 function getAllResults(){
-  const results=[];
-  allTeachers.forEach(t=>{
-    const td=allTeacherData[t.id]||{};
-    (td.examResults||[]).forEach(r=>{
-      results.push({...r, teacherName:t.name});
-    });
-  });
-  return results.sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+  return allExamResults;
 }
 
 // ════════════════════════════════════════
@@ -789,7 +799,6 @@ async function submitExam(){
     await sendNotification(resultRecord);
 
     closeModal('modal-exam-builder');
-    await loadData();
     toast(`✅ تم رصد النتيجة: ${passed?'ناجح 🎉':'لم ينجح'} — العلامة ${totalScore}%`);
     showResultDetailById(resultRecord.id);
   } catch(e){
@@ -902,22 +911,7 @@ function switchTab(name, btn){
   });
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if(name==='results') loadResultsFromFirestore();
-}
-
-async function loadResultsFromFirestore(){
-  try{
-    const snap=await db.collection('examResults').orderBy('examDate','desc').limit(100).get();
-    const results=snap.docs.map(d=>d.data());
-    renderResults(results);
-  } catch(e){
-    // orderBy may fail if no index, fallback to unordered
-    try{
-      const snap2=await db.collection('examResults').get();
-      const results=snap2.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
-      renderResults(results);
-    } catch(e2){toast('⚠️ خطأ تحميل النتائج','error');}
-  }
+  if(name==='results') renderResults(allExamResults);
 }
 
 // Close modals on overlay click
