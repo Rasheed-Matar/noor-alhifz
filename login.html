@@ -20,6 +20,8 @@
   --border:#d4c89a;--shadow:rgba(27,107,74,.18);
 }
 body{font-family:'Tajawal',sans-serif;background:var(--cream);min-height:100vh;display:flex;align-items:center;justify-content:center;overflow-x:hidden;position:relative;}
+body.page-exit{animation:pageExit .25s ease forwards;}
+@keyframes pageExit{to{opacity:0;}}
 
 /* BG */
 .bg-glow{position:fixed;inset:0;z-index:0;
@@ -119,6 +121,7 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 .msg-ok{background:#eafaf1;border:1px solid #aee6c4;border-radius:11px;padding:9px 13px;font-size:13px;color:#1e8449;margin-bottom:13px;display:none;}
 .msg-ok.show{display:block;}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes btnSpin{to{transform:rotate(360deg);transform-origin:center;}}
 
 /* Footer */
 .card-foot{text-align:center;margin-top:20px;font-size:11.5px;color:#a09a85;display:flex;align-items:center;justify-content:center;gap:6px;animation:fadeUp .6s .55s both;}
@@ -166,6 +169,12 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 </style>
 </head>
 <body>
+
+<div id="splash-screen" style="position:fixed;inset:0;z-index:99999;background:#0a3d2b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s ease;">
+  <div style="width:42px;height:42px;border:3px solid rgba(240,208,96,.25);border-top-color:#f0d060;border-radius:50%;animation:splashSpin .8s linear infinite;"></div>
+  <div style="color:#f0d060;font-family:'Amiri',serif;font-size:18px;">نور الحفظ</div>
+</div>
+<style>@keyframes splashSpin{to{transform:rotate(360deg);}}</style>
 
 <div class="bg-glow"></div>
 
@@ -322,6 +331,12 @@ function showView(view) {
   ['loading','login','signup','pending','rejected'].forEach(v => {
     document.getElementById('auth-'+v).style.display = (v===view) ? 'block':'none';
   });
+  // إخفاء splash عند ظهور أي view غير loading
+  const splash = document.getElementById('splash-screen');
+  if(splash && view !== 'loading'){
+    splash.style.opacity = '0';
+    setTimeout(()=>{ if(splash) splash.remove(); }, 300);
+  }
 }
 
 function togglePw(id, btn) {
@@ -376,12 +391,11 @@ function doLogin() {
     loginEmail = nidToEmail(raw);
   }
 
-  btn.textContent = '⏳ جارٍ التحقق...'; btn.classList.add('loading');
-  showView('loading');
+  btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحقق...</span>';
+  btn.classList.add('loading');
 
   auth.signInWithEmailAndPassword(loginEmail, pass).catch(e => {
-    showView('login');
-    btn.textContent = 'دخول إلى النظام ←'; btn.classList.remove('loading');
+    btn.innerHTML = 'دخول إلى النظام ←'; btn.classList.remove('loading');
     showErr('login-err','login-err-txt', friendlyErr(e.code));
   });
 }
@@ -456,14 +470,17 @@ const authTimeout = setTimeout(() => showView('login'), 8000);
 auth.onAuthStateChanged(user => {
   clearTimeout(authTimeout);
   if (!user) { showView('login'); return; }
-  showView('loading');
   checkUserStatus(user);
 });
+
+function navigateTo(url) {
+  document.body.classList.add('page-exit');
+  setTimeout(()=>{ window.location.href = url; }, 250);
+}
 
 function checkUserStatus(user) {
   db.collection('users').doc(user.uid).get().then(doc => {
     if (!doc.exists) {
-      // أول دخول بدون ملف بيانات — لا يجب أن يحدث عادة، لكن كاحتياط:
       showView('pending');
       return;
     }
@@ -472,15 +489,15 @@ function checkUserStatus(user) {
     // ── ROUTING LOGIC ──
     sessionStorage.setItem('userCache', JSON.stringify({ uid: user.uid, ...d }));
     if (d.role === 'admin') {
-      window.location.href = 'supervisor.html';
+      navigateTo('supervisor.html');
       return;
     }
     if (d.role === 'examiner' && d.status === 'approved') {
-      window.location.href = 'examiner.html';
+      navigateTo('examiner.html');
       return;
     }
     if (d.status === 'approved') {
-      window.location.href = 'teacher.html';
+      navigateTo('teacher.html');
       return;
     }
     if (d.status === 'rejected') {
