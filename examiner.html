@@ -621,8 +621,8 @@ function openExamBuilder(){
   document.getElementById('ebNotes').value='';
   // Init with 3 default questions
   document.getElementById('qBuilder').innerHTML='';
-  addQRow('التلاوة والأداء','',40);
-  addQRow('الحفظ والإتقان','',40);
+  addQRow('السؤال الأول','',40);
+  addQRow('السؤال الثاني','',40);
   addQRow('الأحكام التجويدية','',20);
   updateQTotal();
   om('modal-exam-builder');
@@ -631,8 +631,18 @@ function openExamBuilder(){
 // ════════════════════════════════════════
 //  QUESTION BUILDER
 // ════════════════════════════════════════
+// ترقيم الأسئلة بالعربية (السؤال الأول، الثاني، الثالث...)
+const arOrdinals=['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر',
+  'الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر'];
+function ordinalLabel(n){ return 'السؤال '+(arOrdinals[n-1]||('رقم '+n)); }
+
 let qRowId=0;
 function addQRow(desc='',score='',maxScore=''){
+  // عند الإضافة من زر "+ إضافة سؤال" بدون وصف مُحدَّد، يُولَّد رقم تسلسلي تلقائياً
+  if(!desc){
+    const existingCount=document.getElementById('qBuilder').querySelectorAll('.q-row').length;
+    desc=ordinalLabel(existingCount+1);
+  }
   const id='qr'+qRowId++;
   const row=document.createElement('div');
   row.className='q-row';
