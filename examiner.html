@@ -165,11 +165,22 @@ tr:hover td{background:#fdf9f2;}
 .score-display .sd-status.pass{background:rgba(26,212,100,.2);color:#4afa8a;}
 .score-display .sd-status.fail{background:rgba(255,80,80,.2);color:#ff8080;}
 
+/* PDF Export buttons */
+.pdf-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.btn-pdf{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:var(--em);cursor:pointer;transition:all .2s;}
+.btn-pdf:hover{background:var(--em);color:#fff;border-color:var(--em);}
+.btn-pdf svg{flex-shrink:0;}
+
+/* Retake badge */
+.retake-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:6px;padding:2px 8px;margin-right:6px;}
+
+/* Score input error */
+.q-row input.score-err{border-color:var(--red)!important;background:#fff5f5;}
+.score-err-tip{font-size:11px;color:var(--red);margin-top:2px;display:none;}
+
 @media(max-width:600px){
-  .form-grid{grid-template-columns:1fr;}
-  .form-grid .full{grid-column:1;}
-  .q-row{grid-template-columns:1fr 60px 60px 30px;}
-  .stats-row{grid-template-columns:1fr 1fr;}
+  .pdf-bar{gap:6px;}
+  .btn-pdf{font-size:12px;padding:7px 12px;}
 }
 </style>
 </head>
@@ -298,9 +309,25 @@ tr:hover td{background:#fdf9f2;}
       <div class="card-header">
         <div class="card-title"><span class="card-title-dot gold"></span>سجل نتائج الاختبارات</div>
       </div>
+      <div class="card-body" style="padding-bottom:8px;">
+        <div class="pdf-bar">
+          <button class="btn-pdf" onclick="exportPDF('day')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            تصدير اليوم
+          </button>
+          <button class="btn-pdf" onclick="exportPDF('week')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            تصدير الأسبوع
+          </button>
+          <button class="btn-pdf" onclick="exportPDF('month')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            تصدير الشهر
+          </button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>الطالب</th><th>المحفّظ</th><th>نوع الاختبار</th><th>الجزء</th><th>العلامة</th><th>النتيجة</th><th>التاريخ</th></tr></thead>
+          <thead><tr><th>الطالب</th><th>المحفّظ</th><th>نوع الاختبار</th><th>الجزء</th><th>العلامة</th><th>النتيجة</th><th>التاريخ</th><th></th></tr></thead>
           <tbody id="resultsTable"></tbody>
         </table>
       </div>
@@ -580,12 +607,18 @@ function renderNominations(noms){
 function renderResults(results){
   const tb=document.getElementById('resultsTable');
   if(!results.length){
-    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:30px;">لا توجد نتائج بعد</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:30px;">لا توجد نتائج بعد</td></tr>';
     return;
   }
   const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
-  tb.innerHTML=results.map(r=>`
-    <tr onclick="showResultDetail('${r.id}')" style="cursor:pointer;">
+  const todayStr=new Date().toDateString();
+  tb.innerHTML=results.map(r=>{
+    const isToday=new Date(r.examDate).toDateString()===todayStr;
+    const retakeBtn=isToday
+      ?`<button class="btn-pdf" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation();retakeExam('${r.id}')">↩ إعادة</button>`
+      :'';
+    return `
+    <tr onclick="showResultDetailFromData(${JSON.stringify(r).replace(/"/g,'&quot;')})" style="cursor:pointer;">
       <td><b>${r.studentName}</b></td>
       <td>${r.teacherName}</td>
       <td><span class="badge badge-blue">${typeLabel[r.type]||r.type}</span></td>
@@ -593,8 +626,9 @@ function renderResults(results){
       <td><b style="font-size:16px;">${r.totalScore}%</b></td>
       <td><span class="badge ${r.passed?'badge-ok':'badge-bad'}">${r.passed?'ناجح ✓':'لم ينجح ✕'}</span></td>
       <td>${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
-    </tr>
-  `).join('');
+      <td>${retakeBtn}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════
@@ -687,8 +721,8 @@ function addQRow(desc='',score='',maxScore='',isTajweed=false){
   row.id=id;
   row.innerHTML=`
     <input type="text" placeholder="وصف السؤال أو المحور" value="${desc}" oninput="updateQTotal()">
-    <input type="number" min="0" max="100" placeholder="0" value="${score}" oninput="updateQTotal()">
-    <input type="number" min="0" max="100" placeholder="0" value="${maxScore}" oninput="updateQTotal()">
+    <input type="number" min="0" max="100" placeholder="0" value="${score}" oninput="validateScore(this)">
+    <input type="number" min="0" max="100" placeholder="0" value="${maxScore}" oninput="onMaxChange(this)">
     <button class="del-btn" onclick="removeQRow('${id}')">✕</button>
   `;
   const qBuilder=document.getElementById('qBuilder');
@@ -1004,6 +1038,145 @@ function renderManJuz(){
   const list=type==='scattered'?SCATTERED_JUZ:COMBINED_JUZ;
   document.getElementById('manJuz').innerHTML=
     list.map(j=>`<option value="${j.num}|${j.name}">الجزء ${j.num} — ${j.name}</option>`).join('');
+}
+
+// ── التحقق من الدرجة ──
+function validateScore(input){
+  const row=input.closest('.q-row');
+  const inputs=row.querySelectorAll('input[type=number]');
+  const scoreInput=inputs[0];
+  const maxInput=inputs[1];
+  const score=parseFloat(scoreInput.value)||0;
+  const max=parseFloat(maxInput.value)||0;
+  if(max>0 && score>max){
+    scoreInput.classList.add('score-err');
+    scoreInput.value=max; // يمنع إدخال أكبر من العلامة القصوى
+    toast('⚠️ الدرجة لا يمكن أن تتجاوز العلامة القصوى ('+max+')','error');
+  } else {
+    scoreInput.classList.remove('score-err');
+  }
+  updateQTotal();
+}
+
+function onMaxChange(input){
+  // عند تغيير العلامة القصوى تحقق من الدرجة الحالية
+  const row=input.closest('.q-row');
+  const inputs=row.querySelectorAll('input[type=number]');
+  const scoreInput=inputs[0];
+  const score=parseFloat(scoreInput.value)||0;
+  const max=parseFloat(input.value)||0;
+  if(max>0 && score>max){
+    scoreInput.value=max;
+    scoreInput.classList.remove('score-err');
+  }
+  redistributeQuestionScores();
+  updateQTotal();
+}
+
+// ── إعادة الاختبار (خلال اليوم فقط) ──
+function retakeExam(resultId){
+  const original=allExamResults.find(r=>r.id===resultId);
+  if(!original){toast('⚠️ لم يتم إيجاد الاختبار','error');return;}
+  const todayStr=new Date().toDateString();
+  if(new Date(original.examDate).toDateString()!==todayStr){
+    toast('⚠️ لا يمكن إعادة الاختبار إلا في نفس اليوم','error');return;
+  }
+  pendingExam={
+    nominationId: original.nominationId||null,
+    teacherId: original.teacherId,
+    studentId: original.studentId,
+    studentName: original.studentName,
+    teacherName: original.teacherName,
+    type: original.type,
+    juzNum: original.juzNum,
+    juzName: original.juzName,
+    isRetake: true,
+    originalId: resultId
+  };
+  openExamBuilder();
+  toast('↩ إعادة اختبار: '+original.studentName);
+}
+
+// ── تصدير PDF ──
+function exportPDF(period){
+  const now=new Date();
+  let from, label;
+  if(period==='day'){
+    from=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    label='تقرير يومي — '+now.toLocaleDateString('ar-EG');
+  } else if(period==='week'){
+    const d=new Date(now);
+    d.setDate(d.getDate()-6);
+    from=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    label='تقرير أسبوعي — '+from.toLocaleDateString('ar-EG')+' إلى '+now.toLocaleDateString('ar-EG');
+  } else {
+    from=new Date(now.getFullYear(),now.getMonth(),1);
+    label='تقرير شهري — '+now.toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  }
+
+  const filtered=allExamResults.filter(r=>new Date(r.examDate)>=from);
+  if(!filtered.length){toast('⚠️ لا توجد نتائج في هذه الفترة','error');return;}
+
+  const pass=filtered.filter(r=>r.passed).length;
+  const fail=filtered.filter(r=>!r.passed).length;
+  const avg=Math.round(filtered.reduce((s,r)=>s+r.totalScore,0)/filtered.length);
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+
+  const rows=filtered.map((r,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#fdf9f2'}">
+      <td>${i+1}</td>
+      <td><b>${r.studentName}</b></td>
+      <td>${r.teacherName}</td>
+      <td>${typeLabel[r.type]||r.type}</td>
+      <td>الجزء ${r.juzNum}</td>
+      <td style="font-weight:800;font-size:15px;">${r.totalScore}%</td>
+      <td style="color:${r.passed?'#1b6b4a':'#c0392b'};font-weight:700;">${r.passed?'ناجح ✓':'لم ينجح ✕'}</td>
+      <td>${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+    </tr>`).join('');
+
+  const html=`<!DOCTYPE html><html lang="ar" dir="rtl">
+<head><meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Tajawal',sans-serif;padding:32px;color:#1a1a2e;background:#fff;}
+  .header{text-align:center;border-bottom:3px solid #1b6b4a;padding-bottom:20px;margin-bottom:24px;}
+  .logo{font-size:24px;font-weight:800;color:#1b6b4a;}
+  .sub{font-size:14px;color:#666;margin-top:4px;}
+  .stats{display:flex;gap:16px;margin-bottom:24px;}
+  .stat{flex:1;background:#f5fbf7;border:1px solid #aee6c4;border-radius:10px;padding:14px;text-align:center;}
+  .stat .n{font-size:28px;font-weight:800;color:#1b6b4a;}
+  .stat .l{font-size:12px;color:#555;margin-top:2px;}
+  .stat.red .n{color:#c0392b;} .stat.red{background:#fff5f5;border-color:#f5c6cb;}
+  .stat.gold .n{color:#b8860b;} .stat.gold{background:#fffbf0;border-color:#ffc107;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:#1b6b4a;color:#fff;padding:10px 12px;font-weight:700;}
+  td{padding:9px 12px;border-bottom:1px solid #eee;}
+  .footer{margin-top:20px;text-align:center;font-size:12px;color:#999;}
+  @media print{body{padding:16px;}}
+</style></head><body>
+<div class="header">
+  <div class="logo">🏫 مركز الكتاب</div>
+  <div class="sub">${label}</div>
+  <div class="sub">المختبر: ${currentExaminerDoc?.name||'—'} | تاريخ التقرير: ${now.toLocaleDateString('ar-EG')}</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="n">${filtered.length}</div><div class="l">إجمالي الاختبارات</div></div>
+  <div class="stat"><div class="n">${pass}</div><div class="l">ناجح</div></div>
+  <div class="stat red"><div class="n">${fail}</div><div class="l">لم ينجح</div></div>
+  <div class="stat gold"><div class="n">${avg}%</div><div class="l">متوسط العلامات</div></div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>الطالب</th><th>المحفّظ</th><th>النوع</th><th>الجزء</th><th>العلامة</th><th>النتيجة</th><th>التاريخ</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">تم إنشاء هذا التقرير تلقائياً من نظام مركز الكتاب</div>
+</body></html>`;
+
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload=()=>{ win.focus(); win.print(); };
 }
 
 // ════════════════════════════════════════
