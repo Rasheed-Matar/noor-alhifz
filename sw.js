@@ -1,4 +1,4 @@
-const CACHE = 'noor-v3';
+const CACHE = 'noor-v4';
 
 // كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
 const ASSETS = [
