@@ -90,6 +90,7 @@
 
   function showInstallOverlay(deferredPrompt) {
     if (isStandalone() || document.getElementById('pwaInstallOverlay')) return;
+    if (sessionStorage.getItem('pwaInstallDismissed') === '1') return;
     injectStyles();
 
     var mobileSub = isIosSafari()
@@ -120,7 +121,10 @@
     document.body.appendChild(el);
     document.body.style.overflow = 'hidden';
 
-    document.getElementById('pwaSkipBtn').addEventListener('click', function () { dismissOverlay(el); });
+    document.getElementById('pwaSkipBtn').addEventListener('click', function () {
+      sessionStorage.setItem('pwaInstallDismissed', '1');
+      dismissOverlay(el);
+    });
 
     if (deferredPrompt) {
       document.getElementById('pwaInstallBtn').addEventListener('click', async function () {
@@ -133,7 +137,7 @@
     }
 
     function onKey(e) {
-      if (e.key === 'Escape') { dismissOverlay(el); document.removeEventListener('keydown', onKey); }
+      if (e.key === 'Escape') { sessionStorage.setItem('pwaInstallDismissed', '1'); dismissOverlay(el); document.removeEventListener('keydown', onKey); }
     }
     document.addEventListener('keydown', onKey);
   }
