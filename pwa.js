@@ -7,7 +7,20 @@
   // ── تسجيل Service Worker (تخزين الصفحات لتعمل بدون إنترنت) ──
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function (err) {
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        // تحقق من وجود تحديث في كل زيارة
+        reg.update();
+        // عند وجود نسخة جديدة — طبّقها فوراً
+        reg.addEventListener('updatefound', function() {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
+            if(newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              newWorker.postMessage('SKIP_WAITING');
+              window.location.reload();
+            }
+          });
+        });
+      }).catch(function (err) {
         console.warn('تعذّر تسجيل Service Worker:', err);
       });
     });
