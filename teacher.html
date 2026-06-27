@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a3d2b">
 <title>لوحة المحفّظ — نور الحفظ</title>
 <link rel="manifest" href="manifest.json">
+<script src="pwa.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -895,6 +896,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// تفعيل العمل بدون إنترنت: تُخزَّن البيانات محلياً وتتم مزامنتها تلقائياً عند رجوع الاتصال
+db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  console.warn('تعذّر تفعيل وضع عدم الاتصال:', err.code);
+});
 
 // ════════════════════════════════════════
 //  STATE
