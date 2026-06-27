@@ -991,7 +991,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
   userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];
-  auth.signOut().then(()=>{ window.location.href='login.html'; });
+  sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
 const authTimeout=setTimeout(()=>{ window.location.href='login.html'; },8000);
@@ -1003,6 +1003,18 @@ auth.onAuthStateChanged(user=>{
 });
 
 function checkUserStatus(user){
+  const cached = sessionStorage.getItem('userCache');
+  if(cached){
+    try{
+      const d = JSON.parse(cached);
+      if(d.uid === user.uid){
+        if(d.role==='admin'){ window.location.href='supervisor.html'; return; }
+        if(d.role==='examiner'){ window.location.href='examiner.html'; return; }
+        if(d.role==='teacher' && d.status==='approved'){ enterApp(user,d); return; }
+        window.location.href='login.html'; return;
+      }
+    }catch(e){}
+  }
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists){ window.location.href='login.html'; return; }
     const d=doc.data();
