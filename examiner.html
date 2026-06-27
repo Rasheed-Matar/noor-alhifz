@@ -11,6 +11,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -438,7 +440,7 @@ tr:hover td{background:#fdf9f2;}
     <div class="modal-footer">
       <button class="pdf-dl-btn" id="pdfDownloadBtn" onclick="downloadPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        تنزيل / طباعة PDF
+        تنزيل PDF
       </button>
       <button class="btn-secondary" onclick="closeModal('modal-pdf-export')">إلغاء</button>
     </div>
@@ -1234,7 +1236,7 @@ function buildPDFHTML(results, label, typeFilterLabel){
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
-  @page{size:A4;margin:10mm 12mm;}
+  @page{size:A4 landscape;margin:10mm 12mm;}
   body{font-family:'Tajawal',sans-serif;padding:0;color:#1a1a2e;background:#fff;font-size:13px;}
   @media print{ body{padding:0;} }
 
@@ -1368,8 +1370,8 @@ async function downloadPDF(){
   btn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحضير...</span>';
 
   try{
-    await printReportHTML(html);
-    toast('✅ افتح نافذة الطباعة واختر "حفظ كـ PDF" للتنزيل');
+    await exportHTMLToPDF(html, label);
+    toast('✅ تم تنزيل ملف PDF بنجاح');
   } catch(e){
     toast('⚠️ خطأ في تحضير التقرير: '+e.message,'error');
     console.error(e);
@@ -1379,40 +1381,71 @@ async function downloadPDF(){
   btn.innerHTML=originalHTML;
 }
 
-// يطبع التقرير عبر محرّك الطباعة الأصلي في المتصفح (بدون أي مكتبات أو إنترنت)
-// هذا يضمن عرض النص العربي بشكل صحيح ومتقن، وعند اختيار "حفظ كـ PDF" من نافذة
-// الطباعة يحصل المستخدم على ملف PDF مطابق تمامًا للتقرير.
-function printReportHTML(html){
+// يبني ملف PDF مباشرةً على جهاز المستخدم (بدون فتح نافذة طباعة المتصفح إطلاقًا)
+// عبر تحويل التقرير إلى صورة عالية الدقة (html2canvas) ثم تضمينها داخل مستند PDF
+// بصيغة أفقية (Landscape) عبر مكتبة jsPDF، مع دعم تعدد الصفحات تلقائيًا عند الحاجة.
+// هذا يضمن أيضًا عدم ظهور أي رأس/تذييل تلقائي يضيفه المتصفح (مثل عنوان الصفحة والتاريخ).
+function exportHTMLToPDF(html, label){
   return new Promise((resolve,reject)=>{
-    const old=document.getElementById('printFrame');
+    const old=document.getElementById('exportFrame');
     if(old) old.remove();
 
     const frame=document.createElement('iframe');
-    frame.id='printFrame';
-    frame.style.cssText='position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';
+    frame.id='exportFrame';
+    frame.style.cssText='position:fixed;left:-9999px;top:0;width:1400px;height:600px;border:none;background:#fff;';
     document.body.appendChild(frame);
 
-    let cleaned=false;
-    const cleanup=()=>{
-      if(cleaned) return;
-      cleaned=true;
-      setTimeout(()=>{ if(frame.parentNode) frame.parentNode.removeChild(frame); }, 300);
-    };
+    frame.onload=async function(){
+      try{
+        const fdoc=frame.contentDocument;
 
-    frame.onload=function(){
-      setTimeout(()=>{
-        try{
-          frame.contentWindow.focus();
-          frame.contentWindow.onafterprint = cleanup;
-          frame.contentWindow.print();
-          resolve();
-          // تنظيف احتياطي في حال لم يصل حدث onafterprint (بعض المتصفحات)
-          setTimeout(cleanup, 90000);
-        } catch(e){
-          cleanup();
-          reject(e);
+        // انتظار تحميل الخطوط والشعار قبل التصوير لضمان دقّة المخرجات
+        if(fdoc.fonts && fdoc.fonts.ready) await fdoc.fonts.ready;
+        await new Promise(r=>setTimeout(r,350));
+
+        const target=fdoc.body;
+        const canvas=await html2canvas(target,{
+          scale:2,
+          useCORS:true,
+          backgroundColor:'#ffffff',
+          width:target.scrollWidth,
+          height:target.scrollHeight,
+          windowWidth:target.scrollWidth,
+          windowHeight:target.scrollHeight
+        });
+
+        const imgData=canvas.toDataURL('image/jpeg',0.95);
+
+        const {jsPDF}=window.jspdf;
+        const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+        const pageWidth=pdf.internal.pageSize.getWidth();
+        const pageHeight=pdf.internal.pageSize.getHeight();
+
+        const imgWidth=pageWidth;
+        const imgHeight=canvas.height*imgWidth/canvas.width;
+
+        let heightLeft=imgHeight;
+        let position=0;
+
+        pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+        heightLeft-=pageHeight;
+
+        while(heightLeft>0){
+          position=heightLeft-imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+          heightLeft-=pageHeight;
         }
-      }, 300);
+
+        const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
+        pdf.save(`${safeLabel}.pdf`);
+
+        frame.remove();
+        resolve();
+      } catch(e){
+        frame.remove();
+        reject(e);
+      }
     };
 
     frame.srcdoc=html;
