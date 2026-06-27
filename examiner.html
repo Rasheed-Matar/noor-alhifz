@@ -1421,20 +1421,25 @@ function exportHTMLToPDF(html, label){
         const pageWidth=pdf.internal.pageSize.getWidth();
         const pageHeight=pdf.internal.pageSize.getHeight();
 
-        const imgWidth=pageWidth;
+        // هامش بسيط حول التقرير من جميع الجهات (بالمليمتر)
+        const margin=10;
+        const usableWidth=pageWidth-margin*2;
+        const usableHeight=pageHeight-margin*2;
+
+        const imgWidth=usableWidth;
         const imgHeight=canvas.height*imgWidth/canvas.width;
 
         let heightLeft=imgHeight;
-        let position=0;
+        let position=margin;
 
-        pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-        heightLeft-=pageHeight;
+        pdf.addImage(imgData,'JPEG',margin,position,imgWidth,imgHeight);
+        heightLeft-=usableHeight;
 
         while(heightLeft>0){
-          position=heightLeft-imgHeight;
+          position=margin-(imgHeight-heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-          heightLeft-=pageHeight;
+          pdf.addImage(imgData,'JPEG',margin,position,imgWidth,imgHeight);
+          heightLeft-=usableHeight;
         }
 
         const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
