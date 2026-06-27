@@ -1763,6 +1763,11 @@ function nominateStudent(){
 }
 
 function deleteExam(examId){
+  const e=exams.find(x=>x.id===examId);
+  if(e && (e.status==='passed'||e.status==='failed')){
+    toast('⚠️ لا يمكن حذف ترشيح تم رصد نتيجته من قبل مختبر الجودة','error');
+    return;
+  }
   if(!confirm('حذف هذا الترشيح؟')) return;
   exams=exams.filter(x=>x.id!==examId);
   save();
@@ -1829,21 +1834,6 @@ function offerSendExamResult(e){
   offerToastSend(e.status==='passed'?'إرسال نتيجة النجاح لولي الأمر عبر واتساب':'إرسال النتيجة لولي الأمر عبر واتساب',()=>sendExamResultMessage(e.id));
 }
 
-function gradeExam(examId,result){
-  const e=exams.find(x=>x.id===examId);
-  if(!e) return;
-  const score=prompt(result==='passed'?'أدخل العلامة (اختياري):':'أدخل العلامة (اختياري):', e.score||'');
-  if(score===null) return; // المستخدم ألغى
-  e.status=result;
-  e.score=score.trim();
-  e.gradedAt=new Date().toISOString();
-  save();
-  renderExamsList();
-  updateDashExamStat();
-  toast(result==='passed'?'✅ تم رصد النتيجة: ناجح':'تم رصد النتيجة: لم ينجح');
-  offerSendExamResult(e);
-}
-
 function renderExamsList(){
   const filter=document.getElementById('exam-filter-select')?document.getElementById('exam-filter-select').value:'all';
   let list=[...exams].reverse();
@@ -1870,12 +1860,8 @@ function renderExamsList(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
       </button>`:''}
       ${!graded?`
-      <button class="att-btn type-p" title="رصد ناجح" onclick="gradeExam('${e.id}','passed')" style="width:30px;">✓</button>
-      <button class="att-btn type-a" title="رصد راسب" onclick="gradeExam('${e.id}','failed')" style="width:30px;">✕</button>
-      `:`
-      <button class="panel-act" style="font-size:11px;" onclick="gradeExam('${e.id}','${e.status==='passed'?'failed':'passed'}')">تعديل النتيجة</button>
-      `}
       <button class="modal-close" style="color:var(--red);font-size:18px;flex-shrink:0;" onclick="deleteExam('${e.id}')">×</button>
+      `:''}
     </div>`;
   }).join('');
 }
