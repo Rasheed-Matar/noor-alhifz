@@ -426,12 +426,12 @@ tr:hover td{background:#fdf9f2;}
         </div>
         <div class="form-group" style="flex:0;">
           <label class="form-label" style="opacity:0;">.</label>
-          <button class="btn-start" onclick="refreshPDFPreview()" style="white-space:nowrap;">🔍 معاينة</button>
+          <button class="btn-start" onclick="refreshPDFPreview()" style="white-space:nowrap;">🔄 تحديث المعاينة</button>
         </div>
       </div>
       <!-- معاينة -->
       <div class="pdf-preview-wrap">
-        <div class="pdf-preview-loading" id="pdfPreviewLoading">يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)</div>
+        <div class="pdf-preview-loading" id="pdfPreviewLoading">جارٍ تحضير المعاينة...</div>
         <iframe id="pdfPreviewFrame" style="display:none;"></iframe>
       </div>
     </div>
@@ -440,7 +440,7 @@ tr:hover td{background:#fdf9f2;}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تنزيل / طباعة PDF
       </button>
-      <button class="btn-secondary" onclick="closeModal('modal-pdf-export')">إغلاق</button>
+      <button class="btn-secondary" onclick="closeModal('modal-pdf-export')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1165,21 +1165,14 @@ function openPDFModal(){
   document.getElementById('pdfPeriod').value = 'day';
   document.getElementById('pdfType').value = 'all';
   onPdfPeriodChange();
-  document.getElementById('pdfPreviewLoading').style.display='block';
-  document.getElementById('pdfPreviewLoading').textContent='يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)';
-  document.getElementById('pdfPreviewFrame').style.display='none';
-  _pdfHTML='';
   om('modal-pdf-export');
+  refreshPDFPreview(); // معاينة تلقائية فور الفتح
 }
 
 function onPdfPeriodChange(){
   const v=document.getElementById('pdfPeriod').value;
   document.getElementById('pdfDayGroup').style.display  = v==='day'  ?'':'none';
   document.getElementById('pdfMonthGroup').style.display= v==='month'?'':'none';
-  document.getElementById('pdfPreviewLoading').textContent='يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)';
-  document.getElementById('pdfPreviewFrame').style.display='none';
-  document.getElementById('pdfPreviewLoading').style.display='block';
-  _pdfHTML='';
 }
 
 function getPDFFiltered(){
@@ -1255,7 +1248,7 @@ function buildPDFHTML(results, label, typeFilterLabel){
   .report-meta b{color:#1a1a2e;}
 
   /* شريط العنوان */
-  .report-title-bar{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;text-align:center;padding:8px 16px;border-radius:8px;margin:10px 0 16px;font-size:13px;font-weight:700;letter-spacing:.3px;}
+  .report-title-bar{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;text-align:center;padding:8px 16px;border-radius:8px;margin:10px 0 16px;font-size:13px;font-weight:700;}
 
   /* إحصائيات */
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
