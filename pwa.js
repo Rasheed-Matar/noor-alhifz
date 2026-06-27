@@ -90,7 +90,8 @@
 
   function showInstallOverlay(deferredPrompt) {
     if (isStandalone() || document.getElementById('pwaInstallOverlay')) return;
-    if (sessionStorage.getItem('pwaInstallDismissed') === '1') return;
+    var dismissedAt = sessionStorage.getItem('pwaInstallDismissedAt');
+    if (dismissedAt && (Date.now() - parseInt(dismissedAt)) < 30000) return;
     injectStyles();
 
     var mobileSub = isIosSafari()
@@ -122,7 +123,7 @@
     document.body.style.overflow = 'hidden';
 
     document.getElementById('pwaSkipBtn').addEventListener('click', function () {
-      sessionStorage.setItem('pwaInstallDismissed', '1');
+      sessionStorage.setItem('pwaInstallDismissedAt', Date.now());
       dismissOverlay(el);
     });
 
@@ -137,7 +138,7 @@
     }
 
     function onKey(e) {
-      if (e.key === 'Escape') { sessionStorage.setItem('pwaInstallDismissed', '1'); dismissOverlay(el); document.removeEventListener('keydown', onKey); }
+      if (e.key === 'Escape') { sessionStorage.setItem('pwaInstallDismissedAt', Date.now()); dismissOverlay(el); document.removeEventListener('keydown', onKey); }
     }
     document.addEventListener('keydown', onKey);
   }
