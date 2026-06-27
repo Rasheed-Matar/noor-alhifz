@@ -758,13 +758,31 @@ document.getElementById('pageSubtitle').textContent='مرحباً، '+days[now.g
 function doLogout(){
   if(unsubUsers)unsubUsers();
   unsubData.forEach(u=>u()); unsubData=[];
-  auth.signOut().then(()=>{ window.location.href='login.html'; });
+  sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
 const authTimeout=setTimeout(()=>{ window.location.href='login.html'; },8000);
 auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){ window.location.href='login.html'; return; }
+
+  const cached = sessionStorage.getItem('userCache');
+  if(cached){
+    try{
+      const d = JSON.parse(cached);
+      if(d.uid === user.uid && d.role === 'admin'){
+        currentUser=user;
+        document.getElementById('navAvatar').textContent=ini(d.name||'م');
+        document.getElementById('navUserName').textContent=d.name||'المشرف';
+        document.getElementById('setName').value=d.name||'';
+        document.getElementById('setEmail').value=user.email||'';
+        document.getElementById('loadingScreen').classList.add('hide');
+        startListening();
+        return;
+      }
+    }catch(e){}
+  }
+
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists||doc.data().role!=='admin'){ window.location.href='login.html'; return; }
     currentUser=user;
