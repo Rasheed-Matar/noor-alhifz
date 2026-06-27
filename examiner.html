@@ -414,13 +414,31 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 //  AUTH
 // ════════════════════════════════════════
 function doLogout(){
-  auth.signOut().then(()=>window.location.href='login.html');
+  sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
 }
 
 const authTimeout = setTimeout(()=>window.location.href='login.html',8000);
 auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){window.location.href='login.html';return;}
+
+  const cached = sessionStorage.getItem('userCache');
+  if(cached){
+    try{
+      const d = JSON.parse(cached);
+      if(d.uid === user.uid && d.role === 'examiner'){
+        currentUser=user;
+        currentExaminerDoc=d;
+        document.getElementById('navAvatar').textContent=ini(d.name||'مخ');
+        document.getElementById('navUserName').textContent=d.name||'المختبر';
+        document.getElementById('loadingScreen').classList.add('hide');
+        initDate();
+        initLiveListeners();
+        return;
+      }
+    }catch(e){}
+  }
+
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists||doc.data().role!=='examiner'){window.location.href='login.html';return;}
     currentUser=user;
