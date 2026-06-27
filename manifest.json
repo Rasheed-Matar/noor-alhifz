@@ -1,7 +1,10 @@
 {
   "name": "مركز الكتاب - نور الحفظ",
   "short_name": "نور الحفظ",
+  "id": "./login.html",
+  "description": "تطبيق إدارة مركز تحفيظ القرآن الكريم - يعمل بدون إنترنت مع مزامنة تلقائية للبيانات",
   "start_url": "./login.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0a4a3a",
   "theme_color": "#0a4a3a",
