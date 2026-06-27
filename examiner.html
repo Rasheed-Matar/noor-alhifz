@@ -700,16 +700,20 @@ function redistributeQuestionScores(){
 
 function updateQTotal(){
   const rows=document.querySelectorAll('#qBuilder .q-row');
-  let total=0;
+  let earned=0, maxTotal=0;
   rows.forEach(r=>{
     const inputs=r.querySelectorAll('input[type=number]');
+    const scoreVal=parseFloat(inputs[0]?.value)||0;
     const maxVal=parseFloat(inputs[1]?.value)||0;
-    total+=maxVal;
+    earned+=scoreVal;
+    maxTotal+=maxVal;
   });
   const el=document.getElementById('qTotal');
-  el.textContent=total;
-  el.className='tot-val'+(total>100?' over':'');
-  document.getElementById('qTotalNote').textContent=total===100?'✅ مجموع صحيح':total>100?'⚠️ المجموع يتجاوز 100':'المجموع يجب أن يساوي 100';
+  el.textContent=earned;
+  el.className='tot-val'+(earned>100?' over':'');
+  document.getElementById('qTotalNote').textContent =
+    earned>100 ? '⚠️ المجموع يتجاوز 100' :
+    (maxTotal!==100 ? '⚠️ تحقّق من توزيع درجات الأسئلة' : '');
 }
 
 function getQRows(){
