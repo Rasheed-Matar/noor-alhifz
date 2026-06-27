@@ -1,8 +1,28 @@
-const CACHE = 'noor-v2';
-const ASSETS = ['./', './login.html'];
+const CACHE = 'noor-v3';
+
+// كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
+const ASSETS = [
+  './',
+  './index.html',
+  './login.html',
+  './teacher.html',
+  './supervisor.html',
+  './examiner.html',
+  './manifest.json',
+  './icon.svg',
+  './pwa.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
+  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap'
+];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE).then(c =>
+      Promise.all(ASSETS.map(a => c.add(a).catch(() => {}))) // تجاهل أي ملف يفشل تنزيله دون إيقاف باقي التثبيت
+    )
+  );
   self.skipWaiting();
 });
 
@@ -11,25 +31,46 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// شبكة أولاً لكل صفحات HTML (login/teacher/supervisor/examiner..)
-// لضمان وصول أي تحديث فوراً للجهاز، مع رجوع للنسخة المخزّنة فقط عند انعدام الإنترنت
+// روابط فايرستور/المصادقة الحيّة: لا نتدخل فيها أبداً
+// مكتبة Firebase نفسها تتولى تخزين البيانات محلياً وإعادة المزامنة عند رجوع الإنترنت
+const LIVE_API = /(^|\.)firestore\.googleapis\.com|identitytoolkit\.googleapis\.com|securetoken\.googleapis\.com|firebaseinstallations\.googleapis\.com|firebaselogging-pa\.googleapis\.com/;
+
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  const isHTML = e.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/');
+  const req = e.request;
+
+  // فقط طلبات GET قابلة للتخزين المؤقت؛ نترك الباقي (مثل كتابة البيانات) يمر مباشرة للشبكة
+  if (req.method !== 'GET') return;
+  if (LIVE_API.test(req.url)) return;
+
+  const isHTML = req.mode === 'navigate' || req.url.endsWith('.html') || req.url.endsWith('/');
 
   if (isHTML) {
+    // شبكة أولاً لصفحات HTML (login/teacher/supervisor/examiner..)
+    // لضمان وصول أي تحديث فوراً للجهاز، مع رجوع للنسخة المخزّنة فقط عند انعدام الإنترنت
     e.respondWith(
-      fetch(e.request).then(res => {
+      fetch(req).then(res => {
         const resClone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, resClone));
+        caches.open(CACHE).then(c => c.put(req, resClone));
         return res;
-      }).catch(() => caches.match(e.request).then(r => r || caches.match('./login.html')))
+      }).catch(() => caches.match(req).then(r => r || caches.match('./login.html')))
     );
     return;
   }
 
-  // الملفات الأخرى (أيقونات، مانيفست..): النسخة المخزّنة أولاً، وإلا الشبكة
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  // باقي الملفات (مانيفست، أيقونات، خطوط، مكتبة فايربيز..):
+  // النسخة المخزّنة أولاً للسرعة وعمل التطبيق بدون إنترنت، وإلا الشبكة مع تخزين النتيجة لاستخدامها لاحقاً بدون اتصال
+  e.respondWith(
+    caches.match(req).then(cached => {
+      if (cached) return cached;
+      return fetch(req).then(res => {
+        if (res && res.status === 200) {
+          const resClone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, resClone));
+        }
+        return res;
+      }).catch(() => cached);
+    })
+  );
 });
 
 self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
