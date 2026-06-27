@@ -27,8 +27,9 @@
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
 
 /* Loading */
-#loadingScreen{position:fixed;inset:0;background:linear-gradient(135deg,var(--em3),var(--em));display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;}
-#loadingScreen.hide{display:none;}
+#loadingScreen{position:fixed;inset:0;background:linear-gradient(135deg,var(--em3),var(--em));display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;transition:opacity .25s ease;}
+#loadingScreen.hide{opacity:0;pointer-events:none;}
+#loadingScreen.gone{display:none;}
 .ld-spin{width:42px;height:42px;border:3px solid rgba(232,201,106,.3);border-top-color:var(--gold2);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #loadingScreen .ld-txt{color:var(--gold2);font-size:15px;font-weight:600;font-family:'Amiri',serif;}
@@ -174,10 +175,13 @@ tr:hover td{background:#fdf9f2;}
 </head>
 <body>
 
-<div id="loadingScreen">
+<div id="loadingScreen" style="display:none;">
   <div class="ld-spin"></div>
   <div class="ld-txt">نور الحفظ — مختبر الجودة</div>
 </div>
+<script>
+  if(!sessionStorage.getItem('userCache')) document.getElementById('loadingScreen').style.display='flex';
+</script>
 
 <div id="toastWrap"></div>
 
@@ -431,7 +435,7 @@ auth.onAuthStateChanged(user=>{
         currentExaminerDoc=d;
         document.getElementById('navAvatar').textContent=ini(d.name||'مخ');
         document.getElementById('navUserName').textContent=d.name||'المختبر';
-        document.getElementById('loadingScreen').classList.add('hide');
+        const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
         initDate();
         initLiveListeners();
         return;
@@ -445,7 +449,7 @@ auth.onAuthStateChanged(user=>{
     currentExaminerDoc=doc.data();
     document.getElementById('navAvatar').textContent=ini(currentExaminerDoc.name||'مخ');
     document.getElementById('navUserName').textContent=currentExaminerDoc.name||'المختبر';
-    document.getElementById('loadingScreen').classList.add('hide');
+    const ls2=document.getElementById('loadingScreen'); ls2.classList.add('hide'); setTimeout(()=>ls2.classList.add('gone'),300);
     initDate();
     initLiveListeners();
   }).catch(()=>window.location.href='login.html');
