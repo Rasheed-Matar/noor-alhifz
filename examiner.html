@@ -775,6 +775,70 @@ function calcTotal(qrows){
 // ════════════════════════════════════════
 //  SUBMIT EXAM
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+//  OFFLINE QUEUE  (indexedDB)
+// ════════════════════════════════════════
+const IDB_NAME='examinerOffline', IDB_STORE='queue', IDB_VER=1;
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    req.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE,{keyPath:'id'});
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbPush(record){
+  const db2=await openIDB();
+  return new Promise((res,rej)=>{
+    const tx=db2.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(record);
+    tx.oncomplete=res; tx.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbGetAll(){
+  const db2=await openIDB();
+  return new Promise((res,rej)=>{
+    const tx=db2.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).getAll();
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+async function idbDelete(id){
+  const db2=await openIDB();
+  return new Promise((res,rej)=>{
+    const tx=db2.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete=res; tx.onerror=e=>rej(e.target.error);
+  });
+}
+
+// مزامنة تلقائية عند عودة الإنترنت
+window.addEventListener('online', syncOfflineQueue);
+async function syncOfflineQueue(){
+  const queue=await idbGetAll();
+  if(!queue.length) return;
+  let synced=0;
+  for(const item of queue){
+    try{
+      await db.collection('examResults').doc(item.resultRecord.id).set(item.resultRecord);
+      if(item.nominationId){
+        const td=allTeacherData[item.teacherId]||{};
+        const exams=(td.exams||[]).map(e=>{
+          if(e.id===item.nominationId)
+            return {...e,status:item.resultRecord.passed?'passed':'failed',score:item.resultRecord.totalScore+'%',gradedAt:item.resultRecord.examDate,examinerId:currentUser.uid};
+          return e;
+        });
+        await db.collection('userdata').doc(item.teacherId).set({exams},{merge:true});
+      }
+      await sendNotification(item.resultRecord).catch(()=>{});
+      await idbDelete(item.id);
+      synced++;
+    }catch(err){ console.warn('sync failed for',item.id,err); }
+  }
+  if(synced>0) toast(`☁️ تمت مزامنة ${synced} نتيجة مع الخادم`);
+}
+
 async function submitExam(){
   if(!pendingExam){toast('⚠️ خطأ في البيانات','error');return;}
   const qrows=getQRows();
@@ -805,31 +869,44 @@ async function submitExam(){
     passingGradeUsed:passingGrade
   };
 
-  try{
-    // 1. Save result in examResults collection
-    await db.collection('examResults').doc(resultRecord.id).set(resultRecord);
+  // ── تحديث فوري للواجهة (بغض النظر عن الإنترنت) ──
+  // 1. أضف النتيجة لقائمة النتائج المحلية فوراً
+  allExamResults.unshift(resultRecord);
 
-    // 2. Update teacher's exam nomination status
-    if(pendingExam.nominationId){
-      const td=allTeacherData[pendingExam.teacherId]||{};
-      const exams=(td.exams||[]).map(e=>{
-        if(e.id===pendingExam.nominationId){
-          return {...e,status:passed?'passed':'failed',score:totalScore+'%',gradedAt:new Date().toISOString(),examinerId:currentUser.uid};
-        }
-        return e;
-      });
-      await db.collection('userdata').doc(pendingExam.teacherId).set({exams},{merge:true});
-      if(allTeacherData[pendingExam.teacherId]) allTeacherData[pendingExam.teacherId].exams=exams;
+  // 2. أزل الترشيح من قائمة المرشحين فوراً
+  if(pendingExam.nominationId && allTeacherData[pendingExam.teacherId]){
+    allTeacherData[pendingExam.teacherId].exams =
+      (allTeacherData[pendingExam.teacherId].exams||[]).map(e=>
+        e.id===pendingExam.nominationId
+          ? {...e, status:passed?'passed':'failed', score:totalScore+'%'}
+          : e
+      );
+  }
+
+  // 3. حدّث الواجهة فوراً
+  renderAll();
+  closeModal('modal-exam-builder');
+  toast(`✅ ${passed?'ناجح 🎉':'لم ينجح'} — العلامة ${totalScore}%`);
+  showResultDetailFromData(resultRecord);
+
+  // ── حفظ في Firestore أو في الطابور إذا لا يوجد إنترنت ──
+  if(navigator.onLine){
+    try{
+      await db.collection('examResults').doc(resultRecord.id).set(resultRecord);
+      if(pendingExam.nominationId){
+        const td=allTeacherData[pendingExam.teacherId]||{};
+        await db.collection('userdata').doc(pendingExam.teacherId).set({exams:td.exams||[]},{merge:true});
+      }
+      await sendNotification(resultRecord).catch(()=>{});
+    }catch(e){
+      // فشل الحفظ رغم وجود إنترنت — احفظ للطابور
+      await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId});
+      toast('⚠️ تعذّر الحفظ — سيُزامن تلقائياً عند الاتصال','error');
     }
-
-    // 3. Send notification to teacher and admin
-    await sendNotification(resultRecord);
-
-    closeModal('modal-exam-builder');
-    toast(`✅ تم رصد النتيجة: ${passed?'ناجح 🎉':'لم ينجح'} — العلامة ${totalScore}%`);
-    showResultDetailById(resultRecord.id);
-  } catch(e){
-    toast('⚠️ خطأ في الحفظ: '+e.message,'error');
+  } else {
+    // لا يوجد إنترنت — احفظ للطابور
+    await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId});
+    toast('📴 لا يوجد إنترنت — سيُحفظ تلقائياً عند الاتصال','error');
   }
 }
 
@@ -948,6 +1025,9 @@ function switchTab(name, btn){
 
 // Init juz
 renderManJuz();
+
+// مزامنة أي نتائج معلقة عند الفتح
+if(navigator.onLine) syncOfflineQueue();
 </script>
 </body>
 </html>
