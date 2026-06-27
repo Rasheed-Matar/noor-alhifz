@@ -11,8 +11,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -433,14 +431,14 @@ tr:hover td{background:#fdf9f2;}
       </div>
       <!-- معاينة -->
       <div class="pdf-preview-wrap">
-        <div class="pdf-preview-loading" id="pdfPreviewLoading">اضغط "معاينة" لعرض التقرير</div>
+        <div class="pdf-preview-loading" id="pdfPreviewLoading">يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)</div>
         <iframe id="pdfPreviewFrame" style="display:none;"></iframe>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="pdf-dl-btn" id="pdfDownloadBtn" onclick="downloadPDF()" disabled>
+      <button class="pdf-dl-btn" id="pdfDownloadBtn" onclick="downloadPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        تنزيل PDF
+        تنزيل / طباعة PDF
       </button>
       <button class="btn-secondary" onclick="closeModal('modal-pdf-export')">إغلاق</button>
     </div>
@@ -1168,9 +1166,8 @@ function openPDFModal(){
   document.getElementById('pdfType').value = 'all';
   onPdfPeriodChange();
   document.getElementById('pdfPreviewLoading').style.display='block';
-  document.getElementById('pdfPreviewLoading').textContent='اضغط "معاينة" لعرض التقرير';
+  document.getElementById('pdfPreviewLoading').textContent='يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)';
   document.getElementById('pdfPreviewFrame').style.display='none';
-  document.getElementById('pdfDownloadBtn').disabled=true;
   _pdfHTML='';
   om('modal-pdf-export');
 }
@@ -1179,10 +1176,9 @@ function onPdfPeriodChange(){
   const v=document.getElementById('pdfPeriod').value;
   document.getElementById('pdfDayGroup').style.display  = v==='day'  ?'':'none';
   document.getElementById('pdfMonthGroup').style.display= v==='month'?'':'none';
-  document.getElementById('pdfPreviewLoading').textContent='اضغط "معاينة" لعرض التقرير';
+  document.getElementById('pdfPreviewLoading').textContent='يمكنك الضغط على "تنزيل PDF" مباشرةً، أو "معاينة" لعرض التقرير أولاً (اختياري)';
   document.getElementById('pdfPreviewFrame').style.display='none';
   document.getElementById('pdfPreviewLoading').style.display='block';
-  document.getElementById('pdfDownloadBtn').disabled=true;
   _pdfHTML='';
 }
 
@@ -1244,7 +1240,10 @@ function buildPDFHTML(results, label, typeFilterLabel){
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Tajawal',sans-serif;padding:24px 32px;color:#1a1a2e;background:#fff;font-size:13px;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+  @page{size:A4;margin:10mm 12mm;}
+  body{font-family:'Tajawal',sans-serif;padding:0;color:#1a1a2e;background:#fff;font-size:13px;}
+  @media print{ body{padding:0;} }
 
   /* ── رأس الصفحة ── */
   .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1b6b4a;margin-bottom:6px;}
@@ -1354,53 +1353,77 @@ function refreshPDFPreview(){
   loading.style.display='none';
   frame.style.display='block';
   frame.srcdoc=_pdfHTML;
-  document.getElementById('pdfDownloadBtn').disabled = results.length===0;
 }
 
 async function downloadPDF(){
-  if(!_pdfHTML){toast('⚠️ اضغط معاينة أولاً','error');return;}
+  const data=getPDFFiltered();
+  if(!data) return;
+  const {results,label,typeFilterLabel}=data;
+
+  if(results.length===0){
+    toast('⚠️ لا توجد نتائج في هذه الفترة لتنزيلها','error');
+    return;
+  }
+
+  // نبني التقرير مباشرة دون الحاجة لمعاينة سابقة
+  const html = buildPDFHTML(results,label,typeFilterLabel);
+  _pdfHTML = html;
+
   const btn=document.getElementById('pdfDownloadBtn');
+  const originalHTML=btn.innerHTML;
   btn.disabled=true;
   btn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحضير...</span>';
 
   try{
-    // أنشئ iframe مخفي لرسم المحتوى
-    const iframe=document.createElement('iframe');
-    iframe.style.cssText='position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
-    document.body.appendChild(iframe);
-    iframe.srcdoc=_pdfHTML;
-
-    await new Promise(res=>iframe.addEventListener('load',res,{once:true}));
-    await new Promise(res=>setTimeout(res,800)); // انتظر تحميل الخطوط
-
-    const canvas=await html2canvas(iframe.contentDocument.body,{
-      scale:2, useCORS:true, backgroundColor:'#ffffff',
-      width:794, windowWidth:794
-    });
-
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const imgW=210, imgH=(canvas.height*210)/canvas.width;
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,0,imgW,imgH);
-
-    // اسم الملف
-    const period=document.getElementById('pdfPeriod').value;
-    const dateVal=period==='day'
-      ? document.getElementById('pdfDay').value
-      : document.getElementById('pdfMonth').value;
-    const typeVal=document.getElementById('pdfType').value;
-    const filename=`تقرير-${period==='day'?'يومي':'شهري'}-${dateVal}-${typeVal==='all'?'الكل':typeVal}.pdf`;
-    pdf.save(filename);
-
-    document.body.removeChild(iframe);
-    toast('✅ تم تنزيل التقرير بنجاح');
+    await printReportHTML(html);
+    toast('✅ افتح نافذة الطباعة واختر "حفظ كـ PDF" للتنزيل');
   } catch(e){
-    toast('⚠️ خطأ في إنشاء PDF: '+e.message,'error');
+    toast('⚠️ خطأ في تحضير التقرير: '+e.message,'error');
     console.error(e);
   }
 
   btn.disabled=false;
-  btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> تنزيل PDF';
+  btn.innerHTML=originalHTML;
+}
+
+// يطبع التقرير عبر محرّك الطباعة الأصلي في المتصفح (بدون أي مكتبات أو إنترنت)
+// هذا يضمن عرض النص العربي بشكل صحيح ومتقن، وعند اختيار "حفظ كـ PDF" من نافذة
+// الطباعة يحصل المستخدم على ملف PDF مطابق تمامًا للتقرير.
+function printReportHTML(html){
+  return new Promise((resolve,reject)=>{
+    const old=document.getElementById('printFrame');
+    if(old) old.remove();
+
+    const frame=document.createElement('iframe');
+    frame.id='printFrame';
+    frame.style.cssText='position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';
+    document.body.appendChild(frame);
+
+    let cleaned=false;
+    const cleanup=()=>{
+      if(cleaned) return;
+      cleaned=true;
+      setTimeout(()=>{ if(frame.parentNode) frame.parentNode.removeChild(frame); }, 300);
+    };
+
+    frame.onload=function(){
+      setTimeout(()=>{
+        try{
+          frame.contentWindow.focus();
+          frame.contentWindow.onafterprint = cleanup;
+          frame.contentWindow.print();
+          resolve();
+          // تنظيف احتياطي في حال لم يصل حدث onafterprint (بعض المتصفحات)
+          setTimeout(cleanup, 90000);
+        } catch(e){
+          cleanup();
+          reject(e);
+        }
+      }, 300);
+    };
+
+    frame.srcdoc=html;
+  });
 }
 
 // ════════════════════════════════════════
