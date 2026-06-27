@@ -17,19 +17,6 @@
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
-  var DISMISS_KEY = 'mkAlkitab_installDismissedAt';
-  var DISMISS_DAYS = 3;
-
-  function wasDismissedRecently() {
-    var t = localStorage.getItem(DISMISS_KEY);
-    if (!t) return false;
-    return (Date.now() - parseInt(t, 10)) < DISMISS_DAYS * 24 * 60 * 60 * 1000;
-  }
-
-  function markDismissed() {
-    localStorage.setItem(DISMISS_KEY, Date.now().toString());
-  }
-
   function getLogoSrc() {
     var selectors = ['.logo-img-wrap img', '.tb-logo-ic img', '.nav-logo img'];
     for (var i = 0; i < selectors.length; i++) {
@@ -93,7 +80,6 @@
   var LAPTOP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#e8c96a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 19h20"/></svg>';
 
   function dismissOverlay(el) {
-    markDismissed();
     document.body.style.overflow = '';
     if (el) {
       el.style.transition = 'opacity .25s';
@@ -103,7 +89,7 @@
   }
 
   function showInstallOverlay(deferredPrompt) {
-    if (isStandalone() || wasDismissedRecently() || document.getElementById('pwaInstallOverlay')) return;
+    if (isStandalone() || document.getElementById('pwaInstallOverlay')) return;
     injectStyles();
 
     var mobileSub = isIosSafari()
@@ -140,9 +126,7 @@
       document.getElementById('pwaInstallBtn').addEventListener('click', async function () {
         try {
           deferredPrompt.prompt();
-          var choice = await deferredPrompt.userChoice;
-          if (choice.outcome === 'accepted') localStorage.removeItem(DISMISS_KEY);
-          else markDismissed();
+          await deferredPrompt.userChoice;
         } catch (err) {}
         dismissOverlay(el);
       });
@@ -165,7 +149,6 @@
   window.addEventListener('appinstalled', function () {
     var el = document.getElementById('pwaInstallOverlay');
     if (el) dismissOverlay(el);
-    localStorage.removeItem(DISMISS_KEY);
   });
 
   // ── آيفون/آيباد: سفاري لا يدعم beforeinstallprompt، فنعرض الشاشة بتعليمات يدوية فقط ──
