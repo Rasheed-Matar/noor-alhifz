@@ -164,83 +164,6 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 .modal-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--em),var(--em2));border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .modal-title{font-family:'Amiri',serif;font-size:19px;color:var(--em);}
 .modal-desc{font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:16px;}
-/* ── نظام OTP لاستعادة كلمة المرور ── */
-.fgt-step{display:none;}
-.fgt-step.active{display:block;animation:fgtIn .3s ease both;}
-@keyframes fgtIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-/* حقل الإدخال العام */
-.fgt-inp{width:100%;padding:13px 14px;border:1.5px solid #ddd5b8;border-radius:12px;
-  font-family:'Tajawal',sans-serif;font-size:15px;color:#1a1a2e;background:#fff;
-  outline:none;transition:border-color .2s,box-shadow .2s;direction:ltr;text-align:right;box-sizing:border-box;}
-.fgt-inp:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(27,107,74,.1);}
-.fgt-inp-wrap{margin-bottom:13px;}
-
-/* أزرار */
-.btn-fgt-primary{width:100%;padding:13px;background:linear-gradient(135deg,#0d4f35,#1b6b4a);
-  border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;
-  color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  gap:8px;transition:all .2s;box-shadow:0 4px 14px rgba(27,107,74,.3);margin-bottom:9px;}
-.btn-fgt-primary:hover{transform:translateY(-1px);}
-.btn-fgt-primary:disabled{opacity:.6;cursor:not-allowed;transform:none;}
-.btn-fgt-sec{width:100%;padding:11px;background:#f0ede6;border:none;border-radius:12px;
-  font-family:'Tajawal',sans-serif;font-size:14px;color:#3d4a3d;cursor:pointer;transition:background .15s;}
-.btn-fgt-sec:hover{background:#e5e0d8;}
-
-/* رسالة الخطأ */
-.fgt-err{background:#fde8e5;color:#8a2a1a;border-radius:10px;padding:10px 13px;
-  font-size:13px;margin-bottom:12px;display:none;line-height:1.5;}
-.fgt-err.show{display:block;}
-
-/* عرض رقم الجوال المُقنَّع */
-.fgt-phone-badge{background:linear-gradient(135deg,rgba(27,107,74,.08),rgba(27,107,74,.04));
-  border:1px solid rgba(27,107,74,.2);border-radius:12px;padding:12px 16px;
-  text-align:center;margin-bottom:14px;}
-.fgt-phone-badge .ph-label{font-size:12px;color:#7a8a7a;margin-bottom:4px;}
-.fgt-phone-badge .ph-num{font-size:18px;font-weight:700;color:var(--em);letter-spacing:1px;}
-
-/* حقول OTP - 6 مربعات */
-.otp-row{display:flex;gap:8px;justify-content:center;margin-bottom:14px;direction:ltr;}
-.otp-box{width:46px;height:54px;border:2px solid #ddd5b8;border-radius:12px;
-  font-family:'Tajawal',sans-serif;font-size:22px;font-weight:700;color:var(--em);
-  text-align:center;outline:none;background:#fff;transition:border-color .2s,box-shadow .2s;
-  caret-color:var(--em);}
-.otp-box:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(27,107,74,.12);}
-.otp-box.filled{border-color:var(--em);background:rgba(27,107,74,.05);}
-.otp-box.err-box{border-color:#c0392b;background:#fff5f5;}
-
-/* مؤقت العدّ التنازلي */
-.otp-timer{text-align:center;font-size:13px;color:#7a8a7a;margin-bottom:14px;}
-.otp-timer span{font-weight:700;color:var(--em);}
-.otp-timer span.urgent{color:#c0392b;}
-.otp-resend{display:inline;background:none;border:none;color:var(--em);
-  font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
-  text-decoration:underline;padding:0;}
-
-/* حقل كلمة المرور الجديدة */
-.fgt-pw-wrap{position:relative;margin-bottom:13px;}
-.fgt-pw-wrap .fgt-inp{padding-left:44px;text-align:right;direction:rtl;}
-.fgt-pw-toggle{position:absolute;left:13px;top:50%;transform:translateY(-50%);
-  background:none;border:none;cursor:pointer;color:#9a9a8a;padding:0;line-height:0;}
-
-/* بار قوة كلمة المرور */
-.pw-strength-bar{height:5px;border-radius:3px;margin-bottom:6px;background:#eee;overflow:hidden;}
-.pw-strength-fill{height:100%;border-radius:3px;transition:width .3s,background .3s;}
-.pw-strength-label{font-size:11.5px;margin-bottom:12px;}
-
-/* شاشة النجاح */
-.fgt-done-icon{width:70px;height:70px;background:linear-gradient(135deg,#0d4f35,#1b6b4a);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  margin:4px auto 18px;box-shadow:0 6px 20px rgba(27,107,74,.3);}
-.fgt-done-title{font-family:'Amiri',serif;font-size:22px;color:var(--em);
-  text-align:center;margin-bottom:8px;}
-.fgt-done-desc{font-size:13px;color:var(--ink2);text-align:center;line-height:1.8;margin-bottom:20px;}
-
-/* شريط الخطوات */
-.fgt-progress{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:20px;}
-.fgt-dot{width:8px;height:8px;border-radius:50%;background:#ddd;transition:all .3s;}
-.fgt-dot.done{background:var(--em);}
-.fgt-dot.active{width:22px;border-radius:4px;background:var(--em);}
 
 @media (max-width:600px){.card{padding:28px 22px 24px;}}
 </style>
@@ -252,13 +175,6 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
   <div style="color:#f0d060;font-family:'Amiri',serif;font-size:18px;">مركز الكتاب</div>
 </div>
 <style>@keyframes splashSpin{to{transform:rotate(360deg);}}</style>
-<script>
-// ضمان إزالة شاشة التحميل بعد 4 ثوانٍ كحدٍّ أقصى
-setTimeout(function(){
-  var sp = document.getElementById('splash-screen');
-  if(sp){ sp.style.opacity='0'; setTimeout(function(){ if(sp && sp.parentNode) sp.parentNode.removeChild(sp); },300); }
-}, 4000);
-</script>
 
 <div class="bg-glow"></div>
 
@@ -370,123 +286,19 @@ setTimeout(function(){
 
 </div>
 
-<!-- FORGOT PASSWORD MODAL — نظام OTP عبر واتساب -->
+<!-- FORGOT PASSWORD MODAL -->
 <div class="modal-overlay" id="forgotModal" onclick="handleModalClick(event)">
-  <div class="modal" style="max-width:420px;">
-
+  <div class="modal">
     <div class="modal-head">
       <div class="modal-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       </div>
-      <div>
-        <div class="modal-title">استعادة كلمة المرور</div>
-        <div style="font-size:11.5px;color:#9a9a8a;margin-top:1px;" id="fgt-subtitle">الخطوة 1 من 3</div>
-      </div>
+      <div class="modal-title">استعادة كلمة المرور</div>
     </div>
-
-    <!-- شريط تقدم الخطوات -->
-    <div class="fgt-progress">
-      <div class="fgt-dot active" id="fdot1"></div>
-      <div class="fgt-dot" id="fdot2"></div>
-      <div class="fgt-dot" id="fdot3"></div>
+    <div class="modal-desc">
+      لاستعادة كلمة المرور، يرجى التواصل مع مشرف المركز مباشرة وتزويده برقم هويتك الوطنية، وسيقوم بإعادة تعيين كلمة مرور جديدة لحسابك.
     </div>
-
-    <!-- ═══ الخطوة 1: رقم الهوية ═══ -->
-    <div class="fgt-step active" id="fgt-step1">
-      <div class="modal-desc" style="margin-bottom:14px;">
-        أدخل رقم هويتك الوطنية وسنرسل كود التحقق إلى رقم جوالك المسجّل عبر واتساب.
-      </div>
-      <div class="fgt-err" id="fgt-err1"></div>
-      <div class="fgt-inp-wrap">
-        <input class="fgt-inp" type="tel" inputmode="numeric" maxlength="9" id="fgt-nid"
-          placeholder="رقم الهوية الوطنية (9 أرقام)"
-          oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"
-          onkeydown="if(event.key==='Enter')fgtStep1Next()">
-      </div>
-      <button class="btn-fgt-primary" id="fgt-btn1" onclick="fgtStep1Next()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><polyline points="9 18 15 12 9 6"/></svg>
-        التالي
-      </button>
-      <button class="btn-fgt-sec" onclick="closeForgot()">إلغاء</button>
-    </div>
-
-    <!-- ═══ الخطوة 2: إرسال OTP عبر واتساب ═══ -->
-    <div class="fgt-step" id="fgt-step2">
-      <div class="modal-desc" style="margin-bottom:12px;">
-        سيُرسَل كود التحقق المكوّن من 6 أرقام إلى رقم جوالك:
-      </div>
-      <div class="fgt-phone-badge">
-        <div class="ph-label">رقم الجوال المسجّل</div>
-        <div class="ph-num" id="fgt-masked-phone">—</div>
-      </div>
-      <div class="fgt-err" id="fgt-err2"></div>
-      <button class="btn-fgt-primary" id="fgt-btn2" onclick="fgtStep2Send()">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2">
-          <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
-        </svg>
-        إرسال الكود عبر واتساب
-      </button>
-      <button class="btn-fgt-sec" onclick="fgtGoStep(1)">رجوع</button>
-    </div>
-
-    <!-- ═══ الخطوة 3: إدخال الكود ═══ -->
-    <div class="fgt-step" id="fgt-step3">
-      <div class="modal-desc" style="margin-bottom:12px;">
-        أدخل الكود المكوّن من 6 أرقام الذي أُرسل إليك عبر واتساب.
-      </div>
-      <div class="fgt-err" id="fgt-err3"></div>
-      <div class="otp-row" id="otp-row">
-        <input class="otp-box" id="otp0" maxlength="1" inputmode="numeric" type="tel">
-        <input class="otp-box" id="otp1" maxlength="1" inputmode="numeric" type="tel">
-        <input class="otp-box" id="otp2" maxlength="1" inputmode="numeric" type="tel">
-        <input class="otp-box" id="otp3" maxlength="1" inputmode="numeric" type="tel">
-        <input class="otp-box" id="otp4" maxlength="1" inputmode="numeric" type="tel">
-        <input class="otp-box" id="otp5" maxlength="1" inputmode="numeric" type="tel">
-      </div>
-      <div class="otp-timer">
-        الكود صالح لمدة <span id="otp-timer-txt">10:00</span>
-        &nbsp;|&nbsp;
-        <button class="otp-resend" id="otp-resend-btn" onclick="fgtResend()" disabled>إعادة الإرسال</button>
-      </div>
-      <!-- حقل كلمة المرور الجديدة -->
-      <div style="border-top:1px solid var(--border);margin:10px 0 14px;"></div>
-      <div style="font-size:12.5px;color:#7a8a7a;margin-bottom:8px;">كلمة المرور الجديدة</div>
-      <div class="fgt-pw-wrap">
-        <input class="fgt-inp" type="password" id="fgt-pw1" placeholder="كلمة المرور الجديدة (6 أحرف فأكثر)"
-          oninput="fgtPwStrength()" style="direction:rtl;">
-        <button class="fgt-pw-toggle" onclick="fgtTogglePw('fgt-pw1',this)" type="button">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
-      <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill" style="width:0%"></div></div>
-      <div class="pw-strength-label" id="pw-label" style="color:#bbb;">—</div>
-      <div class="fgt-pw-wrap">
-        <input class="fgt-inp" type="password" id="fgt-pw2" placeholder="تأكيد كلمة المرور"
-          onkeydown="if(event.key==='Enter')fgtStep3Verify()" style="direction:rtl;">
-        <button class="fgt-pw-toggle" onclick="fgtTogglePw('fgt-pw2',this)" type="button">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-      </div>
-      <button class="btn-fgt-primary" id="fgt-btn3" onclick="fgtStep3Verify()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-        تأكيد وتغيير كلمة المرور
-      </button>
-      <button class="btn-fgt-sec" onclick="fgtGoStep(2)">رجوع</button>
-    </div>
-
-    <!-- ═══ الخطوة 4: نجاح ═══ -->
-    <div class="fgt-step" id="fgt-step4">
-      <div class="fgt-done-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      </div>
-      <div class="fgt-done-title">تم تغيير كلمة المرور!</div>
-      <div class="fgt-done-desc">تم تحديث كلمة مرورك بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.</div>
-      <button class="btn-fgt-primary" onclick="closeForgot()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
-        العودة لتسجيل الدخول
-      </button>
-    </div>
-
+    <button class="btn-sec" onclick="closeForgot()">إغلاق</button>
   </div>
 </div>
 
@@ -508,22 +320,22 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 // تفعيل العمل بدون إنترنت: تُخزَّن البيانات محلياً وتتم مزامنتها تلقائياً عند رجوع الاتصال
-// ملاحظة: تم إلغاء enablePersistence لأنها كانت تسبب تجميد الصفحة
-// عند فتحها في أكثر من تبويب أو متصفح.
+db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+  console.warn('تعذّر تفعيل وضع عدم الاتصال:', err.code);
+});
 
 // ════════════════════════════════════════
 //  VIEW SWITCHING
 // ════════════════════════════════════════
 function showView(view) {
   ['loading','login','signup','pending','rejected'].forEach(v => {
-    const el = document.getElementById('auth-'+v);
-    if(el) el.style.display = (v===view) ? 'block':'none';
+    document.getElementById('auth-'+v).style.display = (v===view) ? 'block':'none';
   });
-  // إزالة splash فوراً عند أي استجابة من Firebase
+  // إخفاء splash عند ظهور أي view غير loading
   const splash = document.getElementById('splash-screen');
-  if(splash){
+  if(splash && view !== 'loading'){
     splash.style.opacity = '0';
-    setTimeout(()=>{ if(splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 300);
+    setTimeout(()=>{ if(splash) splash.remove(); }, 300);
   }
 }
 
@@ -632,356 +444,10 @@ function doSignup() {
 }
 
 // ════════════════════════════════════════
-//  FORGOT PASSWORD — نظام OTP عبر واتساب
+//  FORGOT PASSWORD — يتم عبر المشرف فقط
 // ════════════════════════════════════════
-let _fgtOtp = '';           // الكود المولَّد
-let _fgtOtpExpiry = 0;      // وقت انتهاء الكود (timestamp)
-let _fgtPhone = '';          // رقم الجوال الكامل
-let _fgtTimerInterval = null;
-let _fgtUserUid = '';        // uid المستخدم في Firestore
-let _fgtResendCooldown = 0;
-
-// ── أداة: توليد كود 6 أرقام ──
-function fgtGenOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-// ── أداة: إخفاء وسط رقم الجوال ──
-function fgtMaskPhone(ph) {
-  const p = ph.replace(/\D/g, '');
-  if (p.length < 5) return ph;
-  return p.slice(0,3) + ' **** ' + p.slice(-3);
-}
-
-// ── أداة: تحديث شريط الخطوات ──
-function fgtSetStep(n) {
-  for (let i = 1; i <= 4; i++) {
-    const s = document.getElementById('fgt-step'+i);
-    if (s) s.classList.toggle('active', i === n);
-  }
-  const labels = ['','الخطوة 1 من 3','الخطوة 2 من 3','الخطوة 3 من 3','اكتمل ✓'];
-  const sub = document.getElementById('fgt-subtitle');
-  if (sub) sub.textContent = labels[n] || '';
-  // dots (3 فقط)
-  const dots = [['fdot1','fdot2','fdot3']];
-  const map = {1:[0],2:[0,1],3:[0,1,2],4:[0,1,2]};
-  ['fdot1','fdot2','fdot3'].forEach((id,idx)=>{
-    const d = document.getElementById(id);
-    if (!d) return;
-    const active = (map[n]||[]).includes(idx);
-    const done   = (map[n]||[]).indexOf(idx) !== -1 && idx < (n===4?3:n-1);
-    d.className = 'fgt-dot' + (idx === (n===4?2:n-1) && n<=3 ? ' active' : (idx < (n===4?3:n-1) ? ' done' : ''));
-  });
-}
-
-// ── أداة: إخفاء جميع أخطاء خطوة ──
-function fgtErr(step, msg) {
-  const el = document.getElementById('fgt-err'+step);
-  if (!el) return;
-  if (msg) { el.textContent = msg; el.classList.add('show'); }
-  else el.classList.remove('show');
-}
-
-// ── أداة: زر تحميل ──
-function fgtBtnLoad(id, loading) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-  btn.disabled = loading;
-  if (loading) {
-    btn._orig = btn.innerHTML;
-    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:7px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحميل...</span>';
-  } else if (btn._orig) {
-    btn.innerHTML = btn._orig;
-  }
-}
-
-// ── أداة: قوة كلمة المرور ──
-function fgtPwStrength() {
-  const pw = document.getElementById('fgt-pw1').value;
-  const fill = document.getElementById('pw-fill');
-  const label = document.getElementById('pw-label');
-  let score = 0;
-  if (pw.length >= 6) score++;
-  if (pw.length >= 9) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  const levels = [
-    {w:'0%',   c:'#eee',     t:'—'},
-    {w:'25%',  c:'#e74c3c',  t:'ضعيفة'},
-    {w:'50%',  c:'#e67e22',  t:'مقبولة'},
-    {w:'75%',  c:'#f1c40f',  t:'جيدة'},
-    {w:'100%', c:'#1b6b4a',  t:'قوية جداً'},
-  ];
-  const lv = levels[Math.min(score, 4)];
-  fill.style.width = lv.w; fill.style.background = lv.c;
-  label.textContent = pw.length ? lv.t : '—';
-  label.style.color = lv.c;
-}
-
-function fgtTogglePw(id, btn) {
-  const inp = document.getElementById(id);
-  const show = inp.type === 'password';
-  inp.type = show ? 'text' : 'password';
-  btn.style.color = show ? 'var(--em)' : '#9a9a8a';
-}
-
-// ── OTP: إعداد حقول الكود ──
-function fgtSetupOtpBoxes() {
-  for (let i = 0; i < 6; i++) {
-    const box = document.getElementById('otp'+i);
-    box.value = '';
-    box.className = 'otp-box';
-    box.oninput = function() {
-      this.value = this.value.replace(/[^0-9]/g,'').slice(-1);
-      this.classList.toggle('filled', this.value !== '');
-      if (this.value && i < 5) document.getElementById('otp'+(i+1)).focus();
-    };
-    box.onkeydown = function(e) {
-      if (e.key === 'Backspace' && !this.value && i > 0) {
-        document.getElementById('otp'+(i-1)).focus();
-      }
-      if (e.key === 'Enter') fgtStep3Verify();
-    };
-    box.onpaste = function(e) {
-      e.preventDefault();
-      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
-      for (let j = 0; j < pasted.length; j++) {
-        const b = document.getElementById('otp'+j);
-        if (b) { b.value = pasted[j]; b.classList.add('filled'); }
-      }
-      const last = document.getElementById('otp'+(Math.min(pasted.length,5)));
-      if (last) last.focus();
-    };
-  }
-}
-
-// ── OTP: قراءة الكود المُدخَل ──
-function fgtReadOtp() {
-  let code = '';
-  for (let i = 0; i < 6; i++) code += (document.getElementById('otp'+i)||{}).value||'';
-  return code;
-}
-
-// ── OTP: مؤقت العدّ التنازلي ──
-function fgtStartTimer() {
-  clearInterval(_fgtTimerInterval);
-  const resendBtn = document.getElementById('otp-resend-btn');
-  if (resendBtn) resendBtn.disabled = true;
-  _fgtTimerInterval = setInterval(() => {
-    const remaining = Math.max(0, _fgtOtpExpiry - Date.now());
-    const m = Math.floor(remaining / 60000);
-    const s = Math.floor((remaining % 60000) / 1000);
-    const txt = document.getElementById('otp-timer-txt');
-    if (txt) {
-      txt.textContent = m + ':' + String(s).padStart(2,'0');
-      txt.className = remaining < 60000 ? 'urgent' : '';
-    }
-    if (remaining <= 0) {
-      clearInterval(_fgtTimerInterval);
-      if (txt) txt.textContent = 'انتهت المدة';
-      if (resendBtn) resendBtn.disabled = false;
-    }
-  }, 1000);
-}
-
-// ════ الخطوة 1: التحقق من رقم الهوية ════
-async function fgtStep1Next() {
-  const nid = document.getElementById('fgt-nid').value.trim();
-  fgtErr(1, '');
-  if (!nid) { fgtErr(1,'أدخل رقم الهوية الوطنية'); return; }
-  if (!/^[0-9]{9}$/.test(nid)) { fgtErr(1,'رقم الهوية يجب أن يكون 9 أرقام بالضبط'); return; }
-
-  fgtBtnLoad('fgt-btn1', true);
-  try {
-    // البحث عن المستخدم في Firestore حسب nationalId
-    const snap = await db.collection('users').where('nationalId','==',nid).limit(1).get();
-    if (snap.empty) { fgtErr(1,'لا يوجد حساب مرتبط بهذا الرقم'); fgtBtnLoad('fgt-btn1',false); return; }
-    const docData = snap.docs[0].data();
-    _fgtUserUid = snap.docs[0].id;
-    _fgtPhone = (docData.phone || '').replace(/\s/g,'');
-    if (!_fgtPhone) { fgtErr(1,'لم يُسجَّل رقم جوال لهذا الحساب، تواصل مع المشرف'); fgtBtnLoad('fgt-btn1',false); return; }
-    document.getElementById('fgt-masked-phone').textContent = fgtMaskPhone(_fgtPhone);
-    fgtGoStep(2);
-  } catch(e) {
-    fgtErr(1,'خطأ في الاتصال، حاول مجدداً');
-  } finally {
-    fgtBtnLoad('fgt-btn1', false);
-  }
-}
-
-// ════ الخطوة 2: توليد الكود وفتح واتساب ════
-async function fgtStep2Send() {
-  fgtErr(2,'');
-  fgtBtnLoad('fgt-btn2', true);
-  try {
-    _fgtOtp = fgtGenOtp();
-    _fgtOtpExpiry = Date.now() + 10 * 60 * 1000; // 10 دقائق
-
-    // حفظ الكود في Firestore مشفراً مع وقت انتهاء الصلاحية
-    await db.collection('passwordResets').doc(_fgtUserUid).set({
-      otp: _fgtOtp,
-      expiresAt: firebase.firestore.Timestamp.fromMillis(_fgtOtpExpiry),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      attempts: 0
-    });
-
-    // بناء رسالة واتساب
-    const msg = encodeURIComponent(
-      '🔐 مركز الكتاب — كود التحقق
-
-' +
-      'كودك لاستعادة كلمة المرور هو:
-
-' +
-      '*' + _fgtOtp + '*
-
-' +
-      '⏱ صالح لمدة 10 دقائق فقط
-' +
-      '🚫 لا تشارك هذا الكود مع أي شخص'
-    );
-    const phone = _fgtPhone.startsWith('0') ? '970' + _fgtPhone.slice(1) : _fgtPhone;
-    const waUrl = 'https://wa.me/' + phone + '?text=' + msg;
-
-    // فتح واتساب
-    window.open(waUrl, '_blank');
-
-    // الانتقال للخطوة 3
-    fgtSetupOtpBoxes();
-    fgtStartTimer();
-    fgtGoStep(3);
-    setTimeout(() => { const b = document.getElementById('otp0'); if(b) b.focus(); }, 400);
-  } catch(e) {
-    fgtErr(2,'حدث خطأ، حاول مجدداً');
-  } finally {
-    fgtBtnLoad('fgt-btn2', false);
-  }
-}
-
-// ── إعادة إرسال الكود ──
-function fgtResend() {
-  document.getElementById('fgt-err3').classList.remove('show');
-  fgtSetupOtpBoxes();
-  fgtGoStep(2);
-}
-
-// ════ الخطوة 3: التحقق من الكود وتغيير كلمة المرور ════
-async function fgtStep3Verify() {
-  fgtErr(3,'');
-  const code = fgtReadOtp();
-  const pw1 = document.getElementById('fgt-pw1').value;
-  const pw2 = document.getElementById('fgt-pw2').value;
-
-  // التحقق من اكتمال الكود
-  if (code.length < 6) { fgtErr(3,'أدخل الكود المكوّن من 6 أرقام كاملاً'); return; }
-  if (!pw1) { fgtErr(3,'أدخل كلمة المرور الجديدة'); return; }
-  if (pw1.length < 6) { fgtErr(3,'كلمة المرور يجب أن تكون 6 أحرف فأكثر'); return; }
-  if (pw1 !== pw2) { fgtErr(3,'كلمتا المرور غير متطابقتين'); return; }
-
-  fgtBtnLoad('fgt-btn3', true);
-  try {
-    // جلب سجل OTP من Firestore
-    const resetDoc = await db.collection('passwordResets').doc(_fgtUserUid).get();
-    if (!resetDoc.exists) { fgtErr(3,'انتهت صلاحية الكود، اطلب كوداً جديداً'); fgtBtnLoad('fgt-btn3',false); return; }
-
-    const data = resetDoc.data();
-
-    // التحقق من الانتهاء
-    if (data.expiresAt.toMillis() < Date.now()) {
-      await db.collection('passwordResets').doc(_fgtUserUid).delete();
-      fgtErr(3,'انتهت صلاحية الكود، اطلب كوداً جديداً');
-      document.getElementById('otp-resend-btn').disabled = false;
-      fgtBtnLoad('fgt-btn3',false); return;
-    }
-
-    // الحد الأقصى للمحاولات 5
-    if ((data.attempts||0) >= 5) {
-      await db.collection('passwordResets').doc(_fgtUserUid).delete();
-      fgtErr(3,'تجاوزت الحد الأقصى للمحاولات، اطلب كوداً جديداً');
-      fgtBtnLoad('fgt-btn3',false); return;
-    }
-
-    // مقارنة الكود
-    if (data.otp !== code) {
-      await db.collection('passwordResets').doc(_fgtUserUid).update({attempts: firebase.firestore.FieldValue.increment(1)});
-      const remaining = 5 - ((data.attempts||0) + 1);
-      // تلوين خانات الخطأ
-      for (let i=0;i<6;i++) { const b=document.getElementById('otp'+i); if(b){b.classList.add('err-box');b.classList.remove('filled');} }
-      setTimeout(()=>{ for(let i=0;i<6;i++){const b=document.getElementById('otp'+i);if(b)b.classList.remove('err-box');} },900);
-      fgtErr(3,'الكود غير صحيح' + (remaining>0?' — تبقّى لك '+remaining+' محاولة':''));
-      fgtBtnLoad('fgt-btn3',false); return;
-    }
-
-    // ✅ الكود صحيح — تغيير كلمة المرور عبر Firebase Auth
-    // نسجّل دخول مؤقت بالبريد القديم لإعادة تعيين كلمة المرور
-    // الطريقة: استخدام updatePassword مباشرة عبر re-auth مع كلمة المرور الحالية
-    // بما أننا لا نعرف كلمة المرور الحالية، نستخدم Firebase Admin-style عبر Custom Token
-    // الحل العملي: نحفظ كلمة المرور الجديدة في Firestore وتُطبَّق عند دخوله التالي
-    // لكن الأفضل: نحذف ونعيد إنشاء بيانات المصادقة
-    // ═══ الحل الأمثل بدون Admin SDK ═══
-    // نحفظ علامة في Firestore تشير أن هذا المستخدم طلب تغيير كلمة المرور
-    // وعند دخوله بكلمة المرور الجديدة مباشرة إذا كان المشرف قد عيّنها
-    // ── الحل الواقعي: Firebase sendPasswordResetEmail + التأكيد للمستخدم ──
-    // نحذف سجل OTP
-    await db.collection('passwordResets').doc(_fgtUserUid).delete();
-    clearInterval(_fgtTimerInterval);
-
-    // إرسال رابط إعادة التعيين عبر Firebase (لن يراه المستخدم — الواتساب كان للتحقق)
-    // بعد التحقق من الهوية نُرسل رابط التغيير للبريد المرتبط
-    const userDoc = await db.collection('users').doc(_fgtUserUid).get();
-    const nationalId = userDoc.data().nationalId;
-    const email = nidToEmail(nationalId);
-
-    // الحل الكامل: نستخدم Secondary App لتسجيل الدخول وتغيير كلمة المرور
-    const secondaryApp2 = firebase.apps.find(a=>a.name==='ResetApp') ||
-      firebase.initializeApp(firebaseConfig, 'ResetApp');
-    const resetAuth = secondaryApp2.auth();
-
-    // نسجل دخول مؤقت — لكن لا نعرف كلمة المرور القديمة
-    // الحل الأفضل: إرسال رابط Firebase Reset + إشعار المستخدم
-    await firebase.auth().sendPasswordResetEmail(email);
-
-    // تحديث Firestore بعلامة أن المستخدم أكمل التحقق بنجاح
-    await db.collection('users').doc(_fgtUserUid).update({
-      pendingPasswordReset: true,
-      resetVerifiedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    fgtGoStep(4);
-  } catch(e) {
-    fgtErr(3, e.message || 'حدث خطأ، حاول مجدداً');
-  } finally {
-    fgtBtnLoad('fgt-btn3', false);
-  }
-}
-
-// ── التنقل بين الخطوات ──
-function fgtGoStep(n) {
-  fgtSetStep(n);
-  // تنظيف أخطاء الخطوة القادمة
-  [1,2,3].forEach(i => fgtErr(i,''));
-}
-
-function openForgot() {
-  _fgtOtp = ''; _fgtPhone = ''; _fgtUserUid = ''; _fgtOtpExpiry = 0;
-  clearInterval(_fgtTimerInterval);
-  document.getElementById('fgt-nid').value = '';
-  document.getElementById('fgt-pw1').value = '';
-  document.getElementById('fgt-pw2').value = '';
-  const fill = document.getElementById('pw-fill');
-  if (fill) { fill.style.width='0%'; fill.style.background='#eee'; }
-  const lbl = document.getElementById('pw-label');
-  if (lbl) { lbl.textContent='—'; lbl.style.color='#bbb'; }
-  [1,2,3].forEach(i => fgtErr(i,''));
-  fgtSetStep(1);
-  document.getElementById('forgotModal').classList.add('open');
-  setTimeout(()=>{ const n=document.getElementById('fgt-nid'); if(n)n.focus(); },350);
-}
-function closeForgot() {
-  clearInterval(_fgtTimerInterval);
-  document.getElementById('forgotModal').classList.remove('open');
-}
+function openForgot() { document.getElementById('forgotModal').classList.add('open'); }
+function closeForgot() { document.getElementById('forgotModal').classList.remove('open'); }
 function handleModalClick(e) { if (e.target === document.getElementById('forgotModal')) closeForgot(); }
 
 // ════════════════════════════════════════
@@ -999,7 +465,7 @@ function recheckApproval() {
 // ════════════════════════════════════════
 //  AUTH STATE + ROUTING
 // ════════════════════════════════════════
-const authTimeout = setTimeout(() => showView('login'), 5000);
+const authTimeout = setTimeout(() => showView('login'), 8000);
 
 auth.onAuthStateChanged(user => {
   clearTimeout(authTimeout);
