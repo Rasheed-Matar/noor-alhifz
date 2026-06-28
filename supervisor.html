@@ -1779,7 +1779,7 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
       <td style="text-align:center;font-size:13px;">${r._pob}</td>
       <td style="text-align:center;">${typeLabel[r.type]||r.type}</td>
       <td style="text-align:center;">الجزء ${r.juzNum}</td>
-      <td style="text-align:center;font-weight:800;font-size:16px;color:#1b6b4a;">${r.totalScore}%</td>
+      <td style="text-align:center;font-weight:800;font-size:16px;color:${r.passed?'#1b6b4a':'#c0392b'};">${r.totalScore}%</td>
       <td>${r.teacherName}</td>
       <td style="text-align:center;font-size:12.5px;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
     </tr>`).join('');
@@ -1893,7 +1893,7 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
 <div class="signature-section">
   <div class="signature-box">
     <div class="sig-title">توقيعُ مختبرِ الجودةِ</div>
-    <div class="sig-name">${logoSrc?`<img src="${logoSrc}" class="sig-stamp" alt="ختم مختبر الجودة">`:''}</div>
+    <div class="sig-name">${results.length>0&&results[0].examinerName?results[0].examinerName:'—'}</div>
     <div class="sig-line">التوقيعُ والختمُ</div>
   </div>
   <div class="signature-box">
