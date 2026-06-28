@@ -108,6 +108,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .card-title-dot.red{background:#dc2626;}
 .card-action{font-size:12px;color:var(--em);cursor:pointer;font-weight:500;background:none;border:none;font-family:'Tajawal',sans-serif;}
 .card-action:hover{text-decoration:underline;}
+.report-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;border:none;border-radius:9px;padding:7px 13px;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(27,107,74,.28);transition:all .2s;}
+.report-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(27,107,74,.4);text-decoration:none;}
+.report-btn svg{flex-shrink:0;}
 
 .table-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;}
@@ -213,6 +216,10 @@ select.form-input{cursor:pointer;}
 .pdf-dl-btn{flex:1;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;padding:12px 24px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;box-shadow:0 4px 14px rgba(27,107,74,.3);}
 .pdf-dl-btn:hover{transform:translateY(-1px);}
 .pdf-dl-btn:disabled{opacity:.5;cursor:not-allowed;}
+.orient-toggle{display:flex;gap:6px;background:#f5f0e8;padding:4px;border-radius:11px;border:1px solid var(--border);}
+.orient-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;border:none;border-radius:8px;background:transparent;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .15s;}
+.orient-btn svg{flex-shrink:0;}
+.orient-btn.active{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;box-shadow:0 2px 8px rgba(27,107,74,.35);}
 
 .msg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .msg-tab{padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:rgba(253,250,243,.9);font-family:"Tajawal",sans-serif;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .2s;}
@@ -579,7 +586,10 @@ select.form-input{cursor:pointer;}
         <div class="card-header">
           <div class="card-title">📊 نتائج الاختبارات الأخيرة</div>
           <div style="display:flex;gap:8px;">
-            <button class="card-action" onclick="openSupervisorReportModal()">📄 تقرير</button>
+            <button class="report-btn" onclick="openSupervisorReportModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              تقرير
+            </button>
             <button class="card-action" onclick="loadExamResultsAdmin()">تحديث</button>
           </div>
         </div>
@@ -681,6 +691,19 @@ select.form-input{cursor:pointer;}
             <option value="scattered">متفرّق</option>
             <option value="combined">مجتمع</option>
           </select>
+        </div>
+        <div class="form-group" style="min-width:190px;">
+          <label class="form-label">اتجاه الصفحة</label>
+          <div class="orient-toggle" id="repOrientToggle">
+            <button type="button" class="orient-btn active" data-val="landscape" onclick="setRepOrientation('landscape')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+              أفقي
+            </button>
+            <button type="button" class="orient-btn" data-val="portrait" onclick="setRepOrientation('portrait')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+              عمودي
+            </button>
+          </div>
         </div>
         <div class="form-group" style="flex:0;">
           <label class="form-label" style="opacity:0;">.</label>
@@ -1646,6 +1669,14 @@ function fmtDate(v){
   return isNaN(d) ? '—' : d.toLocaleDateString('ar-EG');
 }
 
+let repOrientation='landscape';
+
+function setRepOrientation(val){
+  repOrientation=val;
+  document.querySelectorAll('#repOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===val));
+  refreshSupervisorReportPreview();
+}
+
 function openSupervisorReportModal(){
   const now=new Date();
   document.getElementById('repDay').value=now.toISOString().slice(0,10);
@@ -1653,6 +1684,8 @@ function openSupervisorReportModal(){
   document.getElementById('repPeriod').value='day';
   document.getElementById('repScope').value='all';
   document.getElementById('repType').value='all';
+  repOrientation='landscape';
+  document.querySelectorAll('#repOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val==='landscape'));
   onRepPeriodChange();
   onRepScopeChange();
   populateRepCircleOptions();
@@ -1727,7 +1760,9 @@ function getSupervisorReportFiltered(){
   return {results, label, typeFilterLabel, circleFilterLabel};
 }
 
-function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilterLabel){
+function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilterLabel, orientation){
+  orientation = orientation || 'landscape';
+  const isPortrait = orientation === 'portrait';
   const now=new Date();
   const pass=results.filter(r=>r.passed).length;
   const fail=results.filter(r=>!r.passed).length;
@@ -1757,16 +1792,16 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
-  @page{size:A4 landscape;margin:10mm 12mm;}
+  @page{size:A4 ${isPortrait?'portrait':'landscape'};margin:10mm 12mm;}
   body{font-family:'Tajawal',sans-serif;padding:0;color:#1a1a2e;background:#fff;font-size:15px;}
   @media print{ body{padding:0;} }
 
   /* ── رأس الصفحة ── */
-  .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1b6b4a;margin-bottom:6px;}
+  .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1b6b4a;margin-bottom:6px;gap:14px;}
   .center-info{text-align:center;flex:1;}
   .center-name{font-family:'Amiri',serif;font-size:22px;font-weight:700;color:#1b6b4a;line-height:1.5;}
   .center-sub{font-size:13px;color:#555;margin-top:3px;}
-  .logo-img{width:80px;height:80px;object-fit:contain;}
+  .logo-img{width:80px;height:80px;object-fit:contain;flex-shrink:0;}
   .report-meta{text-align:left;font-size:13px;color:#555;line-height:1.9;min-width:190px;}
   .report-meta b{color:#1a1a2e;}
 
@@ -1791,16 +1826,27 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
   tr:last-child td{border-bottom:none;}
 
   /* توقيع */
-  .signature-section{margin-top:30px;display:flex;justify-content:space-between;}
+  .signature-section{margin-top:30px;display:flex;justify-content:space-between;gap:14px;}
   .signature-box{text-align:center;width:220px;}
-  .sig-title{font-size:13.5px;font-weight:700;color:#1b6b4a;margin-bottom:6px;}
-  .sig-name{font-family:'Amiri',serif;font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:42px;min-height:22px;}
+  .sig-title{font-size:13.5px;font-weight:700;color:#1b6b4a;margin-bottom:8px;}
+  .sig-name{font-family:'Amiri',serif;font-size:16px;font-weight:700;color:#1a1a2e;min-height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+  .sig-stamp{width:62px;height:62px;object-fit:contain;opacity:.85;transform:rotate(-7deg);filter:drop-shadow(0 2px 3px rgba(0,0,0,.18));}
   .sig-line{border-top:1.5px solid #1b6b4a;padding-top:6px;font-size:12.5px;color:#888;}
 
   /* تذييل */
   .page-footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#aaa;border-top:1px solid #e5e5dc;padding-top:10px;}
   .page-footer .seal{font-size:12.5px;color:#1b6b4a;font-weight:700;}
-</style></head><body>
+
+  /* ── تنسيق الاتجاه العمودي ── */
+  body.portrait .page-header{flex-direction:column;text-align:center;padding-bottom:12px;}
+  body.portrait .report-meta{text-align:center;min-width:0;}
+  body.portrait .stats{grid-template-columns:repeat(2,1fr);}
+  body.portrait table{font-size:11px;}
+  body.portrait th{padding:7px 5px;font-size:10px;}
+  body.portrait td{padding:7px 5px;font-size:10.5px;}
+  body.portrait .center-name{font-size:18px;}
+  body.portrait .signature-section{justify-content:space-around;}
+</style></head><body class="${isPortrait?'portrait':'landscape'}">
 
 <div class="page-header">
   <img src="${logoSrc}" class="logo-img" alt="شعار المركز">
@@ -1847,7 +1893,7 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
 <div class="signature-section">
   <div class="signature-box">
     <div class="sig-title">توقيعُ مختبرِ الجودةِ</div>
-    <div class="sig-name"></div>
+    <div class="sig-name">${logoSrc?`<img src="${logoSrc}" class="sig-stamp" alt="ختم مختبر الجودة">`:''}</div>
     <div class="sig-line">التوقيعُ والختمُ</div>
   </div>
   <div class="signature-box">
@@ -1872,7 +1918,7 @@ function refreshSupervisorReportPreview(){
   if(!data) return;
   const {results,label,typeFilterLabel,circleFilterLabel}=data;
 
-  _repHTML = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel);
+  _repHTML = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation);
 
   const frame=document.getElementById('repPreviewFrame');
   const loading=document.getElementById('repPreviewLoading');
@@ -1891,7 +1937,7 @@ async function downloadSupervisorReport(){
     return;
   }
 
-  const html = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel);
+  const html = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation);
   _repHTML = html;
 
   const btn=document.getElementById('repDownloadBtn');
@@ -1900,7 +1946,7 @@ async function downloadSupervisorReport(){
   btn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحضير...</span>';
 
   try{
-    await exportSupervisorReportToPDF(html, label+'_'+circleFilterLabel);
+    await exportSupervisorReportToPDF(html, label+'_'+circleFilterLabel, repOrientation);
     toast('✅ تم تنزيل ملف PDF بنجاح');
   } catch(e){
     toast('⚠️ خطأ في تحضير التقرير: '+e.message);
@@ -1913,15 +1959,17 @@ async function downloadSupervisorReport(){
 
 // يبني ملف PDF مباشرةً على جهاز المستخدم (بدون فتح نافذة طباعة المتصفح إطلاقًا)
 // عبر تحويل التقرير إلى صورة عالية الدقة (html2canvas) ثم تضمينها داخل مستند PDF
-// بصيغة أفقية (Landscape) عبر مكتبة jsPDF، مع دعم تعدد الصفحات تلقائيًا عند الحاجة.
-function exportSupervisorReportToPDF(html, label){
+// بصيغة أفقية أو عمودية (حسب اختيار المشرف) عبر مكتبة jsPDF، مع دعم تعدد الصفحات تلقائيًا عند الحاجة.
+function exportSupervisorReportToPDF(html, label, orientation){
+  orientation = orientation || 'landscape';
   return new Promise((resolve,reject)=>{
     const old=document.getElementById('repExportFrame');
     if(old) old.remove();
 
+    const frameWidth = orientation==='portrait' ? 950 : 1400;
     const frame=document.createElement('iframe');
     frame.id='repExportFrame';
-    frame.style.cssText='position:fixed;left:-9999px;top:0;width:1400px;height:600px;border:none;background:#fff;';
+    frame.style.cssText=`position:fixed;left:-9999px;top:0;width:${frameWidth}px;height:600px;border:none;background:#fff;`;
     document.body.appendChild(frame);
 
     frame.onload=async function(){
@@ -1945,7 +1993,7 @@ function exportSupervisorReportToPDF(html, label){
         const imgData=canvas.toDataURL('image/png');
 
         const {jsPDF}=window.jspdf;
-        const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4'});
         const pageWidth=pdf.internal.pageSize.getWidth();
         const pageHeight=pdf.internal.pageSize.getHeight();
 
@@ -1983,6 +2031,7 @@ function exportSupervisorReportToPDF(html, label){
     frame.srcdoc=html;
   });
 }
+
 
 // Load passing grade on init
 db.collection('settings').doc('global').get().then(doc=>{
