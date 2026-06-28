@@ -496,6 +496,10 @@ function checkUserStatus(user) {
       navigateTo('examiner.html');
       return;
     }
+    if (d.role === 'student' && d.status === 'approved') {
+      navigateTo('student.html');
+      return;
+    }
     if (d.status === 'approved') {
       navigateTo('teacher.html');
       return;
