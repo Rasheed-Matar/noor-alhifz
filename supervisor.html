@@ -475,6 +475,10 @@ select.form-input{cursor:pointer;}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           تفعيل حسابات حلقة
         </button>
+        <button class="btn-primary" style="flex:none;background:linear-gradient(135deg,#7b2d2d,#c0392b);" onclick="openDeactivateModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          إلغاء تفعيل حلقة
+        </button>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -2135,6 +2139,110 @@ async function startActivation(){
   toast(`✅ اكتمل التفعيل — ${ok} طالب تم تفعيله`);
 }
 
+
+// ════════════════════════════════════════
+//  DEACTIVATE STUDENT ACCOUNTS (إلغاء تفعيل)
+// ════════════════════════════════════════
+function openDeactivateModal(){
+  const sel = document.getElementById('deact-circle-sel');
+  sel.innerHTML = '<option value="">— اختر المحفّظ / الحلقة —</option>';
+  getTeachers().forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = (t.circle||'حلقة بدون اسم') + ' — ' + (t.name||'');
+    sel.appendChild(opt);
+  });
+  document.getElementById('deact-preview').style.display='none';
+  document.getElementById('deact-step-progress').style.display='none';
+  document.getElementById('deact-step-done').style.display='none';
+  document.getElementById('deact-step-select').style.display='block';
+  document.getElementById('deact-btn-start').disabled=true;
+  document.getElementById('deact-btn-start').style.display='';
+  document.getElementById('deact-log').innerHTML='';
+  om('modal-deactivate');
+}
+
+async function onDeactCircleSelect(){
+  const teacherId = document.getElementById('deact-circle-sel').value;
+  if(!teacherId){ document.getElementById('deact-preview').style.display='none'; return; }
+
+  // جلب الطلاب المفعّلين من users collection
+  const snap = await db.collection('users')
+    .where('teacherId','==',teacherId)
+    .where('role','==','student')
+    .where('status','==','approved')
+    .get();
+
+  const activated = snap.docs.map(d=>({uid:d.id, ...d.data()}));
+  let listHTML = '';
+  activated.forEach(u=>{ listHTML+=`<div>🔴 ${u.name||''} <span style="opacity:.6;">(${u.nationalId||''})</span></div>`; });
+
+  document.getElementById('deact-student-list').innerHTML = listHTML||'<div style="color:#999;">لا يوجد حسابات مفعّلة في هذه الحلقة</div>';
+  document.getElementById('deact-count').textContent = activated.length;
+  document.getElementById('deact-preview').style.display='block';
+  document.getElementById('deact-btn-start').disabled = activated.length===0;
+  document.getElementById('deact-btn-start').textContent = activated.length===0 ? 'لا يوجد حسابات للإلغاء' : `إلغاء تفعيل ${activated.length} حساب`;
+}
+
+function deactLog(msg, type){
+  const colors={ok:'#4afa8a',err:'#ff7070',info:'#7ab8ff'};
+  const el=document.getElementById('deact-log');
+  el.innerHTML+=`<div style="color:${colors[type]||'#fff'}">${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+async function startDeactivation(){
+  const teacherId = document.getElementById('deact-circle-sel').value;
+  if(!teacherId) return;
+
+  const snap = await db.collection('users')
+    .where('teacherId','==',teacherId)
+    .where('role','==','student')
+    .where('status','==','approved')
+    .get();
+
+  const toDeact = snap.docs.map(d=>({uid:d.id, ...d.data()}));
+  if(!toDeact.length){ toast('لا يوجد حسابات لإلغاء تفعيلها'); return; }
+
+  document.getElementById('deact-step-select').style.display='none';
+  document.getElementById('deact-step-progress').style.display='block';
+  document.getElementById('deact-btn-start').style.display='none';
+
+  let ok=0, err=0;
+  const total=toDeact.length;
+
+  for(let i=0;i<toDeact.length;i++){
+    const u=toDeact[i];
+    const pct=Math.round((i/total)*100);
+    document.getElementById('deact-prog-text').textContent=`${i}/${total}`;
+    document.getElementById('deact-prog-pct').textContent=pct+'%';
+    document.getElementById('deact-prog-bar').style.width=pct+'%';
+    deactLog(`⏳ [${i+1}/${total}] ${u.name||u.nationalId}`,'info');
+
+    try{
+      // تغيير status إلى disabled في Firestore
+      await db.collection('users').doc(u.uid).update({ status: 'disabled' });
+      deactLog(`✅ تم إلغاء تفعيل: ${u.name}`,'ok');
+      ok++;
+    }catch(e){
+      deactLog(`❌ فشل: ${u.name} — ${e.message}`,'err');
+      err++;
+    }
+    await new Promise(r=>setTimeout(r,200));
+  }
+
+  document.getElementById('deact-prog-bar').style.width='100%';
+  document.getElementById('deact-prog-text').textContent=`${total}/${total}`;
+  document.getElementById('deact-prog-pct').textContent='100%';
+  document.getElementById('deact-step-progress').style.display='none';
+  document.getElementById('deact-step-done').style.display='block';
+  document.getElementById('deact-done-summary').innerHTML=
+    `<span style="color:#c53030;font-weight:700;">🚫 تم إلغاء تفعيل: ${ok}</span>`+
+    (err?` &nbsp;|&nbsp; <span style="color:#e53e3e;">❌ فشل: ${err}</span>`:'');
+  document.getElementById('deact-btn-close').textContent='إغلاق';
+  toast(`🚫 تم إلغاء تفعيل ${ok} حساب`);
+}
+
 </script>
 
 <!-- ═══ MODAL: تفعيل حسابات حلقة ═══ -->
@@ -2195,6 +2303,68 @@ async function startActivation(){
     <div class="modal-footer">
       <button class="btn-save" id="act-btn-start" onclick="startActivation()" disabled>تفعيل الحسابات</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-activate')" id="act-btn-close">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: إلغاء تفعيل حسابات حلقة ═══ -->
+<div class="modal-overlay" id="modal-deactivate" onclick="if(event.target===this)closeModal('modal-deactivate')">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head" style="background:linear-gradient(135deg,#7b2d2d,#c0392b);">
+      <span class="modal-head-title">🚫 إلغاء تفعيل حسابات حلقة</span>
+      <button class="modal-close" onclick="closeModal('modal-deactivate')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- اختيار الحلقة -->
+      <div id="deact-step-select">
+        <div class="form-group full" style="margin-bottom:14px;">
+          <label class="form-label">اختر الحلقة</label>
+          <select class="form-input" id="deact-circle-sel" onchange="onDeactCircleSelect()">
+            <option value="">— اختر المحفّظ / الحلقة —</option>
+          </select>
+        </div>
+        <div id="deact-preview" style="display:none;">
+          <div style="background:#fff5f5;border:1px solid #fc8181;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;color:#c53030;margin-bottom:8px;">📋 الحسابات المفعّلة في هذه الحلقة:</div>
+            <div id="deact-student-list" style="font-size:12px;color:#742a2a;line-height:2;"></div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #fc8181;font-size:12px;font-weight:700;color:#c53030;">
+              سيتم إلغاء تفعيل: <span id="deact-count">0</span> حساب
+            </div>
+          </div>
+          <div style="background:#fff8f0;border:2px solid #f6ad55;border-radius:10px;padding:12px 14px;font-size:13px;color:#744210;margin-bottom:14px;font-weight:600;">
+            ⚠️ تحذير: لن يتمكن الطلاب من الدخول بعد إلغاء تفعيل حساباتهم. يمكن إعادة التفعيل لاحقاً.
+          </div>
+          <div style="background:#f0fff8;border:1px solid #9ae6b4;border-radius:10px;padding:10px 14px;font-size:12px;color:#276749;">
+            ✅ بيانات الطلاب (الحضور، الحفظ، الاختبارات) <strong>لن تُحذف</strong> — فقط يتم إيقاف الحساب
+          </div>
+        </div>
+      </div>
+
+      <!-- شريط التقدم -->
+      <div id="deact-step-progress" style="display:none;">
+        <div style="font-size:14px;font-weight:700;color:#c53030;margin-bottom:10px;">جارٍ إلغاء التفعيل...</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txm);margin-bottom:5px;">
+          <span id="deact-prog-text">0 / 0</span>
+          <span id="deact-prog-pct">0%</span>
+        </div>
+        <div style="height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-bottom:14px;">
+          <div id="deact-prog-bar" style="height:100%;background:linear-gradient(90deg,#7b2d2d,#c0392b);border-radius:5px;width:0%;transition:width .3s;"></div>
+        </div>
+        <div id="deact-log" style="background:#0f1117;border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;line-height:1.9;"></div>
+      </div>
+
+      <!-- نتيجة -->
+      <div id="deact-step-done" style="display:none;text-align:center;padding:10px 0;">
+        <div style="font-size:40px;margin-bottom:10px;">🚫</div>
+        <div style="font-size:16px;font-weight:700;color:#c53030;margin-bottom:6px;">اكتمل إلغاء التفعيل</div>
+        <div id="deact-done-summary" style="font-size:13px;color:var(--txm);"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="deact-btn-start" onclick="startDeactivation()" disabled style="background:linear-gradient(135deg,#7b2d2d,#c0392b);">إلغاء تفعيل الحسابات</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-deactivate')" id="deact-btn-close">إغلاق</button>
     </div>
   </div>
 </div>
