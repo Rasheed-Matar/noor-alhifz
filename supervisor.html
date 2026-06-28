@@ -769,9 +769,12 @@ select.form-input{cursor:pointer;}
         <div class="form-group"><label class="form-label">رقم جوال الطالب (واتساب) <span>*</span></label><input class="form-input" id="as-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group full"><label class="form-label">ملاحظات (اختياري)</label><textarea class="form-input" id="as-notes" rows="2"></textarea></div>
       </div>
+      <div style="background:#f0fff8;border:1px solid #9ae6b4;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#276749;">
+        🔑 كلمة المرور الافتراضية للطالب: <strong>رقم هويته</strong> — يمكنه تغييرها لاحقاً
+      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-save" onclick="saveNewStudentAdmin()">إضافة الطالب</button>
+      <button class="btn-save" onclick="saveNewStudentAdmin()">إضافة الطالب وإنشاء حسابه</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-add-student')">إلغاء</button>
     </div>
   </div>
@@ -1063,27 +1066,49 @@ function saveNewStudentAdmin(){
   if(isNaN(juz)||juz<0||juz>30){ toast('⚠️ الجزء يجب أن يكون رقماً بين 0 و30'); return; }
   if(!/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم جوال الطالب يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
 
+  const studentLocalId = uidGen();
+  const teacherObj = allUsers.find(u=>u.id===teacherId);
+  const fullName = buildFullName(fname,father,grand,family);
+
   const newStudent = {
-    id: uidGen(),
-    name: buildFullName(fname,father,grand,family),
+    id: studentLocalId,
+    name: fullName,
     firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
     nationalId: nid, dob, placeOfBirth: pob, gender,
     parentPhone: phone,
     juz, notes, archived: false, addedAt: new Date().toISOString()
   };
 
-  const teacher = allUsers.find(u=>u.id===teacherId);
-  const currentStudents = (teacher&&teacher.students)||[];
+  const currentStudents = (teacherObj&&teacherObj.students)||[];
   const updatedStudents = [...currentStudents, newStudent];
 
   const btn = event.target;
   btn.textContent='⏳ جارٍ الإضافة...'; btn.disabled=true;
 
-  db.collection('userdata').doc(teacherId).set({students: updatedStudents},{merge:true}).then(()=>{
-    toast('✅ تم إضافة الطالب وربطه بالمحفّظ');
+  const email = nidToEmail(nid);
+  secondaryAuth.createUserWithEmailAndPassword(email, nid).then(cred=>{
+    const studentUid = cred.user.uid;
+    return secondaryAuth.signOut().then(()=>{
+      return db.collection('users').doc(studentUid).set({
+        name: fullName,
+        firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+        nationalId: nid, dob, placeOfBirth: pob, gender,
+        phone, circle: teacherObj?.circle||'حلقة القرآن',
+        role: 'student', status: 'approved',
+        teacherId: teacherId,
+        studentId: studentLocalId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }).then(()=>{
+      return db.collection('userdata').doc(teacherId).set({students: updatedStudents},{merge:true});
+    });
+  }).then(()=>{
+    toast('✅ تم إضافة الطالب — كلمة المرور الافتراضية: رقم الهوية');
     closeModal('modal-add-student');
   }).catch(e=>{
-    toast('⚠️ خطأ: '+e.message);
+    let msg = e.message;
+    if(e.code==='auth/email-already-in-use') msg='رقم هوية الطالب مسجّل بالفعل';
+    toast('⚠️ خطأ: '+msg);
   }).finally(()=>{
     btn.textContent='إضافة الطالب'; btn.disabled=false;
   });
