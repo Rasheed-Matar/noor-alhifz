@@ -910,6 +910,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
+let activatedStudentNids = new Set(); // رقم هويات الطلاب المفعّلين
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[];
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 
@@ -1044,6 +1045,7 @@ function enterApp(user,data){
   window._teacherName = data.name||'';
   window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
+  loadActivatedNids(user.uid);
   if(fsUnsub)fsUnsub();
   fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},snap=>{
     if(snap.exists){
@@ -1500,6 +1502,9 @@ function renderStudentsList(){
       ${s.parentPhone?`<button class="att-wa-btn" onclick='event.stopPropagation();sendQuickReport("${s.id}")' title="إرسال تقرير اليوم عبر واتساب">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
       </button>`:''}
+      ${s.parentPhone ? (()=>{ const _act=s.nationalId&&activatedStudentNids.has((s.nationalId||'').trim()); return `<button class="att-wa-btn" onclick='event.stopPropagation();sendActivationWhatsapp("${s.id}")' title="${_act?'إرسال رسالة تفعيل الحساب':'الحساب غير مفعّل بعد'}" style="opacity:${_act?'1':'0.25'};cursor:${_act?'pointer':'not-allowed'};${_act?'':'pointer-events:none;'}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6b4a" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.87 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012.78 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.16 6.16l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/><path d="M14.05 3a9 9 0 018 7.94M14.05 7A5 5 0 0119 12"/></svg>
+      </button>`; })() : ''}
       <span class="month-badge ${s.pendingDeletion?'badge-warn':s.archived?'badge-bad':'badge-ok'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span>
     </div>`;
   }).join('');
@@ -2429,7 +2434,7 @@ function sendActivationWhatsapp(studentId){
   const msg =
 `السلام عليكم ورحمة الله وبركاته 🌿
 
-نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* في نظام *نور الحفظ* بنجاح ✅
+نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* ✅
 
 ━━━━━━━━━━━━━━
 📚 *الحلقة:* ${teacherCircle}
@@ -2456,6 +2461,23 @@ ${appUrl}
 
   openWhatsApp(s.parentPhone, msg);
   toast('✅ تم فتح واتساب بالرسالة');
+}
+
+
+// ════════════════════════════════════════
+//  LOAD ACTIVATED NIDS — تحميل الطلاب المفعّلين
+// ════════════════════════════════════════
+function loadActivatedNids(teacherUid){
+  db.collection('users')
+    .where('teacherId','==',teacherUid)
+    .where('role','==','student')
+    .where('status','==','approved')
+    .onSnapshot(snap=>{
+      activatedStudentNids = new Set(
+        snap.docs.map(d=>(d.data().nationalId||'').trim()).filter(Boolean)
+      );
+      renderStudentsList(); // تحديث القائمة فور تغيّر الحالة
+    }, e=>console.warn('activatedNids err',e));
 }
 
 </script>
