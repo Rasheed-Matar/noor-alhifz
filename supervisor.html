@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -220,6 +221,17 @@ select.form-input{cursor:pointer;}
 .orient-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;border:none;border-radius:8px;background:transparent;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:700;color:var(--ink2);cursor:pointer;transition:all .15s;}
 .orient-btn svg{flex-shrink:0;}
 .orient-btn.active{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;box-shadow:0 2px 8px rgba(27,107,74,.35);}
+.btn-gold{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--gold3),var(--gold));color:#fff;border:none;border-radius:12px;padding:10px 18px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 3px 12px rgba(160,120,40,.3);transition:all .2s;}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(160,120,40,.4);}
+.file-drop{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #ddd5b8;border-radius:12px;padding:13px;text-align:center;background:#fffdf7;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .2s;}
+.file-drop:hover{border-color:var(--em);background:#f5fbf7;}
+.file-drop.has-file{border-color:var(--em);background:#f0faf4;color:var(--em3);}
+.file-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.import-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.import-chip{flex:1;min-width:110px;border-radius:10px;padding:10px 8px;text-align:center;border:1px solid;}
+.import-chip .n{font-size:22px;font-weight:800;line-height:1;}
+.import-chip .l{font-size:11px;margin-top:4px;color:var(--ink2);}
+.import-progress{font-size:13px;color:var(--ink2);text-align:center;padding:10px;background:#f5f0e8;border-radius:10px;margin-top:12px;display:none;font-weight:600;}
 
 .msg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .msg-tab{padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:rgba(253,250,243,.9);font-family:"Tajawal",sans-serif;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .2s;}
@@ -455,6 +467,10 @@ select.form-input{cursor:pointer;}
       </div>
       <div class="list-toolbar">
         <input class="search-inp" placeholder="بحث بالاسم أو الحلقة..." oninput="filterTeachers(this.value)">
+        <button class="btn-gold" style="flex:none;" onclick="openDataReportModal('teachers')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          تقرير المحفّظين
+        </button>
         <button class="btn-save" style="flex:none;padding:10px 18px;" onclick="openAddTeacher()">+ إضافة محفّظ جديد</button>
       </div>
       <div class="card">
@@ -478,6 +494,14 @@ select.form-input{cursor:pointer;}
           <option value="">كل الحلقات</option>
         </select>
         <button class="btn-save" style="flex:none;padding:10px 18px;" onclick="openAddStudentAdmin()">+ إضافة طالب جديد</button>
+        <button class="btn-primary" style="flex:none;" onclick="openImportStudentsModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          استيراد من إكسل
+        </button>
+        <button class="btn-gold" style="flex:none;" onclick="openDataReportModal('students')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          تقرير الطلاب
+        </button>
         <button class="btn-primary" style="flex:none;" onclick="openActivateModal()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           تفعيل حسابات حلقة
@@ -721,6 +745,127 @@ select.form-input{cursor:pointer;}
         تنزيل PDF
       </button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-exam-report')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Data Report (Students / Teachers) -->
+<div class="modal-overlay" id="modal-data-report">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-head">
+      <span class="modal-head-title" id="dataRepModalTitle">📑 تقرير بيانات المركز</span>
+      <button class="modal-close" onclick="closeModal('modal-data-report')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pdf-filter-row">
+        <div class="form-group">
+          <label class="form-label">نوعُ التقريرِ</label>
+          <select class="form-input" id="dataRepType" onchange="onDataRepTypeChange()">
+            <option value="students">بياناتُ الطلابِ</option>
+            <option value="teachers">بياناتُ المحفّظينَ</option>
+          </select>
+        </div>
+        <div class="form-group" id="dataRepStudentScopeGroup">
+          <label class="form-label">نطاقُ الطلابِ</label>
+          <select class="form-input" id="dataRepStudentScope" onchange="onDataRepScopeChange()">
+            <option value="all">جميعُ الطلابِ (كلُّ حلقةٍ في صفحةٍ)</option>
+            <option value="one">حلقةٌ واحدةٌ فقط</option>
+          </select>
+        </div>
+        <div class="form-group" id="dataRepCircleGroup" style="display:none;">
+          <label class="form-label">اختر الحلقة</label>
+          <select class="form-input" id="dataRepCircle" onchange="refreshDataReportPreview()"></select>
+        </div>
+        <div class="form-group" id="dataRepStatusGroup">
+          <label class="form-label">حالةُ الطلابِ</label>
+          <select class="form-input" id="dataRepStudentStatus" onchange="refreshDataReportPreview()">
+            <option value="all">الكلُّ</option>
+            <option value="active">نشطٌ فقط</option>
+            <option value="archived">مؤرشفٌ فقط</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:190px;">
+          <label class="form-label">اتجاه الصفحة</label>
+          <div class="orient-toggle" id="dataRepOrientToggle">
+            <button type="button" class="orient-btn active" data-val="landscape" onclick="setDataRepOrientation('landscape')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+              أفقي
+            </button>
+            <button type="button" class="orient-btn" data-val="portrait" onclick="setDataRepOrientation('portrait')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+              عمودي
+            </button>
+          </div>
+        </div>
+        <div class="form-group" style="flex:0;">
+          <label class="form-label" style="opacity:0;">.</label>
+          <button class="btn-save" style="flex:none;padding:11px 16px;white-space:nowrap;" onclick="refreshDataReportPreview()">🔄 تحديث المعاينة</button>
+        </div>
+      </div>
+      <div class="pdf-preview-wrap">
+        <div class="pdf-preview-loading" id="dataRepPreviewLoading">جارٍ تحضير المعاينة...</div>
+        <iframe id="dataRepPreviewFrame" style="display:none;"></iframe>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="pdf-dl-btn" id="dataRepDownloadBtn" onclick="downloadDataReport()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تنزيل PDF
+      </button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-data-report')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import Students from Excel -->
+<div class="modal-overlay" id="modal-import-students">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-head">
+      <span class="modal-head-title">📥 استيراد طلاب من إكسل</span>
+      <button class="modal-close" onclick="closeModal('modal-import-students')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">المحفّظ / الحلقة المستقبِلة <span>*</span></label>
+        <select class="form-input" id="impTeacher"></select>
+      </div>
+
+      <div class="pdf-filter-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">الكشف الأساسي (يحتوي كل بيانات الطلاب) <span>*</span></label>
+          <label class="file-drop" id="impMasterLabel" for="impMasterFile">اضغط لاختيار الملف...
+            <input type="file" id="impMasterFile" accept=".xlsx,.xls,.csv" onchange="onImportFileChosen('impMasterFile','impMasterLabel')">
+          </label>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">كشف أرقام الهويات لهذه الحلقة <span>*</span></label>
+          <label class="file-drop" id="impIdsLabel" for="impIdsFile">اضغط لاختيار الملف...
+            <input type="file" id="impIdsFile" accept=".xlsx,.xls,.csv" onchange="onImportFileChosen('impIdsFile','impIdsLabel')">
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-save" id="impMatchBtn" style="margin-top:4px;" onclick="processStudentImport()">🔍 مطابقة البيانات</button>
+
+      <div id="impResultsWrap" style="display:none;margin-top:18px;">
+        <div class="import-summary">
+          <div class="import-chip" style="background:#f0faf4;border-color:#aee6c4;"><div class="n" id="impChipReady" style="color:#1b6b4a;">0</div><div class="l">✅ جاهز للإضافة</div></div>
+          <div class="import-chip" style="background:#fffbf0;border-color:#ffc107;"><div class="n" id="impChipExists" style="color:#b8860b;">0</div><div class="l">🟡 مسجّل مسبقاً</div></div>
+          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impChipNotFound" style="color:#c0392b;">0</div><div class="l">🔴 غير موجود</div></div>
+          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impChipNoName" style="color:#c0392b;">0</div><div class="l">⚠️ بدون اسم</div></div>
+        </div>
+        <div class="table-wrap" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;">
+          <table>
+            <thead><tr><th>#</th><th>رقم الهوية</th><th>الاسم</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+            <tbody id="impPreviewTable"></tbody>
+          </table>
+        </div>
+        <div class="import-progress" id="impProgressText"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="impConfirmBtn" disabled onclick="confirmStudentImport()">➕ إضافة الطلاب المطابقين</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-import-students')">إغلاق</button>
     </div>
   </div>
 </div>
@@ -999,7 +1144,7 @@ function buildFullName(first,father,grand,family){ return [first,father,grand,fa
 
 // فحص ما إذا كان رقم الهوية مسجلاً مسبقاً بأي دور (محفّظ / مختبر جودة / أدمن)
 // يمنع تسجيل نفس الشخص بدورين مختلفين بنفس رقم الهوية
-const roleLabelAr = {teacher:'محفّظ', examiner:'مختبر جودة', admin:'مشرف'};
+const roleLabelAr = {teacher:'محفّظ', examiner:'مختبر جودة', admin:'مشرف', student:'طالب'};
 async function findExistingUserByNid(nid){
   const snap = await db.collection('users').where('nationalId','==',nid).limit(1).get();
   if(snap.empty) return null;
@@ -1528,7 +1673,7 @@ function renderStats(){
     </div>`).join('');
 }
 
-['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report'].forEach(id=>{
+['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report','modal-data-report','modal-import-students'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
@@ -2030,6 +2175,790 @@ function exportSupervisorReportToPDF(html, label, orientation){
 
     frame.srcdoc=html;
   });
+}
+
+// ════════════════════════════════════════════════════════
+//  تقارير بيانات المركز (الطلاب / المحفّظون)
+//  تستخدم نفس ترويسة التقرير السابقة، وتحتوي توقيع المشرف فقط
+// ════════════════════════════════════════════════════════
+let dataRepOrientation='landscape';
+let _dataRepHTML='';
+
+function openDataReportModal(type){
+  document.getElementById('dataRepType').value = type || 'students';
+  onDataRepTypeChange();
+  document.getElementById('dataRepStudentScope').value='all';
+  document.getElementById('dataRepStudentStatus').value='all';
+  onDataRepScopeChange();
+  populateDataRepCircleOptions();
+  dataRepOrientation='landscape';
+  document.querySelectorAll('#dataRepOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val==='landscape'));
+  om('modal-data-report');
+  refreshDataReportPreview();
+}
+
+function setDataRepOrientation(val){
+  dataRepOrientation=val;
+  document.querySelectorAll('#dataRepOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===val));
+  refreshDataReportPreview();
+}
+
+function onDataRepTypeChange(){
+  const isStudents = document.getElementById('dataRepType').value==='students';
+  document.getElementById('dataRepStudentScopeGroup').style.display = isStudents?'':'none';
+  document.getElementById('dataRepStatusGroup').style.display = isStudents?'':'none';
+  document.getElementById('dataRepCircleGroup').style.display = (isStudents && document.getElementById('dataRepStudentScope').value==='one') ? '' : 'none';
+  document.getElementById('dataRepModalTitle').textContent = isStudents ? '📑 تقرير بيانات الطلاب' : '📑 تقرير بيانات المحفّظين';
+  refreshDataReportPreview();
+}
+
+function onDataRepScopeChange(){
+  const v=document.getElementById('dataRepStudentScope').value;
+  document.getElementById('dataRepCircleGroup').style.display = v==='one'?'':'none';
+  refreshDataReportPreview();
+}
+
+function populateDataRepCircleOptions(){
+  const sel=document.getElementById('dataRepCircle');
+  const circles=[...new Set(getTeachers().map(t=>t.circle||'حلقة القرآن'))].sort();
+  sel.innerHTML = circles.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option value="">لا توجد حلقات بعد</option>';
+}
+
+// ── جلب وتجميع بيانات الطلاب حسب النطاق المختار ──
+function getStudentsReportData(){
+  const scope = document.getElementById('dataRepStudentScope').value; // all | one
+  const teachers = getTeachers();
+
+  if(scope==='one'){
+    const circle = document.getElementById('dataRepCircle').value;
+    if(!circle){ toast('⚠️ اختر الحلقة'); return null; }
+    const groupTeachers = teachers.filter(t=>(t.circle||'حلقة القرآن')===circle);
+    let students=[];
+    groupTeachers.forEach(t=>{ (t.students||[]).forEach(s=>students.push({...s, teacherName:t.name})); });
+    return {
+      mode:'one',
+      circleLabel: circle,
+      groups: [{ circleLabel: circle, teacherNames: groupTeachers.map(t=>t.name).join('، ')||'—', students }]
+    };
+  }
+
+  const groups = teachers.map(t=>({
+    circleLabel: t.circle||'حلقة القرآن',
+    teacherNames: t.name,
+    students: (t.students||[])
+  }));
+  return { mode:'all', circleLabel:'جميعُ الحلقاتِ', groups };
+}
+
+// ── المكوّنات المشتركة لترويسة/توقيع/تذييل تقارير البيانات ──
+function dataReportBaseCSS(isPortrait){
+  return `
+  *{margin:0;padding:0;box-sizing:border-box;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+  @page{size:A4 ${isPortrait?'portrait':'landscape'};margin:10mm 12mm;}
+  body{font-family:'Tajawal',sans-serif;padding:0;color:#1a1a2e;background:#fff;font-size:15px;}
+  @media print{ body{padding:0;} }
+
+  .report-page{background:#fff;}
+  .report-page + .report-page{margin-top:26px;border-top:2px dashed #ddd6c4;padding-top:22px;}
+
+  .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1b6b4a;margin-bottom:6px;gap:14px;}
+  .center-info{text-align:center;flex:1;}
+  .center-name{font-family:'Amiri',serif;font-size:22px;font-weight:700;color:#1b6b4a;line-height:1.5;}
+  .center-sub{font-size:13px;color:#555;margin-top:3px;}
+  .logo-img{width:80px;height:80px;object-fit:contain;flex-shrink:0;}
+  .report-meta{text-align:left;font-size:13px;color:#555;line-height:1.9;min-width:190px;}
+  .report-meta b{color:#1a1a2e;}
+
+  .report-title-bar{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;text-align:center;padding:9px 16px;border-radius:8px;margin:10px 0 16px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .report-title-bar .sub{font-size:12px;font-weight:500;opacity:.85;}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+  .stat{border-radius:10px;padding:12px 8px;text-align:center;border:1px solid;}
+  .stat .n{font-size:26px;font-weight:800;line-height:1;}
+  .stat .l{font-size:12px;margin-top:4px;}
+  .stat.grn{background:#f0faf4;border-color:#aee6c4;} .stat.grn .n{color:#1b6b4a;} .stat.grn .l{color:#2e7d52;}
+  .stat.blu{background:#f0f4ff;border-color:#90caf9;} .stat.blu .n{color:#1565c0;} .stat.blu .l{color:#1565c0;}
+  .stat.red{background:#fff5f5;border-color:#f5c6cb;} .stat.red .n{color:#c0392b;} .stat.red .l{color:#c0392b;}
+  .stat.gld{background:#fffbf0;border-color:#ffc107;} .stat.gld .n{color:#b8860b;} .stat.gld .l{color:#b8860b;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead tr{background:linear-gradient(135deg,#0d4f35,#1b6b4a);}
+  th{color:#fff;padding:9px 8px;font-size:12px;font-weight:700;}
+  td{padding:8px 8px;border-bottom:1px solid #eaeae0;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .status-pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .status-pill.active{background:#f0faf4;color:#1b6b4a;}
+  .status-pill.archived{background:#f5f0e8;color:#a07828;}
+  .empty-note{text-align:center;padding:30px;color:#999;}
+
+  .signature-section{margin-top:28px;display:flex;justify-content:center;}
+  .signature-box{text-align:center;width:240px;}
+  .sig-title{font-size:13.5px;font-weight:700;color:#1b6b4a;margin-bottom:8px;}
+  .sig-name{font-family:'Amiri',serif;font-size:16px;font-weight:700;color:#1a1a2e;min-height:30px;margin-bottom:42px;}
+  .sig-line{border-top:1.5px solid #1b6b4a;padding-top:6px;font-size:12.5px;color:#888;}
+
+  .page-footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#aaa;border-top:1px solid #e5e5dc;padding-top:10px;}
+  .page-footer .seal{font-size:12.5px;color:#1b6b4a;font-weight:700;}
+
+  body.portrait .page-header{flex-direction:column;text-align:center;padding-bottom:12px;}
+  body.portrait .report-meta{text-align:center;min-width:0;}
+  body.portrait .stats{grid-template-columns:repeat(2,1fr);}
+  body.portrait table{font-size:10.5px;}
+  body.portrait th{padding:6px 4px;font-size:9.5px;}
+  body.portrait td{padding:6px 4px;font-size:10px;}
+  body.portrait .center-name{font-size:18px;}
+  `;
+}
+
+function dataReportHeaderHTML(metaHTML){
+  const logoSrc=(document.querySelector('.nav-logo img')||{}).src||'';
+  return `
+  <div class="page-header">
+    <img src="${logoSrc}" class="logo-img" alt="شعار المركز">
+    <div class="center-info">
+      <div class="center-name">مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ<br>والسُّنَّةِ النبويةِ</div>
+      <div class="center-sub">المسجد الكبير — النصيرات</div>
+    </div>
+    <div class="report-meta">${metaHTML}</div>
+  </div>`;
+}
+
+function dataReportSignatureHTML(){
+  return `
+  <div class="signature-section">
+    <div class="signature-box">
+      <div class="sig-title">توقيعُ المشرفِ</div>
+      <div class="sig-name">${currentSupervisorName}</div>
+      <div class="sig-line">التوقيعُ والختمُ</div>
+    </div>
+  </div>`;
+}
+
+function dataReportFooterHTML(){
+  return `
+  <div class="page-footer">
+    <span>مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ — المسجد الكبير، النصيرات</span>
+    <span class="seal">وثيقةٌ رسميةٌ ✦</span>
+  </div>`;
+}
+
+function wrapReportPage(innerHTML){
+  return `<div class="report-page">${innerHTML}</div>`;
+}
+
+function buildDataReportDocument(pagesArray, orientation){
+  const isPortrait = orientation==='portrait';
+  return `<!DOCTYPE html><html lang="ar" dir="rtl">
+<head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>${dataReportBaseCSS(isPortrait)}</style>
+</head><body class="${isPortrait?'portrait':'landscape'}">
+${pagesArray.join('\n')}
+</body></html>`;
+}
+
+// ── صفحة طلاب حلقة واحدة (تتكرّر لكل حلقة عند اختيار "جميع الطلاب") ──
+function buildStudentsGroupPage(group, label, statusF, statusLabel){
+  const now=new Date();
+  const all = group.students||[];
+  const active = all.filter(s=>!s.archived);
+  const archived = all.filter(s=>s.archived);
+  const shown = statusF==='active' ? active : statusF==='archived' ? archived : all;
+  const sorted = [...shown].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+
+  const rows = sorted.map((s,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
+      <td style="text-align:center;color:#888;font-size:12px;">${i+1}</td>
+      <td><b>${s.name||'—'}</b></td>
+      <td style="direction:ltr;text-align:center;font-size:12.5px;">${s.nationalId||'—'}</td>
+      <td style="text-align:center;font-size:12.5px;">${fmtDate(s.dob)}</td>
+      <td style="text-align:center;font-size:12.5px;">${s.placeOfBirth||'—'}</td>
+      <td style="text-align:center;">${s.gender||'—'}</td>
+      <td style="text-align:center;">الجزء ${s.juz??0}</td>
+      <td style="direction:ltr;text-align:center;font-size:12.5px;">${s.parentPhone||'—'}</td>
+      <td style="text-align:center;"><span class="status-pill ${s.archived?'archived':'active'}">${s.archived?'مؤرشف':'نشط'}</span></td>
+    </tr>`).join('');
+
+  const emptyRow = sorted.length?'':`<tr><td colspan="9" class="empty-note">لا يوجد طلابٌ${statusF!=='all'?' بهذه الحالةِ':''} في هذه الحلقةِ</td></tr>`;
+
+  const metaHTML = `
+    المشرفُ: <b>${currentSupervisorName}</b><br>
+    الحلقةُ: <b>${group.circleLabel}</b><br>
+    المحفِّظُ: <b>${group.teacherNames||'—'}</b><br>
+    تاريخُ الطباعةِ: <b>${now.toLocaleDateString('ar-EG')}</b><br>
+    الوقتُ: <b>${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</b>
+  `;
+
+  return wrapReportPage(`
+    ${dataReportHeaderHTML(metaHTML)}
+    <div class="report-title-bar"><span>${label}</span><span class="sub">${group.circleLabel} — تصفيةُ الحالةِ: ${statusLabel}</span></div>
+    <div class="stats">
+      <div class="stat grn"><div class="n">${all.length}</div><div class="l">إجماليُّ الطلابِ</div></div>
+      <div class="stat blu"><div class="n">${active.length}</div><div class="l">الطلابُ النشطونَ</div></div>
+      <div class="stat red"><div class="n">${archived.length}</div><div class="l">الطلابُ المؤرشفونَ</div></div>
+      <div class="stat gld"><div class="n">${sorted.length}</div><div class="l">المعروضونَ في التقريرِ</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>#</th><th>اسمُ الطالبِ</th><th>رقمُ الهويةِ</th><th>تاريخُ الميلادِ</th><th>مكانُ الميلادِ</th><th>الجنسُ</th><th>الجزءُ</th><th>جوالُ وليِّ الأمرِ</th><th>الحالةُ</th>
+      </tr></thead>
+      <tbody>${rows||emptyRow}</tbody>
+    </table>
+    ${dataReportSignatureHTML()}
+    ${dataReportFooterHTML()}
+  `);
+}
+
+function buildStudentsReportHTML(data, orientation, statusF, statusLabel){
+  const label='تقريرُ بياناتِ الطلابِ';
+  const pages = data.groups.map(g=>buildStudentsGroupPage(g, label, statusF, statusLabel));
+  return buildDataReportDocument(pages, orientation);
+}
+
+// ── صفحة بيانات جميع المحفّظين (صفحة واحدة) ──
+function buildTeachersReportPage(teachers, label){
+  const now=new Date();
+  const rows = teachers.map((t,i)=>{
+    const joined = t.createdAt ? (t.createdAt.toDate ? t.createdAt.toDate() : t.createdAt) : null;
+    return `
+    <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
+      <td style="text-align:center;color:#888;font-size:12px;">${i+1}</td>
+      <td><b>${t.name||'—'}</b></td>
+      <td style="direction:ltr;text-align:center;font-size:12.5px;">${t.nationalId||'—'}</td>
+      <td style="text-align:center;font-size:12.5px;">${fmtDate(t.dob)}</td>
+      <td style="text-align:center;font-size:12.5px;">${t.placeOfBirth||'—'}</td>
+      <td style="direction:ltr;text-align:center;font-size:12.5px;">${t.phone||'—'}</td>
+      <td style="text-align:center;">${t.circle||'حلقة القرآن'}</td>
+      <td style="text-align:center;font-weight:800;color:#1b6b4a;">${(t.students||[]).length}</td>
+      <td style="text-align:center;font-size:12px;">${joined?fmtDate(joined):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const emptyRow = teachers.length?'':`<tr><td colspan="9" class="empty-note">لا يوجد محفّظونَ مسجّلونَ بعد</td></tr>`;
+  const totalStudents = teachers.reduce((s,t)=>s+(t.students||[]).length,0);
+  const circlesCount = new Set(teachers.map(t=>t.circle||'حلقة القرآن')).size;
+
+  const metaHTML = `
+    المشرفُ: <b>${currentSupervisorName}</b><br>
+    عددُ المحفّظينَ: <b>${teachers.length}</b><br>
+    تاريخُ الطباعةِ: <b>${now.toLocaleDateString('ar-EG')}</b><br>
+    الوقتُ: <b>${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</b>
+  `;
+
+  return wrapReportPage(`
+    ${dataReportHeaderHTML(metaHTML)}
+    <div class="report-title-bar"><span>${label}</span></div>
+    <div class="stats">
+      <div class="stat grn"><div class="n">${teachers.length}</div><div class="l">إجماليُّ المحفّظينَ</div></div>
+      <div class="stat blu"><div class="n">${circlesCount}</div><div class="l">عددُ الحلقاتِ</div></div>
+      <div class="stat gld"><div class="n">${totalStudents}</div><div class="l">إجماليُّ الطلابِ</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>#</th><th>اسمُ المحفّظِ</th><th>رقمُ الهويةِ</th><th>تاريخُ الميلادِ</th><th>مكانُ الميلادِ</th><th>الجوالُ</th><th>الحلقةُ</th><th>عددُ الطلابِ</th><th>تاريخُ الانضمامِ</th>
+      </tr></thead>
+      <tbody>${rows||emptyRow}</tbody>
+    </table>
+    ${dataReportSignatureHTML()}
+    ${dataReportFooterHTML()}
+  `);
+}
+
+function buildTeachersReportHTML(orientation){
+  const teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  const label='تقريرُ بياناتِ المحفّظينَ';
+  return buildDataReportDocument([buildTeachersReportPage(teachers,label)], orientation);
+}
+
+// ── تجميع التقرير الحالي حسب اختيارات النافذة ──
+function buildCurrentDataReportHTML(){
+  const type=document.getElementById('dataRepType').value;
+
+  if(type==='teachers'){
+    return { html: buildTeachersReportHTML(dataRepOrientation), label:'تقرير_بيانات_المحفظين' };
+  }
+
+  const statusF=document.getElementById('dataRepStudentStatus').value;
+  const statusLabel={all:'الكلُّ',active:'نشطٌ فقط',archived:'مؤرشفٌ فقط'}[statusF];
+  const data=getStudentsReportData();
+  if(!data) return null;
+
+  const html = buildStudentsReportHTML(data, dataRepOrientation, statusF, statusLabel);
+  const safeCircle=(data.circleLabel||'الكل').replace(/\s+/g,'_');
+  return { html, label:'تقرير_بيانات_الطلاب_'+safeCircle };
+}
+
+function refreshDataReportPreview(){
+  const result=buildCurrentDataReportHTML();
+  if(!result) return;
+  _dataRepHTML=result.html;
+
+  const frame=document.getElementById('dataRepPreviewFrame');
+  const loading=document.getElementById('dataRepPreviewLoading');
+  loading.style.display='none';
+  frame.style.display='block';
+  frame.srcdoc=_dataRepHTML;
+}
+
+async function downloadDataReport(){
+  const result=buildCurrentDataReportHTML();
+  if(!result) return;
+  _dataRepHTML=result.html;
+
+  const btn=document.getElementById('dataRepDownloadBtn');
+  const originalHTML=btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحضير...</span>';
+
+  try{
+    await exportDataReportToPDF(_dataRepHTML, result.label, dataRepOrientation);
+    toast('✅ تم تنزيل ملف PDF بنجاح');
+  } catch(e){
+    toast('⚠️ خطأ في تحضير التقرير: '+e.message);
+    console.error(e);
+  }
+
+  btn.disabled=false;
+  btn.innerHTML=originalHTML;
+}
+
+// يصدّر تقرير البيانات إلى PDF، مع دعم عدّة "صفحات تقرير" مستقلة (.report-page)
+// بحيث تبدأ كلُّ حلقةٍ/محفّظ في صفحةٍ جديدةٍ تمامًا، وتُقسَّم الصفحة الواحدة تلقائيًا
+// إلى أكثر من صفحة PDF إذا تجاوز محتواها ارتفاع الصفحة.
+function exportDataReportToPDF(html, label, orientation){
+  orientation = orientation || 'landscape';
+  return new Promise((resolve,reject)=>{
+    const old=document.getElementById('dataRepExportFrame');
+    if(old) old.remove();
+
+    const frameWidth = orientation==='portrait' ? 950 : 1400;
+    const frame=document.createElement('iframe');
+    frame.id='dataRepExportFrame';
+    frame.style.cssText=`position:fixed;left:-9999px;top:0;width:${frameWidth}px;height:600px;border:none;background:#fff;`;
+    document.body.appendChild(frame);
+
+    frame.onload=async function(){
+      try{
+        const fdoc=frame.contentDocument;
+        if(fdoc.fonts && fdoc.fonts.ready) await fdoc.fonts.ready;
+        await new Promise(r=>setTimeout(r,350));
+
+        let pages=[...fdoc.querySelectorAll('.report-page')];
+        if(!pages.length) pages=[fdoc.body];
+
+        const {jsPDF}=window.jspdf;
+        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4'});
+        const pageWidth=pdf.internal.pageSize.getWidth();
+        const pageHeight=pdf.internal.pageSize.getHeight();
+        const margin=12;
+        const usableWidth=pageWidth-margin*2;
+        const usableHeight=pageHeight-margin*2;
+
+        let isFirstPdfPage=true;
+
+        for(const target of pages){
+          const canvas=await html2canvas(target,{
+            scale:3,
+            useCORS:true,
+            backgroundColor:'#ffffff',
+            width:target.scrollWidth,
+            height:target.scrollHeight,
+            windowWidth:target.scrollWidth,
+            windowHeight:target.scrollHeight
+          });
+
+          const imgData=canvas.toDataURL('image/png');
+          const imgWidth=usableWidth;
+          const imgHeight=canvas.height*imgWidth/canvas.width;
+
+          let heightLeft=imgHeight;
+          let position=margin;
+
+          if(!isFirstPdfPage) pdf.addPage();
+          isFirstPdfPage=false;
+
+          pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+          heightLeft-=usableHeight;
+
+          while(heightLeft>0){
+            position=margin-(imgHeight-heightLeft);
+            pdf.addPage();
+            pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+            heightLeft-=usableHeight;
+          }
+        }
+
+        const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
+        pdf.save(`${safeLabel}.pdf`);
+
+        frame.remove();
+        resolve();
+      } catch(e){
+        frame.remove();
+        reject(e);
+      }
+    };
+
+    frame.srcdoc=html;
+  });
+}
+
+
+// ════════════════════════════════════════════════════════
+//  استيراد طلاب من إكسل — مطابقة أرقام الهوية مع الكشف الأساسي
+// ════════════════════════════════════════════════════════
+const FIELD_SYNONYMS = {
+  nationalId: ['رقم الهويه','الهويه','رقم هويه الطالب','رقم البطاقه','الرقم القومي','هويه الطالب'],
+  fullName: ['الاسم','الاسم الكامل','الاسم الرباعي','اسم الطالب'],
+  firstName: ['الاسم الاول','اسم الطالب الاول','الاسم1'],
+  fatherName: ['اسم الاب','الاسم الثاني','الاسم2'],
+  grandfatherName: ['اسم الجد','الاسم الثالث','الاسم3'],
+  familyName: ['اسم العائله','العائله','اسم الاسره','الاسره','الاسم الرابع','الاسم4','اللقب','الكنيه'],
+  dob: ['تاريخ الميلاد','الميلاد','تاريخ الولاده'],
+  pob: ['مكان الميلاد','مكان الولاده'],
+  gender: ['الجنس','النوع'],
+  parentPhone: ['جوال ولي الامر','رقم جوال ولي الامر','الجوال','رقم الجوال','الهاتف','رقم الهاتف','جوال الطالب'],
+  juz: ['الجزء','الجزء الحالي','جزء الحفظ'],
+  notes: ['ملاحظات','ملاحظه']
+};
+
+let _importMatches=[], _importTeacherId=null;
+
+function normHeader(h){
+  return String(h||'').trim().toLowerCase()
+    .replace(/[\u064B-\u0652]/g,'')
+    .replace(/[إأآا]/g,'ا')
+    .replace(/ة/g,'ه')
+    .replace(/\s+/g,' ');
+}
+
+function findMasterColumn(sampleRow, fieldKey){
+  const syns = FIELD_SYNONYMS[fieldKey].map(normHeader);
+  const keys = Object.keys(sampleRow);
+  for(const k of keys){ if(syns.includes(normHeader(k))) return k; }
+  for(const k of keys){ const nk=normHeader(k); if(syns.some(s=>nk.includes(s)||s.includes(nk))) return k; }
+  return null;
+}
+
+function buildMasterHeaderMap(sampleRow){
+  const map={};
+  Object.keys(FIELD_SYNONYMS).forEach(f=>{ map[f]=findMasterColumn(sampleRow,f); });
+  return map;
+}
+
+function excelValueToISODate(v){
+  if(!v) return '';
+  if(v instanceof Date) return isNaN(v.getTime()) ? '' : v.toISOString().slice(0,10);
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m){ const [,d,mo,y]=m; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+  const d2=new Date(s);
+  if(!isNaN(d2.getTime())) return d2.toISOString().slice(0,10);
+  return '';
+}
+
+function normalizeGender(v){
+  const s=(v||'').trim();
+  if(/^(ذكر|m|male|ذ)$/i.test(s)) return 'ذكر';
+  if(/^(انثى|أنثى|f|female|ث)$/i.test(s)) return 'أنثى';
+  return s || 'ذكر';
+}
+
+function normalizePhone(v){
+  let s=String(v||'').trim().replace(/[\s\-()]/g,'');
+  if(s.startsWith('+970')) s='0'+s.slice(4);
+  else if(s.startsWith('00970')) s='0'+s.slice(5);
+  else if(/^970\d{9}$/.test(s)) s='0'+s.slice(3);
+  if(/^5[0-9]{8}$/.test(s)) s='0'+s;
+  return s;
+}
+
+function extractIdCandidates(aoa){
+  const found=new Set();
+  aoa.forEach(row=>{
+    (row||[]).forEach(cell=>{
+      if(cell===''||cell==null) return;
+      let s=String(cell).trim().replace(/[\s\-]/g,'');
+      if(/^\d{6,9}$/.test(s)){
+        if(s.length<9) s=s.padStart(9,'0');
+        found.add(s);
+      }
+    });
+  });
+  return [...found];
+}
+
+function extractMasterRecord(row, map){
+  const nidRaw = map.nationalId? row[map.nationalId] : '';
+  let nid = String(nidRaw||'').trim().replace(/[\s\-]/g,'');
+  if(/^\d{1,8}$/.test(nid)) nid = nid.padStart(9,'0');
+  if(!/^\d{9}$/.test(nid)) return null;
+
+  let firstName='', fatherName='', grandfatherName='', familyName='';
+  if(map.fullName && row[map.fullName]){
+    const parts=String(row[map.fullName]).trim().split(/\s+/);
+    firstName=parts[0]||''; fatherName=parts[1]||''; grandfatherName=parts[2]||'';
+    familyName = parts.length>3 ? parts.slice(3).join(' ') : (parts[parts.length-1]||'');
+  }
+  if(map.firstName && row[map.firstName]) firstName=String(row[map.firstName]).trim();
+  if(map.fatherName && row[map.fatherName]) fatherName=String(row[map.fatherName]).trim();
+  if(map.grandfatherName && row[map.grandfatherName]) grandfatherName=String(row[map.grandfatherName]).trim();
+  if(map.familyName && row[map.familyName]) familyName=String(row[map.familyName]).trim();
+
+  const fullName = [firstName,fatherName,grandfatherName,familyName].filter(Boolean).join(' ');
+
+  const dob = excelValueToISODate(map.dob? row[map.dob] : '');
+  const pob = map.pob? String(row[map.pob]||'').trim() : '';
+  const gender = normalizeGender(map.gender? row[map.gender] : '');
+  const phone = normalizePhone(map.parentPhone? row[map.parentPhone] : '');
+
+  let juz = map.juz? parseInt(row[map.juz]) : 0;
+  if(isNaN(juz)||juz<0||juz>30) juz=0;
+
+  const notes = map.notes? String(row[map.notes]||'').trim() : '';
+
+  return { nationalId:nid, firstName,fatherName,grandfatherName,familyName, name:fullName, dob, placeOfBirth:pob, gender, parentPhone:phone, juz, notes };
+}
+
+function readExcelAsObjects(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(sheet,{defval:''}));
+      }catch(err){ reject(err); }
+    };
+    reader.onerror=()=>reject(new Error('فشل في قراءة الملف'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function readExcelAsAOA(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}));
+      }catch(err){ reject(err); }
+    };
+    reader.onerror=()=>reject(new Error('فشل في قراءة الملف'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function openImportStudentsModal(){
+  const sel=document.getElementById('impTeacher');
+  sel.innerHTML = getTeachers().map(t=>`<option value="${t.id}">${t.name} — ${t.circle||'حلقة القرآن'}</option>`).join('') || '<option value="">لا يوجد محفّظون معتمدون</option>';
+
+  document.getElementById('impMasterFile').value='';
+  document.getElementById('impIdsFile').value='';
+  const ml=document.getElementById('impMasterLabel'); ml.firstChild.textContent='اضغط لاختيار الملف...'; ml.classList.remove('has-file');
+  const il=document.getElementById('impIdsLabel'); il.firstChild.textContent='اضغط لاختيار الملف...'; il.classList.remove('has-file');
+
+  document.getElementById('impResultsWrap').style.display='none';
+  document.getElementById('impProgressText').style.display='none';
+  const confirmBtn=document.getElementById('impConfirmBtn');
+  confirmBtn.disabled=true;
+  confirmBtn.textContent='➕ إضافة الطلاب المطابقين';
+
+  _importMatches=[]; _importTeacherId=null;
+  om('modal-import-students');
+}
+
+function onImportFileChosen(inputId, labelId){
+  const input=document.getElementById(inputId);
+  const label=document.getElementById(labelId);
+  if(input.files && input.files[0]){
+    label.firstChild.textContent='📄 '+input.files[0].name;
+    label.classList.add('has-file');
+  } else {
+    label.firstChild.textContent='اضغط لاختيار الملف...';
+    label.classList.remove('has-file');
+  }
+}
+
+async function processStudentImport(){
+  const teacherId=document.getElementById('impTeacher').value;
+  const masterFile=document.getElementById('impMasterFile').files[0];
+  const idsFile=document.getElementById('impIdsFile').files[0];
+
+  if(!teacherId){ toast('⚠️ اختر المحفّظ/الحلقة المستقبِلة'); return; }
+  if(!masterFile){ toast('⚠️ اختر الكشف الأساسي'); return; }
+  if(!idsFile){ toast('⚠️ اختر كشف أرقام الهويات'); return; }
+
+  const btn=document.getElementById('impMatchBtn');
+  const orig=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ جارٍ التحليل...';
+
+  try{
+    const masterRows = await readExcelAsObjects(masterFile);
+    const idsAOA = await readExcelAsAOA(idsFile);
+
+    if(!masterRows.length){ toast('⚠️ الكشف الأساسي فارغ أو غير مقروء'); return; }
+
+    const headerMap = buildMasterHeaderMap(masterRows[0]);
+    if(!headerMap.nationalId){ toast('⚠️ لم أجد عمود "رقم الهوية" في الكشف الأساسي — تأكد من وجود عمود بهذا العنوان'); return; }
+
+    const masterByNid = {};
+    masterRows.forEach(row=>{
+      const rec = extractMasterRecord(row, headerMap);
+      if(rec) masterByNid[rec.nationalId] = rec;
+    });
+
+    const requestedIds = extractIdCandidates(idsAOA);
+    if(!requestedIds.length){ toast('⚠️ لم أجد أي أرقام هوية صالحة (9 أرقام) في الكشف'); return; }
+
+    const teacherObj = allUsers.find(u=>u.id===teacherId);
+    const existingTeacherNids = new Set((teacherObj?.students||[]).map(s=>s.nationalId));
+
+    const matches = requestedIds.map(nid=>{
+      const inMaster = masterByNid[nid];
+      const existingUser = allUsers.find(u=>u.nationalId===nid);
+
+      if(existingTeacherNids.has(nid)){
+        return {nid, status:'exists', note:'مسجّل بالفعل لدى هذا المحفّظ', record:inMaster||null};
+      }
+      if(existingUser){
+        return {nid, status:'exists', note:'مسجّل بالفعل كـ '+(roleLabelAr[existingUser.role]||existingUser.role), record:inMaster||null};
+      }
+      if(!inMaster){
+        return {nid, status:'not_found', note:'غير موجود في الكشف الأساسي', record:null};
+      }
+      if(!inMaster.name || !inMaster.name.trim()){
+        return {nid, status:'no_name', note:'لا يوجد اسم في الكشف الأساسي', record:inMaster};
+      }
+
+      const warnings=[];
+      if(!inMaster.dob) warnings.push('بدون تاريخ ميلاد');
+      if(!inMaster.placeOfBirth) warnings.push('بدون مكان ميلاد');
+      if(!/^05[0-9]{8}$/.test(inMaster.parentPhone)) warnings.push('جوال غير صالح');
+
+      return {nid, status:'ready', note: warnings.join('، ')||'جاهز', record:inMaster};
+    });
+
+    _importMatches = matches;
+    _importTeacherId = teacherId;
+    renderImportPreview(matches);
+  } catch(e){
+    console.error(e);
+    toast('⚠️ خطأ في قراءة الملفات: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+
+function renderImportPreview(matches){
+  const counts={};
+  matches.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+
+  document.getElementById('impChipReady').textContent=counts.ready||0;
+  document.getElementById('impChipExists').textContent=counts.exists||0;
+  document.getElementById('impChipNotFound').textContent=counts.not_found||0;
+  document.getElementById('impChipNoName').textContent=counts.no_name||0;
+
+  const statusMeta={
+    ready:    {label:'✅ جاهز للإضافة', cls:'badge-green'},
+    exists:   {label:'🟡 مسجّل مسبقاً', cls:'badge-gold'},
+    not_found:{label:'🔴 غير موجود',   cls:'badge-red'},
+    no_name:  {label:'⚠️ بدون اسم',    cls:'badge-red'}
+  };
+
+  const tb=document.getElementById('impPreviewTable');
+  tb.innerHTML = matches.map((m,i)=>{
+    const meta=statusMeta[m.status];
+    const name=m.record?(m.record.name||'—'):'—';
+    return `<tr>
+      <td style="text-align:center;color:#888;">${i+1}</td>
+      <td style="direction:ltr;text-align:center;">${m.nid}</td>
+      <td>${name}</td>
+      <td><span class="badge ${meta.cls}">${meta.label}</span></td>
+      <td style="font-size:12px;color:#888;">${m.note||''}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('impResultsWrap').style.display='';
+  const readyCount=counts.ready||0;
+  const confirmBtn=document.getElementById('impConfirmBtn');
+  confirmBtn.disabled = readyCount===0;
+  confirmBtn.textContent = `➕ إضافة ${readyCount} طالب`;
+}
+
+async function confirmStudentImport(){
+  const ready = (_importMatches||[]).filter(m=>m.status==='ready');
+  if(!ready.length) return;
+
+  const teacherId=_importTeacherId;
+  const teacherObj=allUsers.find(u=>u.id===teacherId);
+  if(!teacherObj){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+
+  const btn=document.getElementById('impConfirmBtn');
+  btn.disabled=true;
+  const progEl=document.getElementById('impProgressText');
+  progEl.style.display='';
+
+  let successList=[...(teacherObj.students||[])];
+  let okCount=0, failCount=0;
+  const failedRows=[];
+
+  for(let i=0;i<ready.length;i++){
+    const m=ready[i];
+    const r=m.record;
+    progEl.textContent=`جارٍ إضافة ${i+1} من ${ready.length}: ${r.name}...`;
+
+    try{
+      const email=nidToEmail(r.nationalId);
+      const cred=await secondaryAuth.createUserWithEmailAndPassword(email, r.nationalId);
+      const studentUid=cred.user.uid;
+      await secondaryAuth.signOut();
+
+      const studentLocalId=uidGen();
+      await db.collection('users').doc(studentUid).set({
+        name:r.name, firstName:r.firstName, fatherName:r.fatherName, grandfatherName:r.grandfatherName, familyName:r.familyName,
+        nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth, gender:r.gender,
+        phone:r.parentPhone, circle: teacherObj.circle||'حلقة القرآن',
+        role:'student', status:'approved',
+        teacherId: teacherId, studentId: studentLocalId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      successList.push({
+        id:studentLocalId, name:r.name,
+        firstName:r.firstName, fatherName:r.fatherName, grandfatherName:r.grandfatherName, familyName:r.familyName,
+        nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth, gender:r.gender,
+        parentPhone:r.parentPhone, juz:r.juz, notes:r.notes||'', archived:false, addedAt:new Date().toISOString()
+      });
+      okCount++;
+    } catch(e){
+      failCount++;
+      failedRows.push(r.name+' ('+r.nationalId+'): '+e.message);
+      try{ await secondaryAuth.signOut(); }catch(_){}
+    }
+  }
+
+  progEl.textContent='⏳ جارٍ حفظ القائمة النهائية...';
+  try{
+    await db.collection('userdata').doc(teacherId).set({students:successList},{merge:true});
+  } catch(e){
+    toast('⚠️ خطأ في حفظ قائمة الطلاب: '+e.message);
+  }
+
+  progEl.style.display='none';
+  btn.disabled=false;
+
+  if(failCount===0){
+    toast(`✅ تمت إضافة ${okCount} طالباً بنجاح — كلمة المرور الافتراضية: رقم الهوية`);
+  } else {
+    toast(`⚠️ أُضيف ${okCount}، وفشل ${failCount} — راجع الكونسول للتفاصيل`);
+    console.warn('فشل استيراد الطلاب التالية:', failedRows);
+  }
+
+  closeModal('modal-import-students');
 }
 
 
