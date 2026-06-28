@@ -163,6 +163,25 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 
 .divider{height:1px;background:var(--border);margin:12px 0;}
 .section-lbl{font-size:12px;font-weight:700;color:var(--txm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+
+/* CHANGE PASSWORD MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25);transform:translateY(20px);transition:transform .25s;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-hdr{background:linear-gradient(135deg,var(--em3),var(--em));padding:20px;color:#fff;text-align:center;}
+.modal-hdr-ico{font-size:36px;margin-bottom:8px;}
+.modal-hdr-title{font-size:16px;font-weight:700;}
+.modal-hdr-sub{font-size:12px;opacity:.85;margin-top:4px;}
+.modal-body{padding:20px;}
+.inp-group{margin-bottom:14px;}
+.inp-group label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px;}
+.inp-group input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}
+.inp-group input:focus{border-color:var(--em);}
+.inp-err{font-size:11px;color:var(--red);margin-top:4px;display:none;}
+.btn-save-pw{width:100%;padding:14px;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;}
+.btn-save-pw:disabled{opacity:.6;cursor:not-allowed;}
+.pw-hint{font-size:12px;color:var(--txm);background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7;}
 </style>
 </head>
 <body>
@@ -340,6 +359,34 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 
 </div><!-- /main -->
 
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="modal-change-pw">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-hdr-ico">🔐</div>
+      <div class="modal-hdr-title">مرحباً بك في بوابة الطالب!</div>
+      <div class="modal-hdr-sub">لحماية حسابك، يرجى تغيير كلمة المرور الآن</div>
+    </div>
+    <div class="modal-body">
+      <div class="pw-hint">
+        🔑 كلمة المرور الحالية هي <strong>رقم هويتك</strong><br>
+        اختر كلمة مرور جديدة لا تشاركها مع أحد
+      </div>
+      <div class="inp-group">
+        <label>كلمة المرور الجديدة</label>
+        <input type="password" id="pw-new" placeholder="6 أحرف أو أكثر" oninput="pwValidate()">
+        <div class="inp-err" id="pw-new-err"></div>
+      </div>
+      <div class="inp-group">
+        <label>تأكيد كلمة المرور</label>
+        <input type="password" id="pw-confirm" placeholder="أعد كتابة كلمة المرور" oninput="pwValidate()">
+        <div class="inp-err" id="pw-confirm-err"></div>
+      </div>
+      <button class="btn-save-pw" id="btn-save-pw" onclick="saveNewPassword()">حفظ كلمة المرور الجديدة</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -444,8 +491,8 @@ function enterApp(user, userData){
   ls.classList.add('hide');
   setTimeout(()=>ls.classList.add('gone'),300);
 
-  myStudentId = userData.studentId;      // id الطالب في بيانات المعلم
-  myTeacherId = userData.teacherId;      // uid المعلم
+  myStudentId = userData.studentId;
+  myTeacherId = userData.teacherId;
 
   document.getElementById('hdrAvatar').textContent = ini(userData.name||user.email);
   document.getElementById('hdrName').textContent   = userData.name||user.email;
@@ -454,6 +501,63 @@ function enterApp(user, userData){
 
   loadTeacherData();
   loadExamResults();
+
+  // إظهار رسالة تغيير كلمة المرور عند أول دخول
+  if(userData.firstLogin){
+    setTimeout(()=>document.getElementById('modal-change-pw').classList.add('open'), 800);
+  }
+}
+
+// ════════════════════════════════════════
+//  CHANGE PASSWORD
+// ════════════════════════════════════════
+function pwValidate(){
+  const pw     = document.getElementById('pw-new').value;
+  const conf   = document.getElementById('pw-confirm').value;
+  const errNew = document.getElementById('pw-new-err');
+  const errCon = document.getElementById('pw-confirm-err');
+  const btn    = document.getElementById('btn-save-pw');
+  let valid = true;
+
+  if(pw.length > 0 && pw.length < 6){
+    errNew.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    errNew.style.display = 'block';
+    valid = false;
+  } else { errNew.style.display = 'none'; }
+
+  if(conf.length > 0 && pw !== conf){
+    errCon.textContent = 'كلمتا المرور غير متطابقتين';
+    errCon.style.display = 'block';
+    valid = false;
+  } else { errCon.style.display = 'none'; }
+
+  btn.disabled = !(pw.length >= 6 && pw === conf);
+  return valid;
+}
+
+async function saveNewPassword(){
+  const pw = document.getElementById('pw-new').value;
+  if(pw.length < 6 || pw !== document.getElementById('pw-confirm').value) return;
+
+  const btn = document.getElementById('btn-save-pw');
+  btn.textContent = '⏳ جارٍ الحفظ...'; btn.disabled = true;
+
+  try {
+    await currentUser.updatePassword(pw);
+    // إزالة علامة firstLogin من Firestore
+    await db.collection('users').doc(currentUser.uid).update({ firstLogin: false });
+    document.getElementById('modal-change-pw').classList.remove('open');
+    toast('✅ تم تغيير كلمة المرور بنجاح');
+  } catch(e){
+    if(e.code === 'auth/requires-recent-login'){
+      // إعادة المصادقة ثم تغيير كلمة المرور
+      toast('⚠️ يرجى تسجيل الخروج والدخول مجدداً ثم تغيير كلمة المرور');
+      btn.textContent = 'حفظ كلمة المرور الجديدة'; btn.disabled = false;
+    } else {
+      toast('⚠️ خطأ: ' + e.message);
+      btn.textContent = 'حفظ كلمة المرور الجديدة'; btn.disabled = false;
+    }
+  }
 }
 
 // ════════════════════════════════════════
