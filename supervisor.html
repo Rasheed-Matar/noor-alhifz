@@ -471,6 +471,10 @@ select.form-input{cursor:pointer;}
           <option value="">كل الحلقات</option>
         </select>
         <button class="btn-save" style="flex:none;padding:10px 18px;" onclick="openAddStudentAdmin()">+ إضافة طالب جديد</button>
+        <button class="btn-primary" style="flex:none;" onclick="openActivateModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          تفعيل حسابات حلقة
+        </button>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -1989,7 +1993,211 @@ showPage=function(page){
   _origShowPage(page);
   if(page==='quality'){renderExaminers();loadExamResultsAdmin();}
 };
+
+// ════════════════════════════════════════
+//  ACTIVATE STUDENT ACCOUNTS (تفعيل حسابات حلقة)
+// ════════════════════════════════════════
+const secondaryAppAct = firebase.initializeApp(firebaseConfig, 'ActivateSecondary');
+const secondaryAuthAct = secondaryAppAct.auth();
+
+function openActivateModal(){
+  // ملء قائمة الحلقات
+  const sel = document.getElementById('act-circle-sel');
+  sel.innerHTML = '<option value="">— اختر المحفّظ / الحلقة —</option>';
+  getTeachers().forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = (t.circle||'حلقة بدون اسم') + ' — ' + (t.name||'');
+    sel.appendChild(opt);
+  });
+  // reset
+  document.getElementById('act-preview').style.display='none';
+  document.getElementById('act-step-progress').style.display='none';
+  document.getElementById('act-step-done').style.display='none';
+  document.getElementById('act-step-select').style.display='block';
+  document.getElementById('act-btn-start').disabled=true;
+  document.getElementById('act-btn-start').style.display='';
+  document.getElementById('act-log').innerHTML='';
+  om('modal-activate');
+}
+
+async function onCircleSelect(){
+  const teacherId = document.getElementById('act-circle-sel').value;
+  if(!teacherId){ document.getElementById('act-preview').style.display='none'; return; }
+
+  const teacher = allUsers.find(u=>u.id===teacherId);
+  if(!teacher){ return; }
+
+  const students = (teacher.students||[]).filter(s=>!s.archived);
+
+  // جلب الهويات المسجلة فعلاً في users collection
+  const snap = await db.collection('users').where('teacherId','==',teacherId).where('role','==','student').get();
+  const activatedNids = new Set(snap.docs.map(d=>d.data().nationalId||'').filter(Boolean));
+
+  let listHTML='', needCount=0, hasCount=0, noidCount=0;
+  students.forEach(s=>{
+    const nid = (s.nationalId||'').trim();
+    let ico='', note='';
+    if(!nid){ ico='🔴'; note='بدون هوية'; noidCount++; }
+    else if(activatedNids.has(nid)){ ico='✅'; note='مفعّل'; hasCount++; }
+    else { ico='🟡'; note='يحتاج تفعيل'; needCount++; }
+    listHTML += `<div>${ico} ${s.name} <span style="opacity:.6;">(${note})</span></div>`;
+  });
+
+  document.getElementById('act-student-list').innerHTML = listHTML||'<div>لا يوجد طلاب</div>';
+  document.getElementById('act-total').textContent = students.length;
+  document.getElementById('act-need').textContent  = needCount;
+  document.getElementById('act-has').textContent   = hasCount;
+  document.getElementById('act-noid').textContent  = noidCount;
+  document.getElementById('act-preview').style.display='block';
+  document.getElementById('act-btn-start').disabled = needCount===0;
+  document.getElementById('act-btn-start').textContent = needCount===0 ? '✅ جميع الطلاب مفعّلون' : `تفعيل ${needCount} طالب`;
+}
+
+function actLog(msg, type){
+  const colors={ok:'#4afa8a',err:'#ff7070',skip:'#f0c060',info:'#7ab8ff'};
+  const el=document.getElementById('act-log');
+  el.innerHTML+=`<div style="color:${colors[type]||'#fff'}">${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+async function startActivation(){
+  const teacherId = document.getElementById('act-circle-sel').value;
+  if(!teacherId) return;
+
+  const teacher = allUsers.find(u=>u.id===teacherId);
+  const students = (teacher.students||[]).filter(s=>!s.archived && (s.nationalId||'').trim());
+
+  // جلب المفعّلين
+  const snap = await db.collection('users').where('teacherId','==',teacherId).where('role','==','student').get();
+  const activatedNids = new Set(snap.docs.map(d=>d.data().nationalId||''));
+  const toActivate = students.filter(s=>!activatedNids.has((s.nationalId||'').trim()));
+
+  if(!toActivate.length){ toast('✅ جميع الطلاب مفعّلون بالفعل'); return; }
+
+  // إخفاء select وإظهار progress
+  document.getElementById('act-step-select').style.display='none';
+  document.getElementById('act-step-progress').style.display='block';
+  document.getElementById('act-btn-start').style.display='none';
+
+  let ok=0, skip=0, err=0;
+  const total=toActivate.length;
+
+  for(let i=0;i<toActivate.length;i++){
+    const s=toActivate[i];
+    const nid=(s.nationalId||'').trim();
+    const email=nid+'@noor-alhifz.app';
+    const name=s.name||'';
+
+    // تحديث progress
+    const pct=Math.round((i/total)*100);
+    document.getElementById('act-prog-text').textContent=`${i}/${total}`;
+    document.getElementById('act-prog-pct').textContent=pct+'%';
+    document.getElementById('act-prog-bar').style.width=pct+'%';
+    actLog(`⏳ [${i+1}/${total}] ${name}`,'info');
+
+    try{
+      const cred=await secondaryAuthAct.createUserWithEmailAndPassword(email,nid);
+      const uid=cred.user.uid;
+      await secondaryAuthAct.signOut();
+      await db.collection('users').doc(uid).set({
+        name,
+        firstName:s.firstName||'', fatherName:s.fatherName||'',
+        grandfatherName:s.grandfatherName||'', familyName:s.familyName||'',
+        nationalId:nid, dob:s.dob||'', placeOfBirth:s.placeOfBirth||'',
+        gender:s.gender||'', phone:s.parentPhone||'',
+        circle:teacher.circle||'حلقة القرآن',
+        role:'student', status:'approved',
+        teacherId, studentId:s.id,
+        firstLogin:true,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      actLog(`✅ تم: ${name}`,'ok'); ok++;
+    }catch(e){
+      if(e.code==='auth/email-already-in-use'){ actLog(`⏭️ موجود: ${name}`,'skip'); skip++; }
+      else { actLog(`❌ فشل: ${name} — ${e.message}`,'err'); err++; }
+    }
+    await new Promise(r=>setTimeout(r,300));
+  }
+
+  // اكتمل
+  document.getElementById('act-prog-bar').style.width='100%';
+  document.getElementById('act-prog-text').textContent=`${total}/${total}`;
+  document.getElementById('act-prog-pct').textContent='100%';
+
+  document.getElementById('act-step-progress').style.display='none';
+  document.getElementById('act-step-done').style.display='block';
+  document.getElementById('act-done-summary').innerHTML=
+    `<span style="color:#1a9c5b;font-weight:700;">✅ تم تفعيل: ${ok}</span> &nbsp;|&nbsp; `+
+    `<span style="color:#b7791f;">⏭️ موجود: ${skip}</span> &nbsp;|&nbsp; `+
+    `<span style="color:#e53e3e;">❌ فشل: ${err}</span>`;
+  document.getElementById('act-btn-close').textContent='إغلاق';
+  toast(`✅ اكتمل التفعيل — ${ok} طالب تم تفعيله`);
+}
+
 </script>
+
+<!-- ═══ MODAL: تفعيل حسابات حلقة ═══ -->
+<div class="modal-overlay" id="modal-activate" onclick="if(event.target===this)closeModal('modal-activate')">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <span class="modal-head-title">🔑 تفعيل حسابات طلاب حلقة</span>
+      <button class="modal-close" onclick="closeModal('modal-activate')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- اختيار الحلقة -->
+      <div id="act-step-select">
+        <div class="form-group full" style="margin-bottom:14px;">
+          <label class="form-label">اختر الحلقة</label>
+          <select class="form-input" id="act-circle-sel" onchange="onCircleSelect()">
+            <option value="">— اختر المحفّظ / الحلقة —</option>
+          </select>
+        </div>
+        <div id="act-preview" style="display:none;">
+          <div style="background:#f0fff8;border:1px solid #9ae6b4;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;color:#276749;margin-bottom:8px;">📋 طلاب هذه الحلقة:</div>
+            <div id="act-student-list" style="font-size:12px;color:#2d6a4f;line-height:2;"></div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #9ae6b4;display:flex;gap:16px;font-size:12px;font-weight:700;">
+              <span>الكلي: <span id="act-total" style="color:#276749;">0</span></span>
+              <span style="color:#b7791f;">يحتاج تفعيل: <span id="act-need">0</span></span>
+              <span style="color:#1a9c5b;">مفعّل: <span id="act-has">0</span></span>
+              <span style="color:#e53e3e;">بدون هوية: <span id="act-noid">0</span></span>
+            </div>
+          </div>
+          <div style="background:#fffbf0;border:1px solid #f6c05c;border-radius:10px;padding:10px 14px;font-size:12px;color:#744210;margin-bottom:14px;">
+            ⚠️ كلمة المرور الافتراضية لكل طالب = <strong>رقم هويته</strong> — سيُطلب منه تغييرها عند أول دخول
+          </div>
+        </div>
+      </div>
+
+      <!-- شريط التقدم (يظهر أثناء التفعيل) -->
+      <div id="act-step-progress" style="display:none;">
+        <div style="font-size:14px;font-weight:700;color:var(--em);margin-bottom:10px;" id="act-prog-title">جارٍ التفعيل...</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txm);margin-bottom:5px;">
+          <span id="act-prog-text">0 / 0</span>
+          <span id="act-prog-pct">0%</span>
+        </div>
+        <div style="height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-bottom:14px;">
+          <div id="act-prog-bar" style="height:100%;background:linear-gradient(90deg,var(--em3),var(--em2));border-radius:5px;width:0%;transition:width .3s;"></div>
+        </div>
+        <div id="act-log" style="background:#0f1117;border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;line-height:1.9;"></div>
+      </div>
+
+      <!-- نتيجة (يظهر بعد الانتهاء) -->
+      <div id="act-step-done" style="display:none;text-align:center;padding:10px 0;">
+        <div style="font-size:40px;margin-bottom:10px;">✅</div>
+        <div style="font-size:16px;font-weight:700;color:var(--em);margin-bottom:6px;">اكتمل التفعيل!</div>
+        <div id="act-done-summary" style="font-size:13px;color:var(--txm);"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="act-btn-start" onclick="startActivation()" disabled>تفعيل الحسابات</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-activate')" id="act-btn-close">إغلاق</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
