@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#1a6b4a">
+<title>مركز الكتاب — بوابة الطالب</title>
+<link rel="manifest" href="manifest.json">
+<script src="pwa.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --em:#1a6b4a;--em2:#25906a;--em3:#0f4a33;
+  --gold:#c9a84c;--gold2:#e8c96a;
+  --cream:#fdfaf3;--ink:#1a1a2e;--ink2:#3d4a3d;
+  --border:#d4c89a;--shadow:rgba(27,107,74,.18);
+  --red:#e53e3e;--redb:#fff5f5;
+  --grn:#1a9c5b;--grnb:#f0fff8;
+  --amb:#b7791f;--ambb:#fffbf0;
+  --txm:#6b7a6b;--txl:#9aa89a;
+  --go:rgba(201,168,76,.12);--gd:#8a6820;
+}
+body{font-family:'Tajawal',sans-serif;background:var(--cream);min-height:100vh;overflow-x:hidden;}
+body.page-exit{animation:pageExit .25s ease forwards;}
+@keyframes pageExit{to{opacity:0;}}
+
+/* LOADING */
+#loadingScreen{position:fixed;inset:0;background:var(--cream);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .3s;}
+#loadingScreen.hide{opacity:0;}
+#loadingScreen.gone{display:none;}
+.ld-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--em);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-txt{font-size:14px;color:var(--txm);}
+
+/* HEADER */
+.hdr{background:linear-gradient(135deg,var(--em3),var(--em));padding:0 16px;height:60px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15);}
+.hdr-avatar{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;}
+.hdr-info{flex:1;min-width:0;}
+.hdr-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.7);}
+.hdr-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;padding:6px 12px;font-family:'Tajawal',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;}
+.hdr-btn:hover{background:rgba(255,255,255,.25);}
+
+/* NAV TABS */
+.nav{background:#fff;border-bottom:2px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;position:sticky;top:60px;z-index:90;}
+.nav::-webkit-scrollbar{display:none;}
+.nav-btn{flex-shrink:0;padding:12px 16px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:500;color:var(--txm);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.nav-btn.active{color:var(--em);border-bottom-color:var(--em);font-weight:700;}
+.nav-btn svg{width:16px;height:16px;}
+
+/* MAIN */
+.main{padding:16px;max-width:700px;margin:0 auto;}
+
+/* SCREEN */
+.scr{display:none;}
+.scr.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* CARD */
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(27,107,74,.06);}
+.card-title{font-size:14px;font-weight:700;color:var(--em);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.card-title svg{width:18px;height:18px;}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 12px;text-align:center;box-shadow:0 1px 4px rgba(27,107,74,.05);}
+.stat-box.green{border-color:var(--grn);background:var(--grnb);}
+.stat-box.gold{border-color:var(--gold);background:var(--go);}
+.stat-box.red{border-color:var(--red);background:var(--redb);}
+.stat-box.amb{border-color:var(--amb);background:var(--ambb);}
+.stat-num{font-size:28px;font-weight:800;color:var(--em);line-height:1;}
+.stat-box.green .stat-num{color:var(--grn);}
+.stat-box.gold .stat-num{color:var(--gd);}
+.stat-box.red .stat-num{color:var(--red);}
+.stat-box.amb .stat-num{color:var(--amb);}
+.stat-lbl{font-size:11px;color:var(--txm);margin-top:4px;}
+
+/* ATTENDANCE ROW */
+.att-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ead8;}
+.att-row:last-child{border-bottom:none;}
+.att-date{font-size:12px;color:var(--txm);width:80px;flex-shrink:0;}
+.att-badge{padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+.att-badge.p{background:var(--grnb);color:var(--grn);}
+.att-badge.a{background:var(--redb);color:var(--red);}
+.att-badge.e{background:var(--ambb);color:var(--amb);}
+.att-badge.u{background:#f5f5f5;color:var(--txm);}
+
+/* SESSION CARD */
+.sess-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:#fafaf6;}
+.sess-date{font-size:12px;color:var(--txm);margin-bottom:6px;}
+.sess-items{display:flex;flex-wrap:wrap;gap:6px;}
+.sess-chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.sess-chip.hifz{background:rgba(26,107,74,.1);color:var(--em);}
+.sess-chip.murajaa{background:rgba(201,168,76,.15);color:var(--gd);}
+
+/* EXAM CARD */
+.exam-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:#fafaf6;position:relative;}
+.exam-type{font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;display:inline-block;margin-bottom:6px;}
+.exam-type.scattered{background:rgba(26,107,74,.1);color:var(--em);}
+.exam-type.combined{background:rgba(201,168,76,.15);color:var(--gd);}
+.exam-juz{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.exam-status{font-size:13px;font-weight:600;}
+.exam-status.pending{color:var(--amb);}
+.exam-status.passed{color:var(--grn);}
+.exam-status.failed{color:var(--red);}
+.exam-score-big{position:absolute;top:14px;left:14px;font-size:26px;font-weight:800;color:var(--em);}
+.exam-score-big.pass{color:var(--grn);}
+.exam-score-big.fail{color:var(--red);}
+
+/* RANK CARD */
+.rank-display{text-align:center;padding:24px 16px;}
+.rank-num{font-size:64px;font-weight:800;color:var(--em);line-height:1;}
+.rank-label{font-size:16px;color:var(--txm);margin-top:8px;}
+.rank-total{font-size:13px;color:var(--txl);margin-top:4px;}
+.rank-podium{display:flex;gap:8px;align-items:flex-end;justify-content:center;margin-top:20px;}
+.rank-item{text-align:center;border-radius:10px 10px 0 0;padding:10px 12px 6px;font-size:12px;font-weight:600;color:#fff;min-width:70px;}
+.rank-item.me{background:var(--em);box-shadow:0 4px 12px rgba(26,107,74,.3);}
+.rank-item.other{background:var(--border);color:var(--txm);}
+.rank-name{font-size:10px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-score{font-size:15px;font-weight:800;}
+
+/* PROGRESS BAR */
+.prog-bar-wrap{margin:8px 0;}
+.prog-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--txm);margin-bottom:4px;}
+.prog-bar-bg{height:8px;background:#eee;border-radius:4px;overflow:hidden;}
+.prog-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--em3),var(--em2));transition:width .6s ease;}
+
+/* MONTH SELECTOR */
+.month-sel{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.month-sel select{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--ink);background:#fff;outline:none;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:32px 16px;color:var(--txl);}
+.empty-ico{font-size:36px;margin-bottom:8px;}
+.empty-txt{font-size:13px;}
+
+/* WELCOME BANNER */
+.welcome-banner{background:linear-gradient(135deg,var(--em3),var(--em));border-radius:16px;padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;}
+.welcome-banner::before{content:'';position:absolute;top:-20px;left:-20px;width:120px;height:120px;background:rgba(255,255,255,.05);border-radius:50%;}
+.welcome-banner::after{content:'';position:absolute;bottom:-30px;right:-10px;width:100px;height:100px;background:rgba(255,255,255,.05);border-radius:50%;}
+.wb-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+.wb-sub{font-size:13px;opacity:.8;}
+.wb-juz{font-size:13px;opacity:.9;margin-top:10px;background:rgba(255,255,255,.15);display:inline-block;padding:4px 12px;border-radius:20px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* SELECT TEACHER */
+.sel-teacher-wrap{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;}
+.sel-teacher-wrap label{display:block;font-size:12px;color:var(--txm);margin-bottom:6px;}
+.sel-teacher-wrap select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;}
+
+/* BADGE */
+.badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-ok{background:var(--grnb);color:var(--grn);}
+.badge-bad{background:var(--redb);color:var(--red);}
+.badge-pend{background:var(--ambb);color:var(--amb);}
+
+.divider{height:1px;background:var(--border);margin:12px 0;}
+.section-lbl{font-size:12px;font-weight:700;color:var(--txm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingScreen">
+  <div class="ld-spinner"></div>
+  <div class="ld-txt">جارٍ تحميل بياناتك…</div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-avatar" id="hdrAvatar">ط</div>
+  <div class="hdr-info">
+    <div class="hdr-name" id="hdrName">الطالب</div>
+    <div class="hdr-sub" id="hdrCircle">بوابة الطالب</div>
+  </div>
+  <button class="hdr-btn" onclick="doLogout()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    خروج
+  </button>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="sw('dash')" id="nb-dash">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    لوحتي
+  </button>
+  <button class="nav-btn" onclick="sw('att')" id="nb-att">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+    الحضور
+  </button>
+  <button class="nav-btn" onclick="sw('hifz')" id="nb-hifz">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    الحفظ
+  </button>
+  <button class="nav-btn" onclick="sw('exams')" id="nb-exams">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    الاختبارات
+  </button>
+  <button class="nav-btn" onclick="sw('rank')" id="nb-rank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    الترتيب
+  </button>
+</div>
+
+<div class="main">
+
+  <!-- ══════════════════════════════ DASH ══════════════════════════════ -->
+  <div class="scr active" id="scr-dash">
+    <div class="welcome-banner">
+      <div class="wb-title">أهلاً بك 👋</div>
+      <div class="wb-sub" id="wb-name">—</div>
+      <div class="wb-juz" id="wb-juz">الجزء الحالي: —</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box green">
+        <div class="stat-num" id="ds-att-pct">—</div>
+        <div class="stat-lbl">نسبة الحضور</div>
+      </div>
+      <div class="stat-box gold">
+        <div class="stat-num" id="ds-sessions">—</div>
+        <div class="stat-lbl">الجلسات الكلية</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="ds-hifz">—</div>
+        <div class="stat-lbl">آيات محفوظة</div>
+      </div>
+      <div class="stat-box amb">
+        <div class="stat-num" id="ds-rank">—</div>
+        <div class="stat-lbl">ترتيبي في الحلقة</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        آخر جلسات الحفظ
+      </div>
+      <div id="ds-recent-sessions"><div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد جلسات بعد</div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        آخر الاختبارات
+      </div>
+      <div id="ds-recent-exams"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ ATTENDANCE ══════════════════════════════ -->
+  <div class="scr" id="scr-att">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        سجل الحضور والغياب
+      </div>
+      <div class="month-sel">
+        <select id="att-month-sel" onchange="renderAttendance()"></select>
+      </div>
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box green"><div class="stat-num" id="att-present-count">0</div><div class="stat-lbl">حاضر</div></div>
+        <div class="stat-box red"><div class="stat-num" id="att-absent-count">0</div><div class="stat-lbl">غائب</div></div>
+      </div>
+      <div class="prog-bar-wrap">
+        <div class="prog-bar-label"><span>نسبة الحضور</span><span id="att-pct-lbl">0%</span></div>
+        <div class="prog-bar-bg"><div class="prog-bar-fill" id="att-pct-bar" style="width:0%"></div></div>
+      </div>
+      <div class="divider"></div>
+      <div id="att-list"><div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">لا توجد بيانات لهذا الشهر</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ HIFZ ══════════════════════════════ -->
+  <div class="scr" id="scr-hifz">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        سجل الحفظ والمراجعة
+      </div>
+      <div class="month-sel">
+        <select id="hifz-month-sel" onchange="renderHifz()"></select>
+      </div>
+      <div class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box green"><div class="stat-num" id="hifz-sess-count">0</div><div class="stat-lbl">جلسة حفظ</div></div>
+        <div class="stat-box gold"><div class="stat-num" id="hifz-ayah-count">0</div><div class="stat-lbl">سور محفوظة</div></div>
+      </div>
+      <div id="hifz-list"><div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد بيانات لهذا الشهر</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ EXAMS ══════════════════════════════ -->
+  <div class="scr" id="scr-exams">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        الاختبارات والترشيحات
+      </div>
+      <div id="exams-stats" class="stats-grid" style="margin-bottom:12px;">
+        <div class="stat-box green"><div class="stat-num" id="ex-pass">0</div><div class="stat-lbl">ناجح</div></div>
+        <div class="stat-box red"><div class="stat-num" id="ex-fail">0</div><div class="stat-lbl">لم ينجح</div></div>
+      </div>
+      <div id="exams-list"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ RANK ══════════════════════════════ -->
+  <div class="scr" id="scr-rank">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        ترتيبي في الحلقة
+      </div>
+      <div class="rank-display">
+        <div class="rank-num" id="rank-num">—</div>
+        <div class="rank-label">ترتيبي بين الطلاب</div>
+        <div class="rank-total" id="rank-total"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-lbl">معيار الترتيب: عدد الجلسات خلال آخر 30 يوماً</div>
+      <div id="rank-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        إحصائياتي الكاملة
+      </div>
+      <div id="full-stats"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  FIREBASE CONFIG
+// ════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyAJuRiluapshZAego74Pmu-fK5EsT5UhJ0",
+  authDomain: "noor-alhifz.firebaseapp.com",
+  databaseURL: "https://noor-alhifz-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "noor-alhifz",
+  storageBucket: "noor-alhifz.firebasestorage.app",
+  messagingSenderId: "581069233423",
+  appId: "1:581069233423:web:d62ad40c001a60acb7727a",
+  measurementId: "G-P3BM91H62E"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
+
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let currentUser = null;
+let myStudentId = null;       // id الطالب داخل بيانات المعلم
+let myTeacherId = null;       // uid المعلم الخاص بي
+let myStudentData = null;     // كائن الطالب
+let teacherData = {};         // {students, sessions, attendance, exams}
+let myExamResults = [];       // من examResults collection
+let fsUnsub = null;
+let resultsUnsub = null;
+
+// ════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════
+function ini(n){return(n||'').trim().charAt(0)||'ط';}
+function TODAY(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  return d.toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+}
+function arabicMonth(y,m){
+  const d=new Date(y,m-1,1);
+  return d.toLocaleDateString('ar-SA',{year:'numeric',month:'long'});
+}
+function monthKey(iso){return iso?iso.slice(0,7):'';}
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ════════════════════════════════════════
+//  NAV
+// ════════════════════════════════════════
+function sw(tab){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('scr-'+tab).classList.add('active');
+  document.getElementById('nb-'+tab).classList.add('active');
+  if(tab==='att') renderAttendance();
+  if(tab==='hifz') renderHifz();
+  if(tab==='exams') renderExams();
+  if(tab==='rank') renderRank();
+}
+
+// ════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════
+auth.onAuthStateChanged(user=>{
+  if(!user){ navigateTo('login.html'); return; }
+  currentUser=user;
+  checkUserStatus(user);
+});
+
+function checkUserStatus(user){
+  db.collection('users').doc(user.uid).get().then(doc=>{
+    if(!doc.exists){ navigateTo('login.html'); return; }
+    const d=doc.data();
+    // التحقق من دور الطالب
+    if(d.role==='admin'){ navigateTo('supervisor.html'); return; }
+    if(d.role==='examiner'){ navigateTo('examiner.html'); return; }
+    if(d.role==='teacher'){ navigateTo('teacher.html'); return; }
+    // role === 'student' أو أي دور آخر
+    if(d.role==='student' && d.status==='approved'){
+      enterApp(user, d);
+      return;
+    }
+    // إذا لم يكن طالباً معتمداً
+    navigateTo('login.html');
+  }).catch(()=>navigateTo('login.html'));
+}
+
+function enterApp(user, userData){
+  // إخفاء شاشة التحميل
+  const ls=document.getElementById('loadingScreen');
+  ls.classList.add('hide');
+  setTimeout(()=>ls.classList.add('gone'),300);
+
+  myStudentId = userData.studentId;      // id الطالب في بيانات المعلم
+  myTeacherId = userData.teacherId;      // uid المعلم
+
+  document.getElementById('hdrAvatar').textContent = ini(userData.name||user.email);
+  document.getElementById('hdrName').textContent   = userData.name||user.email;
+  document.getElementById('hdrCircle').textContent = userData.circle||'بوابة الطالب';
+  document.getElementById('wb-name').textContent   = userData.name||user.email;
+
+  loadTeacherData();
+  loadExamResults();
+}
+
+// ════════════════════════════════════════
+//  LOAD TEACHER DATA (بيانات المعلم الخاص)
+// ════════════════════════════════════════
+function loadTeacherData(){
+  if(fsUnsub) fsUnsub();
+  fsUnsub = db.collection('userdata').doc(myTeacherId).onSnapshot(snap=>{
+    if(snap.exists){
+      const d = snap.data();
+      teacherData = {
+        students: d.students||[],
+        sessions: d.sessions||[],
+        attendance: d.attendance||{},
+        exams: d.exams||[]
+      };
+      myStudentData = teacherData.students.find(s=>s.id===myStudentId)||null;
+      renderAll();
+    }
+  }, e=>console.warn('snap err', e));
+}
+
+// ════════════════════════════════════════
+//  LOAD EXAM RESULTS
+// ════════════════════════════════════════
+function loadExamResults(){
+  if(resultsUnsub) resultsUnsub();
+  resultsUnsub = db.collection('examResults')
+    .where('studentId','==',myStudentId)
+    .onSnapshot(snap=>{
+      myExamResults = snap.docs.map(d=>d.data());
+      myExamResults.sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+      renderExams();
+      renderDash();
+    }, e=>console.warn('results err', e));
+}
+
+// ════════════════════════════════════════
+//  RENDER ALL
+// ════════════════════════════════════════
+function renderAll(){
+  renderDash();
+  const activeTab = document.querySelector('.nav-btn.active')?.id?.replace('nb-','');
+  if(activeTab==='att') renderAttendance();
+  if(activeTab==='hifz') renderHifz();
+  if(activeTab==='rank') renderRank();
+}
+
+// ════════════════════════════════════════
+//  DASH
+// ════════════════════════════════════════
+function renderDash(){
+  if(!myStudentData) return;
+
+  // جزء الطالب
+  document.getElementById('wb-juz').textContent = `الجزء الحالي: ${myStudentData.juz||0}`;
+
+  // جلساتي
+  const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
+  document.getElementById('ds-sessions').textContent = mySess.length;
+
+  // حضوري
+  let present=0, total=0;
+  Object.entries(teacherData.attendance).forEach(([date,rec])=>{
+    if(rec[myStudentId]!==undefined){ total++; if(rec[myStudentId]==='p') present++; }
+  });
+  const pct = total>0 ? Math.round(present/total*100) : 0;
+  document.getElementById('ds-att-pct').textContent = pct+'%';
+
+  // حفظ
+  let surahCount=0;
+  mySess.forEach(s=>{ surahCount+=(s.hifz||[]).length; });
+  document.getElementById('ds-hifz').textContent = surahCount;
+
+  // ترتيبي
+  const rank = calcMyRank();
+  document.getElementById('ds-rank').textContent = rank>0 ? '#'+rank : '—';
+
+  // آخر 3 جلسات
+  const recent3 = [...mySess].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,3);
+  const sessEl = document.getElementById('ds-recent-sessions');
+  if(!recent3.length){
+    sessEl.innerHTML='<div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد جلسات بعد</div></div>';
+  } else {
+    sessEl.innerHTML = recent3.map(s=>`
+      <div class="sess-card">
+        <div class="sess-date">${fmtDate(s.date)}</div>
+        <div class="sess-items">
+          ${(s.hifz||[]).map(h=>`<span class="sess-chip hifz">📖 ${h.surah} (${h.from}-${h.to}) — ${h.score||''}</span>`).join('')}
+          ${(s.murajaa||[]).map(m=>`<span class="sess-chip murajaa">🔄 ${m.surah} (${m.from}-${m.to})</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // آخر 2 اختبار
+  const examEl = document.getElementById('ds-recent-exams');
+  const allExams = getAllMyExams();
+  const recent2 = allExams.slice(0,2);
+  if(!recent2.length){
+    examEl.innerHTML='<div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div>';
+  } else {
+    examEl.innerHTML = recent2.map(e=>examCardHTML(e)).join('');
+  }
+}
+
+// ════════════════════════════════════════
+//  ATTENDANCE
+// ════════════════════════════════════════
+function buildMonthOptions(selId, onchange){
+  const sel=document.getElementById(selId);
+  if(sel.options.length) return; // مبنية سابقاً
+
+  // جمع كل الأشهر من سجل الحضور
+  const months = new Set();
+  Object.keys(teacherData.attendance).forEach(date=>months.add(date.slice(0,7)));
+  // إضافة الشهر الحالي دائماً
+  months.add(TODAY().slice(0,7));
+  const sorted = [...months].sort((a,b)=>b.localeCompare(a));
+  sel.innerHTML = sorted.map(m=>{
+    const [y,mo]=m.split('-');
+    return`<option value="${m}">${arabicMonth(+y,+mo)}</option>`;
+  }).join('');
+}
+
+function renderAttendance(){
+  buildMonthOptions('att-month-sel');
+  const month = document.getElementById('att-month-sel').value;
+  if(!month) return;
+
+  // فلترة أيام هذا الشهر
+  const days = Object.entries(teacherData.attendance)
+    .filter(([d])=>d.startsWith(month) && teacherData.attendance[d][myStudentId]!==undefined)
+    .sort((a,b)=>b[0].localeCompare(a[0]));
+
+  let pCount=0, aCount=0, eCount=0;
+  days.forEach(([,rec])=>{
+    const s=rec[myStudentId];
+    if(s==='p') pCount++;
+    else if(s==='a') aCount++;
+    else if(s==='e') eCount++;
+  });
+  const total=pCount+aCount+eCount;
+  const pct=total>0?Math.round(pCount/total*100):0;
+
+  document.getElementById('att-present-count').textContent=pCount;
+  document.getElementById('att-absent-count').textContent=aCount;
+  document.getElementById('att-pct-lbl').textContent=pct+'%';
+  document.getElementById('att-pct-bar').style.width=pct+'%';
+
+  const el=document.getElementById('att-list');
+  if(!days.length){
+    el.innerHTML='<div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">لا توجد بيانات لهذا الشهر</div></div>';
+    return;
+  }
+
+  const statusMap={p:{lbl:'حاضر',cls:'p'},a:{lbl:'غائب',cls:'a'},e:{lbl:'عذر',cls:'e'}};
+  el.innerHTML = days.map(([date,rec])=>{
+    const s=rec[myStudentId];
+    const st=statusMap[s]||{lbl:'—',cls:'u'};
+    return`<div class="att-row">
+      <div class="att-date">${fmtDate(date)}</div>
+      <div class="att-badge ${st.cls}">${st.lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+//  HIFZ & MURAJAA
+// ════════════════════════════════════════
+function renderHifz(){
+  buildMonthOptions('hifz-month-sel');
+  const month = document.getElementById('hifz-month-sel').value;
+  if(!month) return;
+
+  const mySess = teacherData.sessions
+    .filter(s=>s.studentId===myStudentId && monthKey(s.date)===month)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  let hifzCount=0;
+  mySess.forEach(s=>{ hifzCount+=(s.hifz||[]).length; });
+
+  document.getElementById('hifz-sess-count').textContent=mySess.length;
+  document.getElementById('hifz-ayah-count').textContent=hifzCount;
+
+  const el=document.getElementById('hifz-list');
+  if(!mySess.length){
+    el.innerHTML='<div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد جلسات لهذا الشهر</div></div>';
+    return;
+  }
+
+  el.innerHTML = mySess.map(s=>`
+    <div class="sess-card">
+      <div class="sess-date">${fmtDate(s.date)}</div>
+      ${s.hifz&&s.hifz.length?`
+        <div class="section-lbl" style="margin-top:8px;">📖 حفظ جديد</div>
+        <div class="sess-items">
+          ${s.hifz.map(h=>`<span class="sess-chip hifz">${h.surah} (${h.from}-${h.to}) — ${h.score||''}</span>`).join('')}
+        </div>
+      `:''}
+      ${s.murajaa&&s.murajaa.length?`
+        <div class="section-lbl" style="margin-top:8px;">🔄 مراجعة</div>
+        <div class="sess-items">
+          ${s.murajaa.map(m=>`<span class="sess-chip murajaa">${m.surah} (${m.from}-${m.to})</span>`).join('')}
+        </div>
+      `:''}
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════
+//  EXAMS
+// ════════════════════════════════════════
+function getAllMyExams(){
+  // الترشيحات المعلقة من بيانات المعلم
+  const nominations = (teacherData.exams||[]).filter(e=>e.studentId===myStudentId);
+  // دمج مع النتائج الفعلية
+  const results = myExamResults;
+
+  // بناء قائمة موحدة
+  const merged = [];
+  nominations.forEach(nom=>{
+    const res = results.find(r=>r.nominationId===nom.id);
+    if(res){
+      merged.push({...nom, result:res, status: res.passed?'passed':'failed', score:res.totalScore+'%', examDate:res.examDate});
+    } else {
+      merged.push({...nom, result:null});
+    }
+  });
+  // نتائج ليس لها ترشيح (اختبار مباشر)
+  results.forEach(r=>{
+    if(!merged.find(m=>m.result&&m.result.id===r.id)){
+      merged.push({id:r.id, studentId:myStudentId, type:r.type, juzNum:r.juzNum, juzName:r.juzName, status:r.passed?'passed':'failed', score:r.totalScore+'%', nominatedAt:r.examDate, examDate:r.examDate, result:r});
+    }
+  });
+  merged.sort((a,b)=>new Date(b.nominatedAt||0)-new Date(a.nominatedAt||0));
+  return merged;
+}
+
+function examCardHTML(e){
+  const typeLabel = e.type==='scattered'?'متفرّق':'مجتمع';
+  const typeCls = e.type==='scattered'?'scattered':'combined';
+  let statusHTML='', scoreHTML='';
+
+  if(e.status==='pending'){
+    statusHTML=`<div class="exam-status pending">⏳ في انتظار الاختبار</div>`;
+  } else if(e.status==='passed'){
+    statusHTML=`<div class="exam-status passed">✅ ناجح</div>`;
+    scoreHTML=`<div class="exam-score-big pass">${e.score}</div>`;
+  } else if(e.status==='failed'){
+    statusHTML=`<div class="exam-status failed">❌ لم ينجح</div>`;
+    scoreHTML=`<div class="exam-score-big fail">${e.score}</div>`;
+  }
+
+  return`<div class="exam-card">
+    ${scoreHTML}
+    <span class="exam-type ${typeCls}">${typeLabel}</span>
+    <div class="exam-juz">الجزء ${e.juzNum} — ${e.juzName||''}</div>
+    ${statusHTML}
+    <div style="font-size:11px;color:var(--txl);margin-top:4px;">${fmtDate(e.examDate||e.nominatedAt)}</div>
+    ${e.result&&e.result.notes?`<div style="font-size:12px;color:var(--txm);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">ملاحظات: ${e.result.notes}</div>`:''}
+  </div>`;
+}
+
+function renderExams(){
+  const allExams = getAllMyExams();
+  const pass = allExams.filter(e=>e.status==='passed').length;
+  const fail = allExams.filter(e=>e.status==='failed').length;
+  document.getElementById('ex-pass').textContent=pass;
+  document.getElementById('ex-fail').textContent=fail;
+
+  const el=document.getElementById('exams-list');
+  if(!allExams.length){
+    el.innerHTML='<div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div>';
+    return;
+  }
+  el.innerHTML = allExams.map(e=>examCardHTML(e)).join('');
+}
+
+// ════════════════════════════════════════
+//  RANK
+// ════════════════════════════════════════
+function calcMyRank(){
+  const active = teacherData.students.filter(s=>!s.archived);
+  const now=new Date();
+  const cutoff=new Date(now.getTime()-30*24*60*60*1000);
+
+  const scoreMap={};
+  teacherData.sessions.forEach(s=>{
+    if(new Date(s.date)>=cutoff){
+      scoreMap[s.studentId]=(scoreMap[s.studentId]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
+    }
+  });
+
+  const ranked = active.map(s=>({id:s.id,name:s.name,score:scoreMap[s.id]||0}))
+    .sort((a,b)=>b.score-a.score);
+
+  const myIdx = ranked.findIndex(r=>r.id===myStudentId);
+  return myIdx>=0 ? myIdx+1 : 0;
+}
+
+function renderRank(){
+  const active = teacherData.students.filter(s=>!s.archived);
+  const now=new Date();
+  const cutoff=new Date(now.getTime()-30*24*60*60*1000);
+
+  const scoreMap={};
+  teacherData.sessions.forEach(s=>{
+    if(new Date(s.date)>=cutoff){
+      scoreMap[s.studentId]=(scoreMap[s.studentId]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
+    }
+  });
+
+  const ranked = active.map(s=>({id:s.id,name:s.name,score:scoreMap[s.id]||0}))
+    .sort((a,b)=>b.score-a.score);
+
+  const myIdx = ranked.findIndex(r=>r.id===myStudentId);
+  const myRank = myIdx>=0 ? myIdx+1 : 0;
+  const myScore = scoreMap[myStudentId]||0;
+
+  document.getElementById('rank-num').textContent = myRank>0 ? '#'+myRank : '—';
+  document.getElementById('rank-total').textContent = `من أصل ${active.length} طالب`;
+
+  // قائمة أفضل 10
+  const top10 = ranked.slice(0,10);
+  const listEl = document.getElementById('rank-list');
+  listEl.innerHTML = top10.map((r,i)=>{
+    const isMe = r.id===myStudentId;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ead8;${isMe?'background:rgba(26,107,74,.05);border-radius:10px;padding:10px;':''}">
+      <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--em)':'var(--border)'};color:${isMe?'#fff':'var(--txm)'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;font-size:13px;font-weight:${isMe?700:400};color:${isMe?'var(--em)':'var(--ink)'};">${r.name}${isMe?' (أنت)':''}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--gd);">${r.score} إنجاز</div>
+    </div>`;
+  }).join('');
+
+  // إحصائيات كاملة
+  const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
+  let totalHifzSurahs=0, totalMurajaa=0;
+  mySess.forEach(s=>{ totalHifzSurahs+=(s.hifz||[]).length; totalMurajaa+=(s.murajaa||[]).length; });
+
+  let attPresent=0, attTotal=0;
+  Object.values(teacherData.attendance).forEach(rec=>{
+    if(rec[myStudentId]!==undefined){ attTotal++; if(rec[myStudentId]==='p') attPresent++; }
+  });
+
+  const allExams=getAllMyExams();
+  const passedExams=allExams.filter(e=>e.status==='passed').length;
+
+  document.getElementById('full-stats').innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-num">${mySess.length}</div><div class="stat-lbl">جلسات كلية</div></div>
+      <div class="stat-box green"><div class="stat-num">${totalHifzSurahs}</div><div class="stat-lbl">سور حفظ</div></div>
+      <div class="stat-box gold"><div class="stat-num">${totalMurajaa}</div><div class="stat-lbl">جلسات مراجعة</div></div>
+      <div class="stat-box"><div class="stat-num">${passedExams}</div><div class="stat-lbl">اختبارات ناجح</div></div>
+      <div class="stat-box green"><div class="stat-num">${attTotal>0?Math.round(attPresent/attTotal*100):0}%</div><div class="stat-lbl">نسبة الحضور</div></div>
+      <div class="stat-box amb"><div class="stat-num">${myStudentData?myStudentData.juz||0:'—'}</div><div class="stat-lbl">الجزء الحالي</div></div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════
+//  LOGOUT / NAVIGATE
+// ════════════════════════════════════════
+function doLogout(){
+  if(fsUnsub) fsUnsub();
+  if(resultsUnsub) resultsUnsub();
+  auth.signOut().then(()=>{ navigateTo('login.html'); });
+}
+function navigateTo(url){
+  document.body.classList.add('page-exit');
+  setTimeout(()=>{ window.location.href=url; },250);
+}
+</script>
+</body>
+</html>
