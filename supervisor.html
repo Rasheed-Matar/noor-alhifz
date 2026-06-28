@@ -2034,16 +2034,19 @@ async function onCircleSelect(){
 
   const students = (teacher.students||[]).filter(s=>!s.archived);
 
-  // جلب الهويات المسجلة فعلاً في users collection
+  // جلب كل سجلات الطلاب في users collection (بغض النظر عن status)
   const snap = await db.collection('users').where('teacherId','==',teacherId).where('role','==','student').get();
-  const activatedNids = new Set(snap.docs.map(d=>d.data().nationalId||'').filter(Boolean));
+  // خريطة: nationalId => {uid, status}
+  const nidMap = {};
+  snap.docs.forEach(d=>{ const data=d.data(); if(data.nationalId) nidMap[data.nationalId.trim()]={uid:d.id, status:data.status}; });
 
-  let listHTML='', needCount=0, hasCount=0, noidCount=0;
+  let listHTML='', needCount=0, hasCount=0, disabledCount=0, noidCount=0;
   students.forEach(s=>{
     const nid = (s.nationalId||'').trim();
     let ico='', note='';
     if(!nid){ ico='🔴'; note='بدون هوية'; noidCount++; }
-    else if(activatedNids.has(nid)){ ico='✅'; note='مفعّل'; hasCount++; }
+    else if(nidMap[nid] && nidMap[nid].status==='approved'){ ico='✅'; note='مفعّل'; hasCount++; }
+    else if(nidMap[nid] && nidMap[nid].status==='disabled'){ ico='🟠'; note='موقوف — سيُعاد تفعيله'; disabledCount++; needCount++; }
     else { ico='🟡'; note='يحتاج تفعيل'; needCount++; }
     listHTML += `<div>${ico} ${s.name} <span style="opacity:.6;">(${note})</span></div>`;
   });
@@ -2072,14 +2075,22 @@ async function startActivation(){
   const teacher = allUsers.find(u=>u.id===teacherId);
   const students = (teacher.students||[]).filter(s=>!s.archived && (s.nationalId||'').trim());
 
-  // جلب المفعّلين
+  // جلب كل سجلات الطلاب (بغض النظر عن status)
   const snap = await db.collection('users').where('teacherId','==',teacherId).where('role','==','student').get();
-  const activatedNids = new Set(snap.docs.map(d=>d.data().nationalId||''));
-  const toActivate = students.filter(s=>!activatedNids.has((s.nationalId||'').trim()));
+  // خريطة: nationalId => {uid, status}
+  const nidMap = {};
+  snap.docs.forEach(d=>{ const data=d.data(); if(data.nationalId) nidMap[data.nationalId.trim()]={uid:d.id, status:data.status}; });
+
+  // من يحتاج تفعيل: إما حساب غير موجود أو موقوف (disabled)
+  const toActivate = students.filter(s=>{
+    const nid=(s.nationalId||'').trim();
+    if(!nid) return false;
+    const rec=nidMap[nid];
+    return !rec || rec.status==='disabled';
+  });
 
   if(!toActivate.length){ toast('✅ جميع الطلاب مفعّلون بالفعل'); return; }
 
-  // إخفاء select وإظهار progress
   document.getElementById('act-step-select').style.display='none';
   document.getElementById('act-step-progress').style.display='block';
   document.getElementById('act-btn-start').style.display='none';
@@ -2092,8 +2103,8 @@ async function startActivation(){
     const nid=(s.nationalId||'').trim();
     const email=nid+'@noor-alhifz.app';
     const name=s.name||'';
+    const existingRec=nidMap[nid];
 
-    // تحديث progress
     const pct=Math.round((i/total)*100);
     document.getElementById('act-prog-text').textContent=`${i}/${total}`;
     document.getElementById('act-prog-pct').textContent=pct+'%';
@@ -2101,22 +2112,29 @@ async function startActivation(){
     actLog(`⏳ [${i+1}/${total}] ${name}`,'info');
 
     try{
-      const cred=await secondaryAuthAct.createUserWithEmailAndPassword(email,nid);
-      const uid=cred.user.uid;
-      await secondaryAuthAct.signOut();
-      await db.collection('users').doc(uid).set({
-        name,
-        firstName:s.firstName||'', fatherName:s.fatherName||'',
-        grandfatherName:s.grandfatherName||'', familyName:s.familyName||'',
-        nationalId:nid, dob:s.dob||'', placeOfBirth:s.placeOfBirth||'',
-        gender:s.gender||'', phone:s.parentPhone||'',
-        circle:teacher.circle||'حلقة القرآن',
-        role:'student', status:'approved',
-        teacherId, studentId:s.id,
-        firstLogin:true,
-        createdAt:firebase.firestore.FieldValue.serverTimestamp()
-      });
-      actLog(`✅ تم: ${name}`,'ok'); ok++;
+      if(existingRec && existingRec.status==='disabled'){
+        // إعادة تفعيل — فقط تحديث status في Firestore
+        await db.collection('users').doc(existingRec.uid).update({ status:'approved' });
+        actLog(`♻️ أُعيد تفعيله: ${name}`,'ok'); ok++;
+      } else {
+        // حساب جديد — إنشاء في Auth ثم Firestore
+        const cred=await secondaryAuthAct.createUserWithEmailAndPassword(email,nid);
+        const uid=cred.user.uid;
+        await secondaryAuthAct.signOut();
+        await db.collection('users').doc(uid).set({
+          name,
+          firstName:s.firstName||'', fatherName:s.fatherName||'',
+          grandfatherName:s.grandfatherName||'', familyName:s.familyName||'',
+          nationalId:nid, dob:s.dob||'', placeOfBirth:s.placeOfBirth||'',
+          gender:s.gender||'', phone:s.parentPhone||'',
+          circle:teacher.circle||'حلقة القرآن',
+          role:'student', status:'approved',
+          teacherId, studentId:s.id,
+          firstLogin:true,
+          createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        actLog(`✅ تم إنشاؤه: ${name}`,'ok'); ok++;
+      }
     }catch(e){
       if(e.code==='auth/email-already-in-use'){ actLog(`⏭️ موجود: ${name}`,'skip'); skip++; }
       else { actLog(`❌ فشل: ${name} — ${e.message}`,'err'); err++; }
