@@ -1041,6 +1041,8 @@ function enterApp(user,data){
   document.getElementById('set-name').value=data.name||'';
   document.getElementById('set-circle').value=data.circle||'';
 
+  window._teacherName = data.name||'';
+  window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
   if(fsUnsub)fsUnsub();
   fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},snap=>{
@@ -1650,6 +1652,11 @@ function openStudentDetail(studentId){
     </div>
     <div class="mf"><label>رقم جوال الطالب</label><input type="tel" id="es-phone" value="${s.parentPhone||''}" style="direction:ltr;text-align:right;"></div>
     <button class="btn-submit-modal" onclick="updateStudent('${s.id}')">حفظ التعديلات</button>
+    ${s.parentPhone && s.nationalId ? `
+    <button class="btn-submit-modal" onclick="sendActivationWhatsapp('${s.id}')" style="background:linear-gradient(135deg,#075e54,#25d366);margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
+      إرسال رسالة تفعيل الحساب لولي الأمر
+    </button>` : ''}
     <div class="modal-divider"></div>
     ${s.pendingDeletion?`
     <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:10px;line-height:1.6;">
@@ -2405,6 +2412,52 @@ const _origOnAuthDone=window._afterAuthReady;
 setTimeout(()=>{
   if(currentUser) listenForExamNotifications();
 },3000);
+
+// ════════════════════════════════════════
+//  SEND ACTIVATION WHATSAPP
+// ════════════════════════════════════════
+function sendActivationWhatsapp(studentId){
+  const s = students.find(x=>x.id===studentId);
+  if(!s){ toast('⚠️ لم يُعثر على الطالب','error'); return; }
+  if(!s.parentPhone){ toast('⚠️ لا يوجد رقم هاتف لولي الأمر','error'); return; }
+  if(!s.nationalId){ toast('⚠️ لا يوجد رقم هوية للطالب','error'); return; }
+
+  const teacherName  = window._teacherName  || document.getElementById('hdr-teacher-name').textContent || 'المحفّظ';
+  const teacherCircle= window._teacherCircle || document.getElementById('sb-circle').textContent || 'حلقة القرآن';
+  const appUrl       = window.location.origin + '/student.html';
+
+  const msg =
+`السلام عليكم ورحمة الله وبركاته 🌿
+
+نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* في نظام *نور الحفظ* بنجاح ✅
+
+━━━━━━━━━━━━━━
+📚 *الحلقة:* ${teacherCircle}
+👨‍🏫 *المحفّظ:* ${teacherName}
+━━━━━━━━━━━━━━
+
+🔐 *بيانات الدخول:*
+• اسم المستخدم: *${s.nationalId}*
+• كلمة المرور: *${s.nationalId}*
+  _(يُرجى تغييرها عند أول دخول)_
+
+🔗 *رابط البوابة:*
+${appUrl}
+
+يُمكن للطالب من خلال البوابة متابعة:
+✔️ سجل الحضور والغياب
+✔️ جلسات الحفظ والمراجعة
+✔️ الاختبارات والنتائج
+✔️ ترتيبه في الحلقة
+
+بارك الله في الطالب ووفّقه لحفظ كتاب الله 🤲
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+
+  openWhatsApp(s.parentPhone, msg);
+  toast('✅ تم فتح واتساب بالرسالة');
+}
+
 </script>
 
 </body>
