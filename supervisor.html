@@ -11,6 +11,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -29,6 +31,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 #loadingScreen.gone{display:none;}
 .ld-spin{width:42px;height:42px;border:3px solid rgba(232,201,106,.3);border-top-color:var(--gold2);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+@keyframes btnSpin{to{transform:rotate(360deg);}}
 #loadingScreen .ld-txt{color:var(--gold2);font-size:15px;font-weight:600;font-family:'Amiri',serif;}
 
 .topnav{height:60px;background:linear-gradient(135deg,var(--em3),var(--em));display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-shadow:0 2px 16px rgba(27,107,74,.3);position:sticky;top:0;z-index:200;gap:12px;}
@@ -200,6 +203,16 @@ select.form-input{cursor:pointer;}
 .btn-save{flex:1;padding:12px;background:linear-gradient(135deg,var(--em3),var(--em));border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(27,107,74,.3);transition:all .2s;}
 .btn-save:hover{transform:translateY(-1px);}
 .btn-cancel-modal{padding:12px 18px;background:#f0ede6;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;color:var(--ink2);cursor:pointer;}
+
+/* ── تصدير تقارير الاختبارات (PDF) ── */
+.pdf-filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+.pdf-filter-row .form-group{margin:0;flex:1;min-width:140px;}
+.pdf-preview-wrap{background:#f5f0e8;border-radius:12px;padding:12px;max-height:50vh;overflow-y:auto;border:1px solid var(--border);margin-top:16px;}
+.pdf-preview-wrap iframe{width:100%;height:460px;border:none;border-radius:8px;background:#fff;}
+.pdf-preview-loading{text-align:center;padding:40px;color:var(--ink2);}
+.pdf-dl-btn{flex:1;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;padding:12px 24px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;box-shadow:0 4px 14px rgba(27,107,74,.3);}
+.pdf-dl-btn:hover{transform:translateY(-1px);}
+.pdf-dl-btn:disabled{opacity:.5;cursor:not-allowed;}
 
 .msg-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
 .msg-tab{padding:9px 16px;border-radius:12px;border:1.5px solid var(--border);background:rgba(253,250,243,.9);font-family:"Tajawal",sans-serif;font-size:13px;font-weight:500;color:var(--ink2);cursor:pointer;transition:all .2s;}
@@ -557,7 +570,10 @@ select.form-input{cursor:pointer;}
       <div class="card">
         <div class="card-header">
           <div class="card-title">📊 نتائج الاختبارات الأخيرة</div>
-          <button class="card-action" onclick="loadExamResultsAdmin()">تحديث</button>
+          <div style="display:flex;gap:8px;">
+            <button class="card-action" onclick="openSupervisorReportModal()">📄 تقرير</button>
+            <button class="card-action" onclick="loadExamResultsAdmin()">تحديث</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -611,6 +627,69 @@ select.form-input{cursor:pointer;}
     <div class="modal-footer">
       <button class="btn-save" onclick="saveNewExaminer()">إضافة المختبر</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-add-examiner')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Exam Report -->
+<div class="modal-overlay" id="modal-exam-report">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-head">
+      <span class="modal-head-title">📄 تقرير نتائج الاختبارات</span>
+      <button class="modal-close" onclick="closeModal('modal-exam-report')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pdf-filter-row">
+        <div class="form-group">
+          <label class="form-label">الفترة الزمنية</label>
+          <select class="form-input" id="repPeriod" onchange="onRepPeriodChange()">
+            <option value="day">يومي</option>
+            <option value="month">شهري</option>
+          </select>
+        </div>
+        <div class="form-group" id="repDayGroup">
+          <label class="form-label">اختر اليوم</label>
+          <input type="date" class="form-input" id="repDay" onchange="refreshSupervisorReportPreview()">
+        </div>
+        <div class="form-group" id="repMonthGroup" style="display:none;">
+          <label class="form-label">اختر الشهر</label>
+          <input type="month" class="form-input" id="repMonth" onchange="refreshSupervisorReportPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">نطاق الحلقات</label>
+          <select class="form-input" id="repScope" onchange="onRepScopeChange()">
+            <option value="all">لجميع الحلقات</option>
+            <option value="one">حلقة واحدة</option>
+          </select>
+        </div>
+        <div class="form-group" id="repCircleGroup" style="display:none;">
+          <label class="form-label">اختر الحلقة</label>
+          <select class="form-input" id="repCircle" onchange="refreshSupervisorReportPreview()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">نوع الاختبار</label>
+          <select class="form-input" id="repType" onchange="refreshSupervisorReportPreview()">
+            <option value="all">الكل</option>
+            <option value="scattered">متفرّق</option>
+            <option value="combined">مجتمع</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0;">
+          <label class="form-label" style="opacity:0;">.</label>
+          <button class="btn-save" style="flex:none;padding:11px 16px;white-space:nowrap;" onclick="refreshSupervisorReportPreview()">🔄 تحديث المعاينة</button>
+        </div>
+      </div>
+      <div class="pdf-preview-wrap">
+        <div class="pdf-preview-loading" id="repPreviewLoading">جارٍ تحضير المعاينة...</div>
+        <iframe id="repPreviewFrame" style="display:none;"></iframe>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="pdf-dl-btn" id="repDownloadBtn" onclick="downloadSupervisorReport()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تنزيل PDF
+      </button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-exam-report')">إغلاق</button>
     </div>
   </div>
 </div>
@@ -734,6 +813,8 @@ const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toStr
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, allUsers=[], unsubUsers=null, unsubData=[];
+let currentSupervisorName='المشرف';
+let allExamResultsFull=[], unsubExamResultsFull=null;
 let sentMessages=[];
 let currentMsgTarget='teachers';
 
@@ -776,6 +857,7 @@ auth.onAuthStateChanged(user=>{
       const d = JSON.parse(cached);
       if(d.uid === user.uid && d.role === 'admin'){
         currentUser=user;
+        currentSupervisorName=d.name||'المشرف';
         document.getElementById('navAvatar').textContent=ini(d.name||'م');
         document.getElementById('navUserName').textContent=d.name||'المشرف';
         document.getElementById('setName').value=d.name||'';
@@ -791,6 +873,7 @@ auth.onAuthStateChanged(user=>{
     if(!doc.exists||doc.data().role!=='admin'){ window.location.href='login.html'; return; }
     currentUser=user;
     const d=doc.data();
+    currentSupervisorName=d.name||'المشرف';
     document.getElementById('navAvatar').textContent=ini(d.name||'م');
     document.getElementById('navUserName').textContent=d.name||'المشرف';
     document.getElementById('setName').value=d.name||'';
@@ -804,6 +887,7 @@ function saveAdminSettings(){
   const name=document.getElementById('setName').value.trim();
   if(!name){toast('⚠️ أدخل الاسم');return;}
   db.collection('users').doc(currentUser.uid).update({name}).then(()=>{
+    currentSupervisorName=name;
     document.getElementById('navAvatar').textContent=ini(name);
     document.getElementById('navUserName').textContent=name;
     toast('✅ تم حفظ التغييرات');
@@ -814,6 +898,11 @@ function saveAdminSettings(){
 //  FIRESTORE LISTENERS — aggregate all teachers' data
 // ════════════════════════════════════════
 function startListening(){
+  if(!unsubExamResultsFull){
+    unsubExamResultsFull=db.collection('examResults').onSnapshot(snap=>{
+      allExamResultsFull=snap.docs.map(d=>d.data());
+    },e=>console.log('examResults full err',e));
+  }
   unsubUsers=db.collection('users').onSnapshot(snap=>{
     const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[]}));
     allUsers=users;
@@ -1383,7 +1472,7 @@ function renderStats(){
     </div>`).join('');
 }
 
-['modal-confirm','modal-detail','modal-add-examiner'].forEach(id=>{
+['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
@@ -1506,6 +1595,360 @@ async function loadExamResultsAdmin(){
       </tr>
     `).join('');
   } catch(e){ toast('⚠️ خطأ تحميل النتائج: '+e.message); }
+}
+
+// ════════════════════════════════════════
+//  EXAM REPORTS — تصدير تقارير PDF (يومي/شهري — لكل الحلقات أو حلقة واحدة)
+// ════════════════════════════════════════
+function getTeacherCircle(teacherName){
+  const t=getTeachers().find(x=>x.name===teacherName);
+  return t?(t.circle||''):'';
+}
+function getStudentDetails(studentName,teacherName){
+  return getAllStudents().find(s=>s.name===studentName&&s.teacherName===teacherName)||{};
+}
+function fmtDate(v){
+  if(!v) return '—';
+  const d=new Date(v);
+  return isNaN(d) ? '—' : d.toLocaleDateString('ar-EG');
+}
+
+function openSupervisorReportModal(){
+  const now=new Date();
+  document.getElementById('repDay').value=now.toISOString().slice(0,10);
+  document.getElementById('repMonth').value=now.toISOString().slice(0,7);
+  document.getElementById('repPeriod').value='day';
+  document.getElementById('repScope').value='all';
+  document.getElementById('repType').value='all';
+  onRepPeriodChange();
+  onRepScopeChange();
+  populateRepCircleOptions();
+  om('modal-exam-report');
+  refreshSupervisorReportPreview();
+}
+
+function populateRepCircleOptions(){
+  const sel=document.getElementById('repCircle');
+  const circles=[...new Set(getTeachers().map(t=>t.circle).filter(Boolean))].sort();
+  sel.innerHTML = circles.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option value="">لا توجد حلقات بعد</option>';
+}
+
+function onRepPeriodChange(){
+  const v=document.getElementById('repPeriod').value;
+  document.getElementById('repDayGroup').style.display  = v==='day'  ?'':'none';
+  document.getElementById('repMonthGroup').style.display= v==='month'?'':'none';
+}
+function onRepScopeChange(){
+  const v=document.getElementById('repScope').value;
+  document.getElementById('repCircleGroup').style.display = v==='one'?'':'none';
+  refreshSupervisorReportPreview();
+}
+
+function getSupervisorReportFiltered(){
+  const period = document.getElementById('repPeriod').value;
+  const typeF  = document.getElementById('repType').value;
+  const scope  = document.getElementById('repScope').value;
+  const circleF= document.getElementById('repCircle').value;
+  let from, to, label;
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+
+  if(period==='day'){
+    const dayVal = document.getElementById('repDay').value;
+    if(!dayVal){toast('⚠️ اختر يوماً');return null;}
+    from = new Date(dayVal); from.setHours(0,0,0,0);
+    to   = new Date(dayVal); to.setHours(23,59,59,999);
+    label= 'تقرير يومي — ' + from.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  } else {
+    const monthVal = document.getElementById('repMonth').value;
+    if(!monthVal){toast('⚠️ اختر شهراً');return null;}
+    const [y,m] = monthVal.split('-').map(Number);
+    from = new Date(y,m-1,1);
+    to   = new Date(y,m,0,23,59,59,999);
+    label= 'تقرير شهري — ' + from.toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  }
+
+  let results = allExamResultsFull.filter(r=>{
+    const d=new Date(r.examDate);
+    return d>=from && d<=to;
+  });
+  if(typeF!=='all') results=results.filter(r=>r.type===typeF);
+
+  let circleFilterLabel='جميعُ الحلقاتِ';
+  if(scope==='one'){
+    if(!circleF){toast('⚠️ اختر الحلقة');return null;}
+    results=results.filter(r=>getTeacherCircle(r.teacherName)===circleF);
+    circleFilterLabel=circleF;
+  }
+
+  // إغناء كل نتيجة ببيانات الطالب الإضافية (الهوية، تاريخ الميلاد، مكان الميلاد)
+  results = results.map(r=>{
+    const sd=getStudentDetails(r.studentName,r.teacherName);
+    return {...r,
+      _nid: sd.nationalId||'—',
+      _dob: sd.dob?fmtDate(sd.dob):'—',
+      _pob: sd.placeOfBirth||'—'
+    };
+  }).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+
+  const typeFilterLabel = typeF==='all'?'الكل':typeLabel[typeF];
+  return {results, label, typeFilterLabel, circleFilterLabel};
+}
+
+function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilterLabel){
+  const now=new Date();
+  const pass=results.filter(r=>r.passed).length;
+  const fail=results.filter(r=>!r.passed).length;
+  const avg=results.length?Math.round(results.reduce((s,r)=>s+r.totalScore,0)/results.length):0;
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+  const logoSrc=(document.querySelector('.nav-logo img')||{}).src||'';
+
+  const rows=results.map((r,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
+      <td style="text-align:center;color:#888;font-size:12.5px;">${i+1}</td>
+      <td><b>${r.studentName}</b></td>
+      <td style="direction:ltr;text-align:center;font-size:13px;">${r._nid}</td>
+      <td style="text-align:center;font-size:13px;">${r._dob}</td>
+      <td style="text-align:center;font-size:13px;">${r._pob}</td>
+      <td style="text-align:center;">${typeLabel[r.type]||r.type}</td>
+      <td style="text-align:center;">الجزء ${r.juzNum}</td>
+      <td style="text-align:center;font-weight:800;font-size:16px;color:#1b6b4a;">${r.totalScore}%</td>
+      <td>${r.teacherName}</td>
+      <td style="text-align:center;font-size:12.5px;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+    </tr>`).join('');
+
+  const emptyRow = results.length?'':`<tr><td colspan="10" style="text-align:center;padding:30px;color:#999;">لا توجد نتائج في هذه الفترة</td></tr>`;
+
+  return `<!DOCTYPE html><html lang="ar" dir="rtl">
+<head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+  @page{size:A4 landscape;margin:10mm 12mm;}
+  body{font-family:'Tajawal',sans-serif;padding:0;color:#1a1a2e;background:#fff;font-size:15px;}
+  @media print{ body{padding:0;} }
+
+  /* ── رأس الصفحة ── */
+  .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #1b6b4a;margin-bottom:6px;}
+  .center-info{text-align:center;flex:1;}
+  .center-name{font-family:'Amiri',serif;font-size:22px;font-weight:700;color:#1b6b4a;line-height:1.5;}
+  .center-sub{font-size:13px;color:#555;margin-top:3px;}
+  .logo-img{width:80px;height:80px;object-fit:contain;}
+  .report-meta{text-align:left;font-size:13px;color:#555;line-height:1.9;min-width:190px;}
+  .report-meta b{color:#1a1a2e;}
+
+  /* شريط العنوان */
+  .report-title-bar{background:linear-gradient(135deg,#0d4f35,#1b6b4a);color:#fff;text-align:center;padding:9px 16px;border-radius:8px;margin:10px 0 16px;font-size:15px;font-weight:700;}
+
+  /* إحصائيات */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+  .stat{border-radius:10px;padding:12px 8px;text-align:center;border:1px solid;}
+  .stat .n{font-size:28px;font-weight:800;line-height:1;}
+  .stat .l{font-size:12px;margin-top:4px;}
+  .stat.grn{background:#f0faf4;border-color:#aee6c4;} .stat.grn .n{color:#1b6b4a;} .stat.grn .l{color:#2e7d52;}
+  .stat.blu{background:#f0f4ff;border-color:#90caf9;} .stat.blu .n{color:#1565c0;} .stat.blu .l{color:#1565c0;}
+  .stat.red{background:#fff5f5;border-color:#f5c6cb;} .stat.red .n{color:#c0392b;} .stat.red .l{color:#c0392b;}
+  .stat.gld{background:#fffbf0;border-color:#ffc107;} .stat.gld .n{color:#b8860b;} .stat.gld .l{color:#b8860b;}
+
+  /* جدول */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead tr{background:linear-gradient(135deg,#0d4f35,#1b6b4a);}
+  th{color:#fff;padding:10px 10px;font-size:12.5px;font-weight:700;}
+  td{padding:9px 10px;border-bottom:1px solid #eaeae0;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+
+  /* توقيع */
+  .signature-section{margin-top:30px;display:flex;justify-content:space-between;}
+  .signature-box{text-align:center;width:220px;}
+  .sig-title{font-size:13.5px;font-weight:700;color:#1b6b4a;margin-bottom:6px;}
+  .sig-name{font-family:'Amiri',serif;font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:42px;min-height:22px;}
+  .sig-line{border-top:1.5px solid #1b6b4a;padding-top:6px;font-size:12.5px;color:#888;}
+
+  /* تذييل */
+  .page-footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#aaa;border-top:1px solid #e5e5dc;padding-top:10px;}
+  .page-footer .seal{font-size:12.5px;color:#1b6b4a;font-weight:700;}
+</style></head><body>
+
+<div class="page-header">
+  <img src="${logoSrc}" class="logo-img" alt="شعار المركز">
+  <div class="center-info">
+    <div class="center-name">مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ<br>والسُّنَّةِ النبويةِ</div>
+    <div class="center-sub">المسجد الكبير — النصيرات</div>
+  </div>
+  <div class="report-meta">
+    المشرفُ: <b>${currentSupervisorName}</b><br>
+    الحلقةُ: <b>${circleFilterLabel}</b><br>
+    نوعُ الاختبارِ: <b>${typeFilterLabel}</b><br>
+    تاريخُ الطباعةِ: <b>${now.toLocaleDateString('ar-EG')}</b><br>
+    الوقتُ: <b>${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</b>
+  </div>
+</div>
+
+<div class="report-title-bar">${label}</div>
+
+<div class="stats">
+  <div class="stat grn"><div class="n">${results.length}</div><div class="l">إجماليُّ الاختباراتِ</div></div>
+  <div class="stat blu"><div class="n">${pass}</div><div class="l">عددُ الناجحينَ</div></div>
+  <div class="stat red"><div class="n">${fail}</div><div class="l">لم ينجحوا</div></div>
+  <div class="stat gld"><div class="n">${results.length?avg+'%':'—'}</div><div class="l">متوسطُ العلاماتِ</div></div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>اسمُ الطالبِ</th>
+      <th>رقمُ الهويةِ</th>
+      <th>تاريخُ الميلادِ</th>
+      <th>مكانُ الميلادِ</th>
+      <th>نوعُ الاختبارِ</th>
+      <th>الجزءُ</th>
+      <th>العلامةُ</th>
+      <th>المحفِّظُ</th>
+      <th>تاريخُ الاختبارِ</th>
+    </tr>
+  </thead>
+  <tbody>${rows||emptyRow}</tbody>
+</table>
+
+<div class="signature-section">
+  <div class="signature-box">
+    <div class="sig-title">توقيعُ مختبرِ الجودةِ</div>
+    <div class="sig-name"></div>
+    <div class="sig-line">التوقيعُ والختمُ</div>
+  </div>
+  <div class="signature-box">
+    <div class="sig-title">توقيعُ المشرفِ</div>
+    <div class="sig-name">${currentSupervisorName}</div>
+    <div class="sig-line">التوقيعُ والختمُ</div>
+  </div>
+</div>
+
+<div class="page-footer">
+  <span>مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ — المسجد الكبير، النصيرات</span>
+  <span class="seal">وثيقةٌ رسميةٌ ✦</span>
+</div>
+
+</body></html>`;
+}
+
+let _repHTML='';
+
+function refreshSupervisorReportPreview(){
+  const data=getSupervisorReportFiltered();
+  if(!data) return;
+  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+
+  _repHTML = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel);
+
+  const frame=document.getElementById('repPreviewFrame');
+  const loading=document.getElementById('repPreviewLoading');
+  loading.style.display='none';
+  frame.style.display='block';
+  frame.srcdoc=_repHTML;
+}
+
+async function downloadSupervisorReport(){
+  const data=getSupervisorReportFiltered();
+  if(!data) return;
+  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+
+  if(results.length===0){
+    toast('⚠️ لا توجد نتائج في هذه الفترة لتنزيلها');
+    return;
+  }
+
+  const html = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel);
+  _repHTML = html;
+
+  const btn=document.getElementById('repDownloadBtn');
+  const originalHTML=btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" style="animation:btnSpin .7s linear infinite;transform-origin:center"/></svg>جارٍ التحضير...</span>';
+
+  try{
+    await exportSupervisorReportToPDF(html, label+'_'+circleFilterLabel);
+    toast('✅ تم تنزيل ملف PDF بنجاح');
+  } catch(e){
+    toast('⚠️ خطأ في تحضير التقرير: '+e.message);
+    console.error(e);
+  }
+
+  btn.disabled=false;
+  btn.innerHTML=originalHTML;
+}
+
+// يبني ملف PDF مباشرةً على جهاز المستخدم (بدون فتح نافذة طباعة المتصفح إطلاقًا)
+// عبر تحويل التقرير إلى صورة عالية الدقة (html2canvas) ثم تضمينها داخل مستند PDF
+// بصيغة أفقية (Landscape) عبر مكتبة jsPDF، مع دعم تعدد الصفحات تلقائيًا عند الحاجة.
+function exportSupervisorReportToPDF(html, label){
+  return new Promise((resolve,reject)=>{
+    const old=document.getElementById('repExportFrame');
+    if(old) old.remove();
+
+    const frame=document.createElement('iframe');
+    frame.id='repExportFrame';
+    frame.style.cssText='position:fixed;left:-9999px;top:0;width:1400px;height:600px;border:none;background:#fff;';
+    document.body.appendChild(frame);
+
+    frame.onload=async function(){
+      try{
+        const fdoc=frame.contentDocument;
+
+        if(fdoc.fonts && fdoc.fonts.ready) await fdoc.fonts.ready;
+        await new Promise(r=>setTimeout(r,350));
+
+        const target=fdoc.body;
+        const canvas=await html2canvas(target,{
+          scale:3,
+          useCORS:true,
+          backgroundColor:'#ffffff',
+          width:target.scrollWidth,
+          height:target.scrollHeight,
+          windowWidth:target.scrollWidth,
+          windowHeight:target.scrollHeight
+        });
+
+        const imgData=canvas.toDataURL('image/png');
+
+        const {jsPDF}=window.jspdf;
+        const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+        const pageWidth=pdf.internal.pageSize.getWidth();
+        const pageHeight=pdf.internal.pageSize.getHeight();
+
+        const margin=12;
+        const usableWidth=pageWidth-margin*2;
+        const usableHeight=pageHeight-margin*2;
+
+        const imgWidth=usableWidth;
+        const imgHeight=canvas.height*imgWidth/canvas.width;
+
+        let heightLeft=imgHeight;
+        let position=margin;
+
+        pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+        heightLeft-=usableHeight;
+
+        while(heightLeft>0){
+          position=margin-(imgHeight-heightLeft);
+          pdf.addPage();
+          pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
+          heightLeft-=usableHeight;
+        }
+
+        const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
+        pdf.save(`${safeLabel}.pdf`);
+
+        frame.remove();
+        resolve();
+      } catch(e){
+        frame.remove();
+        reject(e);
+      }
+    };
+
+    frame.srcdoc=html;
+  });
 }
 
 // Load passing grade on init
