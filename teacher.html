@@ -947,6 +947,27 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 <!-- Hidden render template for PDF generation -->
 <div id="pdfRenderArea" style="position:fixed;top:-9999px;left:-9999px;width:780px;background:#fff;direction:rtl;"></div>
 
+<!-- MODAL: FORCED FIRST-LOGIN PASSWORD CHANGE -->
+<div class="modal-bg" id="mFirstPassword">
+  <div class="modal" style="max-width:420px;">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        مرحباً بك في بوابة المحفّظ!
+      </div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:14px;line-height:1.6;">
+        🔑 كلمة المرور الحالية هي <b>رقم هويتك</b>. لحماية حسابك، يرجى اختيار كلمة مرور جديدة لا تشاركها مع أحد.
+      </div>
+      <div class="mf"><label>كلمة المرور الجديدة</label><input type="password" id="fp-new" placeholder="6 أحرف أو أكثر"></div>
+      <div class="mf"><label>تأكيد كلمة المرور</label><input type="password" id="fp-confirm" placeholder="أعد كتابة كلمة المرور"></div>
+      <button class="btn-submit-modal" id="fp-save-btn" onclick="saveFirstLoginPassword()">حفظ كلمة المرور الجديدة</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -1124,6 +1145,10 @@ function enterApp(user,data){
   userDocRef=db.collection('userdata').doc(user.uid);
   loadActivatedNids(user.uid);
   loadStudentOpenStatus(user.uid);
+
+  if(data.firstLogin){
+    setTimeout(()=>om('mFirstPassword'), 600);
+  }
   if(fsUnsub)fsUnsub();
   fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},snap=>{
     if(snap.exists){
@@ -1184,6 +1209,34 @@ function changePassword(){
       :'حدث خطأ: '+e.message;
     toast('⚠️ '+msg,'error');
   });
+}
+
+// ════════════════════════════════════════
+//  FORCED FIRST-LOGIN PASSWORD CHANGE
+// ════════════════════════════════════════
+async function saveFirstLoginPassword(){
+  const pw=document.getElementById('fp-new').value;
+  const conf=document.getElementById('fp-confirm').value;
+  if(!pw||pw.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل','error'); return; }
+  if(pw!==conf){ toast('⚠️ كلمتا المرور غير متطابقتين','error'); return; }
+
+  const btn=document.getElementById('fp-save-btn');
+  btn.textContent='⏳ جارٍ الحفظ...'; btn.disabled=true;
+
+  try{
+    await currentUser.updatePassword(pw);
+    await db.collection('users').doc(currentUser.uid).update({ firstLogin:false });
+    cm('mFirstPassword');
+    toast('✅ تم تغيير كلمة المرور بنجاح');
+  } catch(e){
+    if(e.code==='auth/requires-recent-login'){
+      toast('⚠️ يرجى تسجيل الخروج والدخول مجدداً ثم تغيير كلمة المرور','error');
+    } else {
+      toast('⚠️ خطأ: '+e.message,'error');
+    }
+  } finally {
+    btn.textContent='حفظ كلمة المرور الجديدة'; btn.disabled=false;
+  }
 }
 
 // ════════════════════════════════════════
