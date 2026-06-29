@@ -170,17 +170,36 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .badge-warn{background:var(--ambb);color:var(--amb)}
 .badge-bad{background:var(--redb);color:var(--red)}
 
-/* EVALUATION TAB */
-.eval-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:.7rem .9rem;border-bottom:1px solid var(--bdr);}
-.eval-row:last-child{border-bottom:none;}
-.eval-row:hover{background:rgba(10,61,43,.025);}
-.eval-rank{width:26px;height:26px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-.eval-rank.top1{background:linear-gradient(135deg,#f0d060,#c9a227);color:#fff;}
+/* EVALUATION TAB — بطاقات احترافية */
+#eval-list{padding:14px;display:flex;flex-direction:column;gap:12px;}
+.eval-card{background:var(--wh);border:1px solid var(--bdr);border-radius:16px;padding:14px 16px;box-shadow:0 1px 3px rgba(10,61,43,.04);transition:box-shadow .2s,transform .2s;}
+.eval-card:hover{box-shadow:0 6px 18px rgba(10,61,43,.09);transform:translateY(-1px);}
+.eval-card-top{display:flex;align-items:center;gap:10px;}
+.eval-rank{width:28px;height:28px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex-shrink:0;}
+.eval-rank.top1{background:linear-gradient(135deg,#f0d060,#c9a227);color:#fff;box-shadow:0 2px 8px rgba(201,162,39,.4);}
 .eval-rank.top2{background:linear-gradient(135deg,#dcdcdc,#a8a8a8);color:#fff;}
 .eval-rank.top3{background:linear-gradient(135deg,#e0a96d,#b0723b);color:#fff;}
-.eval-info{flex:1 1 130px;min-width:110px;}
-.eval-name{font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.eval-att-mini{font-size:11px;color:var(--txm);margin-top:1px;}
+.eval-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--gl),var(--gm));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+.eval-info{flex:1 1 130px;min-width:100px;}
+.eval-name{font-size:14px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.eval-att-mini{display:flex;align-items:center;gap:6px;margin-top:3px;}
+.eval-att-pill{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:7px;}
+.eval-att-pill.present{background:var(--grnb);color:var(--grn);}
+.eval-att-pill.late{background:#fff7e0;color:#b7791f;}
+.eval-att-pill.absent{background:var(--redb);color:var(--red);}
+.eval-att-pill.excused{background:var(--blub);color:var(--blu);}
+.eval-att-pill.none{background:var(--crd);color:var(--txm);}
+.eval-att-pts{font-size:10.5px;color:var(--txm);}
+.eval-total-badge{text-align:center;border-radius:14px;padding:6px 14px;min-width:62px;flex-shrink:0;}
+.eval-total-badge.hi{background:var(--grnb);}
+.eval-total-badge.mid{background:#fff7e0;}
+.eval-total-badge.lo{background:var(--redb);}
+.eval-total-num{font-size:21px;font-weight:800;line-height:1;}
+.eval-total-badge.hi .eval-total-num{color:var(--grn);}
+.eval-total-badge.mid .eval-total-num{color:#b7791f;}
+.eval-total-badge.lo .eval-total-num{color:var(--red);}
+.eval-total-max{font-size:9px;color:var(--txm);margin-top:2px;}
+.eval-card-bottom{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--bdr);}
 .eval-stepper{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto;}
 .eval-stepper-lbl{font-size:10.5px;color:var(--txm);font-weight:600;}
 .eval-stepper-ctrl{display:flex;align-items:center;gap:6px;}
@@ -189,13 +208,14 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-stepper-ctrl button:disabled{opacity:.35;cursor:not-allowed;}
 .eval-stepper-val{min-width:22px;text-align:center;font-size:14px;font-weight:800;color:var(--tx);}
 .eval-stepper-max{font-size:9.5px;color:var(--txl);}
-.eval-opened-tag{font-size:10px;padding:3px 8px;border-radius:6px;font-weight:700;flex-shrink:0;white-space:nowrap;}
-.eval-opened-tag.yes{background:var(--grnb);color:var(--grn);}
-.eval-opened-tag.no{background:var(--crd);color:var(--txm);}
-.eval-total-badge{min-width:56px;text-align:center;font-size:14px;font-weight:800;border-radius:10px;padding:6px 10px;flex-shrink:0;}
-.eval-total-badge.hi{background:var(--grnb);color:var(--grn);}
-.eval-total-badge.mid{background:#fff7e0;color:#b7791f;}
-.eval-total-badge.lo{background:var(--redb);color:var(--red);}
+.eval-opened{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;}
+.eval-opened.yes{color:var(--grn);}
+.eval-opened.no{color:var(--txl);font-weight:600;}
+
+@media(max-width:560px){
+  .eval-card-top{flex-wrap:wrap;}
+  .eval-total-badge{margin-right:auto;}
+}
 
 .prog-student{padding:.7rem 0;border-bottom:1px solid var(--bdr)}
 .prog-student:last-child{border-bottom:none}
@@ -632,7 +652,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
           </div>
           <input type="date" id="eval-date-sel" onchange="renderEvalTab()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
         </div>
-        <div class="panel-body" id="eval-list" style="padding:0;"></div>
+        <div class="panel-body" id="eval-list"></div>
       </div>
 
       <div class="panel" style="margin-top:1.2rem;">
@@ -1278,16 +1298,25 @@ function computeStudentDailyScore(studentId, date){
   const ev=((dailyEval[date]||{})[studentId])||{};
   const hifzScore=Math.max(0,Math.min(30,Number(ev.hifzScore)||0));
   const murajaaScore=Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
-  const opened=!!((pageOpens[date]||{})[studentId]);
+  const openedAt=(pageOpens[date]||{})[studentId]||null;
+  const opened=!!openedAt;
   const bonus=opened?10:0;
   const total=Math.min(100, attScore+hifzScore+murajaaScore+bonus);
-  return {attStatus, attScore, hifzScore, murajaaScore, opened, bonus, total};
+  return {attStatus, attScore, hifzScore, murajaaScore, opened, openedAt, bonus, total};
 }
 
 function evalCurrentDate(){
   const dateInput=document.getElementById('eval-date-sel');
   if(!dateInput.value){ dateInput.value=TODAY(); dateInput.max=TODAY(); }
   return dateInput.value;
+}
+
+function formatOpenTime(iso){
+  if(!iso) return '';
+  try{
+    const d=new Date(iso);
+    return d.toLocaleTimeString('ar-EG',{hour:'numeric',minute:'2-digit',hour12:true});
+  }catch(e){ return ''; }
 }
 
 // زيادة/تنقيص نقاط الحفظ أو المراجعة بمقدار 5 (من 0 إلى 30) — يُحفظ فوراً
@@ -1336,32 +1365,48 @@ function renderEvalTab(){
     const rankCls=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const totalCls=r.total>=80?'hi':r.total>=60?'mid':'lo';
     const attLbl=ATT_LABEL_MAP[r.attStatus]||'لم يُسجَّل';
-    return `<div class="eval-row">
-      <div class="eval-rank ${rankCls}">${i+1}</div>
-      <div class="eval-info">
-        <div class="eval-name">${r.name}</div>
-        <div class="eval-att-mini">📋 ${attLbl} — ${r.attScore}/30</div>
-      </div>
-      <div class="eval-stepper">
-        <div class="eval-stepper-lbl">📖 الحفظ</div>
-        <div class="eval-stepper-ctrl">
-          <button type="button" onclick="adjustEval('${r.id}','hifz',-5)" ${r.hifzScore<=0?'disabled':''}>−</button>
-          <span class="eval-stepper-val">${r.hifzScore}</span>
-          <button type="button" onclick="adjustEval('${r.id}','hifz',5)" ${r.hifzScore>=30?'disabled':''}>+</button>
+    const attCls=r.attStatus||'none';
+    const openTime=formatOpenTime(r.openedAt);
+    return `<div class="eval-card">
+      <div class="eval-card-top">
+        <div class="eval-rank ${rankCls}">${i+1}</div>
+        <div class="eval-avatar">${ini(r.name)}</div>
+        <div class="eval-info">
+          <div class="eval-name">${r.name}</div>
+          <div class="eval-att-mini">
+            <span class="eval-att-pill ${attCls}">${attLbl}</span>
+            <span class="eval-att-pts">${r.attScore}/30</span>
+          </div>
         </div>
-        <div class="eval-stepper-max">/30</div>
-      </div>
-      <div class="eval-stepper">
-        <div class="eval-stepper-lbl">🔄 المراجعة</div>
-        <div class="eval-stepper-ctrl">
-          <button type="button" onclick="adjustEval('${r.id}','murajaa',-5)" ${r.murajaaScore<=0?'disabled':''}>−</button>
-          <span class="eval-stepper-val">${r.murajaaScore}</span>
-          <button type="button" onclick="adjustEval('${r.id}','murajaa',5)" ${r.murajaaScore>=30?'disabled':''}>+</button>
+        <div class="eval-total-badge ${totalCls}">
+          <div class="eval-total-num">${r.total}</div>
+          <div class="eval-total-max">من 100</div>
         </div>
-        <div class="eval-stepper-max">/30</div>
       </div>
-      <span class="eval-opened-tag ${r.opened?'yes':'no'}">${r.opened?'✓ فتح الصفحة':'لم يفتح'}</span>
-      <div class="eval-total-badge ${totalCls}">${r.total}<span style="font-size:9px;font-weight:600;"> /100</span></div>
+      <div class="eval-card-bottom">
+        <div class="eval-stepper">
+          <div class="eval-stepper-lbl">📖 الحفظ</div>
+          <div class="eval-stepper-ctrl">
+            <button type="button" onclick="adjustEval('${r.id}','hifz',-5)" ${r.hifzScore<=0?'disabled':''}>−</button>
+            <span class="eval-stepper-val">${r.hifzScore}</span>
+            <button type="button" onclick="adjustEval('${r.id}','hifz',5)" ${r.hifzScore>=30?'disabled':''}>+</button>
+          </div>
+          <div class="eval-stepper-max">/30</div>
+        </div>
+        <div class="eval-stepper">
+          <div class="eval-stepper-lbl">🔄 المراجعة</div>
+          <div class="eval-stepper-ctrl">
+            <button type="button" onclick="adjustEval('${r.id}','murajaa',-5)" ${r.murajaaScore<=0?'disabled':''}>−</button>
+            <span class="eval-stepper-val">${r.murajaaScore}</span>
+            <button type="button" onclick="adjustEval('${r.id}','murajaa',5)" ${r.murajaaScore>=30?'disabled':''}>+</button>
+          </div>
+          <div class="eval-stepper-max">/30</div>
+        </div>
+        <div class="eval-opened ${r.opened?'yes':'no'}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${r.opened ? `فتح صفحته — ${openTime}` : 'لم يفتح صفحته اليوم'}
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
