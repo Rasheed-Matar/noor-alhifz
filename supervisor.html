@@ -905,6 +905,10 @@ select.form-input{cursor:pointer;}
           </table>
         </div>
         <div class="import-progress" id="impTProgressText"></div>
+        <div id="impTDoneWrap" style="display:none;margin-top:16px;">
+          <div style="font-size:13px;font-weight:700;color:var(--em);margin-bottom:8px;">📲 إرسال بيانات الدخول للمحفّظين الجدد عبر واتساب (رسالة واحدة في كل مرة):</div>
+          <div id="impTDoneList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1239,7 +1243,7 @@ async function saveNewTeacher(){
         nationalId: nid, dob, placeOfBirth: pob,
         phone, circle: circle||'حلقة القرآن',
         familyMembersCount,
-        role: 'teacher', status: 'approved',
+        role: 'teacher', status: 'approved', firstLogin: true,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -1531,6 +1535,7 @@ function renderTeachers(data){
       <td><div class="td-action" onclick="event.stopPropagation()">
         <button class="td-btn edit" onclick="openTeacherDetail('${t.id}')">عرض</button>
         <button class="td-btn msg" onclick="quickMsgTeacher('${t.id}')">رسالة</button>
+        <button class="td-btn msg" onclick="sendTeacherCredentials('${t.id}')" title="إرسال بيانات الدخول">🔐 بيانات الدخول</button>
         <button class="td-btn del" onclick="suspendTeacher('${t.id}')">تعليق</button>
       </div></td>
     </tr>`;
@@ -1565,6 +1570,7 @@ function openTeacherDetail(uid){
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:#1a4a8a;">${present}/${active.length}</div><div style="font-size:11px;color:#7a8a7a;">حضور اليوم</div></div>
     </div>
     <button class="btn-save" style="width:100%;" onclick="quickMsgTeacher('${t.id}');closeModal('modal-detail');">إرسال رسالة لهذا المحفظ</button>
+    <button class="btn-save" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#1a9c5b,#16a34a);" onclick="sendTeacherCredentials('${t.id}');closeModal('modal-detail');">🔐 إرسال بيانات الدخول عبر واتساب</button>
   `;
   om('modal-detail');
 }
@@ -1573,6 +1579,40 @@ function quickMsgTeacher(uid){
   const t=allUsers.find(x=>x.id===uid); if(!t||!t.phone){ toast('⚠️ لا يوجد رقم هاتف لهذا المحفظ'); return; }
   const msg=`السلام عليكم ${t.name}،\nمن مشرف مركز الكتاب.`;
   openWA(t.phone,msg);
+}
+
+// ════════════════════════════════════════
+//  SEND TEACHER LOGIN CREDENTIALS (WhatsApp)
+// ════════════════════════════════════════
+function sendTeacherCredentials(uid){
+  const t=allUsers.find(x=>x.id===uid); if(!t){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  if(!t.phone){ toast('⚠️ لا يوجد رقم هاتف لهذا المحفظ'); return; }
+  if(!t.nationalId){ toast('⚠️ لا يوجد رقم هوية لهذا المحفظ'); return; }
+
+  const appUrl = window.location.origin + '/teacher.html';
+  const msg =
+`السلام عليكم ورحمة الله وبركاته 🌿
+
+نُبشّرك بأنه تم تفعيل حسابك كمحفّظ في *مركز الكتاب* ✅
+
+━━━━━━━━━━━━━━
+📚 *الحلقة:* ${t.circle||'حلقة القرآن'}
+━━━━━━━━━━━━━━
+
+🔐 *بيانات الدخول:*
+• رقم الهوية / اسم المستخدم: *${t.nationalId}*
+• كلمة المرور: *${t.nationalId}*
+  _(سيُطلب منك تغييرها عند أول دخول)_
+
+🔗 *رابط البوابة:*
+${appUrl}
+
+بارك الله فيك وجعل ما تقدمه في ميزان حسناتك 🤲
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+
+  openWA(t.phone, msg);
+  toast('✅ تم فتح واتساب بالرسالة');
 }
 
 // ════════════════════════════════════════
@@ -3080,8 +3120,11 @@ function openImportTeachersModal(){
 
   document.getElementById('impTResultsWrap').style.display='none';
   document.getElementById('impTProgressText').style.display='none';
+  document.getElementById('impTDoneWrap').style.display='none';
+  document.getElementById('impTDoneList').innerHTML='';
   const confirmBtn=document.getElementById('impTConfirmBtn');
   confirmBtn.disabled=true;
+  confirmBtn.style.display='';
   confirmBtn.textContent='➕ إضافة المحفّظين المطابقين';
 
   _importTeacherMatches=[];
@@ -3197,6 +3240,7 @@ async function confirmTeacherImport(){
 
   let okCount=0, failCount=0;
   const failedRows=[];
+  const createdTeachers=[];
 
   for(let i=0;i<ready.length;i++){
     const r=ready[i].record;
@@ -3213,10 +3257,11 @@ async function confirmTeacherImport(){
         nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth,
         phone:r.phone, circle:r.circle||'حلقة القرآن',
         familyMembersCount:r.familyMembersCount,
-        role:'teacher', status:'approved',
+        role:'teacher', status:'approved', firstLogin:true,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       okCount++;
+      createdTeachers.push(r);
     } catch(e){
       failCount++;
       failedRows.push(r.name+' ('+r.nationalId+'): '+e.message);
@@ -3226,6 +3271,7 @@ async function confirmTeacherImport(){
 
   progEl.style.display='none';
   btn.disabled=false;
+  btn.style.display='none';
 
   if(failCount===0){
     toast(`✅ تمت إضافة ${okCount} محفّظاً بنجاح — كلمة المرور الافتراضية: رقم الهوية`);
@@ -3234,7 +3280,52 @@ async function confirmTeacherImport(){
     console.warn('فشل استيراد المحفّظين التالية:', failedRows);
   }
 
-  closeModal('modal-import-teachers');
+  renderImportedTeachersDoneList(createdTeachers);
+}
+
+// عرض قائمة المحفّظين الذين تمت إضافتهم حديثاً مع زر لإرسال بيانات الدخول لكل واحد عبر واتساب
+// (واتساب يفتح محادثة واحدة فقط في كل مرة، لذا الإرسال يكون فردياً)
+function renderImportedTeachersDoneList(createdTeachers){
+  const wrap=document.getElementById('impTDoneWrap');
+  const list=document.getElementById('impTDoneList');
+  if(!createdTeachers.length){ wrap.style.display='none'; return; }
+
+  list.innerHTML = createdTeachers.map(r=>{
+    const hasPhone = /^05[0-9]{8}$/.test(r.phone||'');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:8px;padding:8px 10px;font-size:13px;">
+      <div><b>${r.name}</b> <span style="color:#7a8a7a;font-size:11.5px;">(${r.circle||'—'})</span></div>
+      ${hasPhone
+        ? `<button class="td-btn msg" onclick='sendImportedTeacherWA(${JSON.stringify(r.name)},${JSON.stringify(r.nationalId)},${JSON.stringify(r.phone)},${JSON.stringify(r.circle||"حلقة القرآن")})'>🔐 إرسال بيانات الدخول</button>`
+        : `<span style="color:#c0392b;font-size:11.5px;">بدون رقم جوال</span>`}
+    </div>`;
+  }).join('');
+  wrap.style.display='block';
+}
+
+function sendImportedTeacherWA(name,nationalId,phone,circle){
+  const appUrl = window.location.origin + '/teacher.html';
+  const msg =
+`السلام عليكم ورحمة الله وبركاته 🌿
+
+نُبشّرك بأنه تم تفعيل حسابك كمحفّظ في *مركز الكتاب* ✅
+
+━━━━━━━━━━━━━━
+📚 *الحلقة:* ${circle}
+━━━━━━━━━━━━━━
+
+🔐 *بيانات الدخول:*
+• رقم الهوية / اسم المستخدم: *${nationalId}*
+• كلمة المرور: *${nationalId}*
+  _(سيُطلب منك تغييرها عند أول دخول)_
+
+🔗 *رابط البوابة:*
+${appUrl}
+
+بارك الله فيك وجعل ما تقدمه في ميزان حسناتك 🤲
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+
+  openWA(phone, msg);
 }
 
 
