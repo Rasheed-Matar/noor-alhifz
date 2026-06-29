@@ -206,6 +206,15 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .modal-hdr-title{font-size:16px;font-weight:700;}
 .modal-hdr-sub{font-size:12px;opacity:.85;margin-top:4px;}
 .modal-body{padding:20px;}
+
+/* نافذة الصلاة على النبي ﷺ — تأكيد فتح الصفحة */
+.salawat-modal{cursor:pointer;text-align:center;padding:40px 26px 32px;background:linear-gradient(160deg,#fff,var(--cream));position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+.salawat-modal::before{content:'';position:absolute;top:-50px;left:-50px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.14),transparent 70%);}
+.salawat-modal::after{content:'';position:absolute;bottom:-60px;right:-40px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(26,107,74,.10),transparent 70%);}
+.salawat-deco{font-size:30px;color:var(--gold);margin-bottom:14px;position:relative;z-index:1;}
+.salawat-text{font-size:18px;font-weight:800;color:var(--em);line-height:1.9;position:relative;z-index:1;}
+.salawat-hint{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--txl);margin-top:20px;position:relative;z-index:1;}
+.salawat-modal:active{transform:scale(.98);}
 .inp-group{margin-bottom:14px;}
 .inp-group label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px;}
 .inp-group input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}
@@ -460,6 +469,17 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 </div><!-- /main -->
 
 <!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="modal-salawat">
+  <div class="modal salawat-modal" onclick="confirmPageOpen()">
+    <div class="salawat-deco">✦</div>
+    <div class="salawat-text">اللهم صلِّ وسلِّم وبارك<br>على سيدنا محمد ﷺ</div>
+    <div class="salawat-hint">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      اضغط هنا للمتابعة
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-change-pw">
   <div class="modal">
     <div class="modal-hdr">
@@ -519,6 +539,7 @@ let teacherData = {};         // {students, sessions, attendance, exams}
 let myExamResults = [];       // من examResults collection
 let fsUnsub = null;
 let resultsUnsub = null;
+let pendingFirstLogin = false; // يُعرض بعد إغلاق نافذة الصلاة على النبي ﷺ
 
 // ════════════════════════════════════════
 //  HELPERS
@@ -632,16 +653,33 @@ function enterApp(user, userData){
 
   loadTeacherData();
   loadExamResults();
+
+  pendingFirstLogin = !!userData.firstLogin;
+  const alreadyOpenedToday = userData.lastOpenDate === TODAY();
+
+  if(!alreadyOpenedToday){
+    // لم يُسجَّل فتحه لصفحته اليوم بعد — أظهر نافذة الصلاة على النبي ﷺ، والضغط عليها هو ما يُثبت الفتح
+    setTimeout(()=>document.getElementById('modal-salawat').classList.add('open'), 500);
+  } else if(pendingFirstLogin){
+    // مُسجَّل فتحه اليوم مسبقاً — أظهر مباشرة رسالة تغيير كلمة المرور إن لزم
+    setTimeout(()=>document.getElementById('modal-change-pw').classList.add('open'), 800);
+  }
+}
+
+// يُستدعى فقط عند ضغط الطالب على نافذة "اللهم صلِّ وسلِّم وبارك على سيدنا محمد"
+function confirmPageOpen(){
+  document.getElementById('modal-salawat').classList.remove('open');
   markPageOpenedToday();
 
-  // إظهار رسالة تغيير كلمة المرور عند أول دخول
-  if(userData.firstLogin){
-    setTimeout(()=>document.getElementById('modal-change-pw').classList.add('open'), 800);
+  // إظهار رسالة تغيير كلمة المرور (إن كان أول دخول) بعد إغلاق نافذة الصلاة
+  if(pendingFirstLogin){
+    setTimeout(()=>document.getElementById('modal-change-pw').classList.add('open'), 400);
   }
 }
 
 // ════════════════════════════════════════
 //  تسجيل فتح الطالب لصفحته اليوم (+10 من التقييم اليومي)
+//  — يُستدعى فقط بعد ضغط الطالب فعلياً على نافذة الصلاة على النبي ﷺ
 // ════════════════════════════════════════
 function markPageOpenedToday(){
   if(!myTeacherId||!myStudentId||!currentUser) return;
