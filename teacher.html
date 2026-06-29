@@ -170,51 +170,45 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .badge-warn{background:var(--ambb);color:var(--amb)}
 .badge-bad{background:var(--redb);color:var(--red)}
 
-/* EVALUATION TAB — بطاقات احترافية */
-#eval-list{padding:14px;display:flex;flex-direction:column;gap:12px;}
-.eval-card{background:var(--wh);border:1px solid var(--bdr);border-radius:16px;padding:14px 16px;box-shadow:0 1px 3px rgba(10,61,43,.04);transition:box-shadow .2s,transform .2s;}
+/* EVALUATION TAB — صف واحد متناسب */
+#eval-list{padding:14px;display:flex;flex-direction:column;gap:10px;}
+.eval-card{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;background:var(--wh);border:1px solid var(--bdr);border-radius:16px;padding:10px 14px;box-shadow:0 1px 3px rgba(10,61,43,.04);transition:box-shadow .2s,transform .2s;}
 .eval-card:hover{box-shadow:0 6px 18px rgba(10,61,43,.09);transform:translateY(-1px);}
-.eval-card-top{display:flex;align-items:center;gap:10px;}
-.eval-rank{width:28px;height:28px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;flex-shrink:0;}
+.eval-rank{width:26px;height:26px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
 .eval-rank.top1{background:linear-gradient(135deg,#f0d060,#c9a227);color:#fff;box-shadow:0 2px 8px rgba(201,162,39,.4);}
 .eval-rank.top2{background:linear-gradient(135deg,#dcdcdc,#a8a8a8);color:#fff;}
 .eval-rank.top3{background:linear-gradient(135deg,#e0a96d,#b0723b);color:#fff;}
-.eval-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--gl),var(--gm));color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
-.eval-info{flex:1 1 130px;min-width:100px;}
-.eval-name{font-size:14px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.eval-att-mini{display:flex;align-items:center;gap:6px;margin-top:3px;}
-.eval-att-pill{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:7px;}
+.eval-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gl),var(--gm));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;flex-shrink:0;}
+.eval-info{flex:1 1 120px;min-width:96px;}
+.eval-name{font-size:13.5px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.eval-att-mini{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.eval-att-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:7px;white-space:nowrap;}
 .eval-att-pill.present{background:var(--grnb);color:var(--grn);}
 .eval-att-pill.late{background:#fff7e0;color:#b7791f;}
 .eval-att-pill.absent{background:var(--redb);color:var(--red);}
 .eval-att-pill.excused{background:var(--blub);color:var(--blu);}
 .eval-att-pill.none{background:var(--crd);color:var(--txm);}
-.eval-att-pts{font-size:10.5px;color:var(--txm);}
-.eval-total-badge{text-align:center;border-radius:14px;padding:6px 14px;min-width:62px;flex-shrink:0;}
-.eval-total-badge.hi{background:var(--grnb);}
-.eval-total-badge.mid{background:#fff7e0;}
-.eval-total-badge.lo{background:var(--redb);}
-.eval-total-num{font-size:21px;font-weight:800;line-height:1;}
-.eval-total-badge.hi .eval-total-num{color:var(--grn);}
-.eval-total-badge.mid .eval-total-num{color:#b7791f;}
-.eval-total-badge.lo .eval-total-num{color:var(--red);}
-.eval-total-max{font-size:9px;color:var(--txm);margin-top:2px;}
-.eval-card-bottom{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--bdr);}
-.eval-stepper{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto;}
-.eval-stepper-lbl{font-size:10.5px;color:var(--txm);font-weight:600;}
-.eval-stepper-ctrl{display:flex;align-items:center;gap:6px;}
-.eval-stepper-ctrl button{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bdr);background:var(--wh);color:var(--gl);font-size:15px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;}
-.eval-stepper-ctrl button:hover:not(:disabled){background:var(--gl);color:#fff;border-color:var(--gl);}
-.eval-stepper-ctrl button:disabled{opacity:.35;cursor:not-allowed;}
-.eval-stepper-val{min-width:22px;text-align:center;font-size:14px;font-weight:800;color:var(--tx);}
-.eval-stepper-max{font-size:9.5px;color:var(--txl);}
-.eval-opened{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;}
+.eval-att-pts{font-size:10px;color:var(--txm);}
+
+/* صناديق النقر الدائرية للحفظ والمراجعة */
+.eval-tapbox{display:flex;flex-direction:column;align-items:center;justify-content:center;width:50px;height:50px;border-radius:13px;background:var(--go);border:1.5px solid transparent;cursor:pointer;transition:all .15s;user-select:none;flex-shrink:0;}
+.eval-tapbox:hover{border-color:var(--gl);box-shadow:0 2px 8px rgba(15,92,64,.18);}
+.eval-tapbox:active{transform:scale(.93);}
+.eval-tapbox-ico{font-size:11px;line-height:1;margin-bottom:1px;}
+.eval-tapbox-val{font-size:15px;font-weight:800;color:var(--gd);line-height:1;}
+.eval-tapbox-max{font-size:8px;color:var(--txm);margin-top:1px;}
+
+.eval-opened{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex:1 1 130px;justify-content:flex-end;white-space:nowrap;}
 .eval-opened.yes{color:var(--grn);}
 .eval-opened.no{color:var(--txl);font-weight:600;}
 
-@media(max-width:560px){
-  .eval-card-top{flex-wrap:wrap;}
-  .eval-total-badge{margin-right:auto;}
+/* شارة التقييم الكلي — أخضر موحّد دائماً */
+.eval-total-badge{text-align:center;border-radius:14px;padding:6px 14px;min-width:58px;flex-shrink:0;background:var(--go);}
+.eval-total-num{font-size:19px;font-weight:800;line-height:1;color:var(--gl);}
+.eval-total-max{font-size:8.5px;color:var(--gl);opacity:.75;margin-top:2px;}
+
+@media(max-width:640px){
+  .eval-opened{justify-content:flex-start;order:10;flex:1 1 100%;}
 }
 
 .prog-student{padding:.7rem 0;border-bottom:1px solid var(--bdr)}
@@ -659,10 +653,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <div class="panel-hd"><div class="panel-title">ℹ️ آلية حساب التقييم اليومي</div></div>
         <div class="panel-body" style="font-size:12.5px;color:var(--txm);line-height:1.9;">
           🟢 الحضور: حاضر = 30 · متأخر = 15 · عذر = 5 · غائب = 0<br>
-          📖 الحفظ اليومي: تُسجَّل يدوياً بالضغط +٥/−٥ حسب إنجاز الطالب من المطلوب (من 30)<br>
-          🔄 المراجعة اليومية: تُسجَّل يدوياً بالضغط +٥/−٥ بنفس الطريقة (من 30)<br>
-          ⭐ فتح الطالب لصفحته الخاصة اليوم: +10 تلقائياً<br>
-          <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط +٥ ثلاث مرات ليحصل على 15/30.</b>
+          📖🔄 الحفظ والمراجعة اليومية: اضغط على الصندوق فتزيد قيمته 5 نقاط في كل مرة، وإذا تجاوز 30 يعود من جديد للصفر (من 30 لكل منهما)<br>
+          ⭐ فتح الطالب لصفحته الخاصة اليوم (مرة واحدة تكفي): +10 تلقائياً<br>
+          <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط على صندوق "الحفظ" 3 مرات ليصل إلى 15/30.</b>
         </div>
       </div>
     </div>
@@ -1130,6 +1123,7 @@ function enterApp(user,data){
   window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
   loadActivatedNids(user.uid);
+  loadStudentOpenStatus(user.uid);
   if(fsUnsub)fsUnsub();
   fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},snap=>{
     if(snap.exists){
@@ -1298,8 +1292,13 @@ function computeStudentDailyScore(studentId, date){
   const ev=((dailyEval[date]||{})[studentId])||{};
   const hifzScore=Math.max(0,Math.min(30,Number(ev.hifzScore)||0));
   const murajaaScore=Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
-  const openedAt=(pageOpens[date]||{})[studentId]||null;
-  const opened=!!openedAt;
+
+  // المصدر الموثوق: مستند المستخدم الخاص بالطالب (lastOpenDate)
+  const openInfo=studentOpenInfo[studentId];
+  let opened=false, openedAt=null;
+  if(openInfo && openInfo.date===date){ opened=true; openedAt=openInfo.at; }
+  else if((pageOpens[date]||{})[studentId]){ opened=true; openedAt=(pageOpens[date]||{})[studentId]; } // مسار احتياطي قديم
+
   const bonus=opened?10:0;
   const total=Math.min(100, attScore+hifzScore+murajaaScore+bonus);
   return {attStatus, attScore, hifzScore, murajaaScore, opened, openedAt, bonus, total};
@@ -1320,13 +1319,14 @@ function formatOpenTime(iso){
 }
 
 // زيادة/تنقيص نقاط الحفظ أو المراجعة بمقدار 5 (من 0 إلى 30) — يُحفظ فوراً
-function adjustEval(studentId, field, delta){
+// النقر يزيد 5 نقاط، وعند تجاوز 30 يعود للصفر من جديد
+function cycleEval(studentId, field){
   const date=evalCurrentDate();
   if(!dailyEval[date]) dailyEval[date]={};
   if(!dailyEval[date][studentId]) dailyEval[date][studentId]={hifzScore:0,murajaaScore:0};
   const key = field==='hifz' ? 'hifzScore' : 'murajaaScore';
   const cur = Number(dailyEval[date][studentId][key])||0;
-  const next = Math.max(0, Math.min(30, cur+delta));
+  const next = cur>=30 ? 0 : cur+5;
   dailyEval[date][studentId][key]=next;
 
   userDocRef.set({
@@ -1363,49 +1363,39 @@ function renderEvalTab(){
 
   el.innerHTML=ranked.map((r,i)=>{
     const rankCls=i===0?'top1':i===1?'top2':i===2?'top3':'';
-    const totalCls=r.total>=80?'hi':r.total>=60?'mid':'lo';
     const attLbl=ATT_LABEL_MAP[r.attStatus]||'لم يُسجَّل';
     const attCls=r.attStatus||'none';
     const openTime=formatOpenTime(r.openedAt);
     return `<div class="eval-card">
-      <div class="eval-card-top">
-        <div class="eval-rank ${rankCls}">${i+1}</div>
-        <div class="eval-avatar">${ini(r.name)}</div>
-        <div class="eval-info">
-          <div class="eval-name">${r.name}</div>
-          <div class="eval-att-mini">
-            <span class="eval-att-pill ${attCls}">${attLbl}</span>
-            <span class="eval-att-pts">${r.attScore}/30</span>
-          </div>
-        </div>
-        <div class="eval-total-badge ${totalCls}">
-          <div class="eval-total-num">${r.total}</div>
-          <div class="eval-total-max">من 100</div>
+      <div class="eval-rank ${rankCls}">${i+1}</div>
+      <div class="eval-avatar">${ini(r.name)}</div>
+      <div class="eval-info">
+        <div class="eval-name">${r.name}</div>
+        <div class="eval-att-mini">
+          <span class="eval-att-pill ${attCls}">${attLbl}</span>
+          <span class="eval-att-pts">${r.attScore}/30</span>
         </div>
       </div>
-      <div class="eval-card-bottom">
-        <div class="eval-stepper">
-          <div class="eval-stepper-lbl">📖 الحفظ</div>
-          <div class="eval-stepper-ctrl">
-            <button type="button" onclick="adjustEval('${r.id}','hifz',-5)" ${r.hifzScore<=0?'disabled':''}>−</button>
-            <span class="eval-stepper-val">${r.hifzScore}</span>
-            <button type="button" onclick="adjustEval('${r.id}','hifz',5)" ${r.hifzScore>=30?'disabled':''}>+</button>
-          </div>
-          <div class="eval-stepper-max">/30</div>
-        </div>
-        <div class="eval-stepper">
-          <div class="eval-stepper-lbl">🔄 المراجعة</div>
-          <div class="eval-stepper-ctrl">
-            <button type="button" onclick="adjustEval('${r.id}','murajaa',-5)" ${r.murajaaScore<=0?'disabled':''}>−</button>
-            <span class="eval-stepper-val">${r.murajaaScore}</span>
-            <button type="button" onclick="adjustEval('${r.id}','murajaa',5)" ${r.murajaaScore>=30?'disabled':''}>+</button>
-          </div>
-          <div class="eval-stepper-max">/30</div>
-        </div>
-        <div class="eval-opened ${r.opened?'yes':'no'}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          ${r.opened ? `فتح صفحته — ${openTime}` : 'لم يفتح صفحته اليوم'}
-        </div>
+
+      <div class="eval-tapbox" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+        <div class="eval-tapbox-ico">🔄</div>
+        <div class="eval-tapbox-val">${r.murajaaScore}</div>
+        <div class="eval-tapbox-max">/30</div>
+      </div>
+      <div class="eval-tapbox" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+        <div class="eval-tapbox-ico">📖</div>
+        <div class="eval-tapbox-val">${r.hifzScore}</div>
+        <div class="eval-tapbox-max">/30</div>
+      </div>
+
+      <div class="eval-opened ${r.opened?'yes':'no'}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        ${r.opened ? `فتح صفحته — ${openTime}` : 'لم يفتح صفحته اليوم'}
+      </div>
+
+      <div class="eval-total-badge">
+        <div class="eval-total-num">${r.total}</div>
+        <div class="eval-total-max">من 100</div>
       </div>
     </div>`;
   }).join('');
@@ -2688,6 +2678,24 @@ function loadActivatedNids(teacherUid){
       );
       renderStudentsList(); // تحديث القائمة فور تغيّر الحالة
     }, e=>console.warn('activatedNids err',e));
+}
+
+// ════════════════════════════════════════
+//  رصد فتح الطلاب لصفحاتهم (مسار مضمون — يقرأ مباشرة من مستند كل طالب)
+// ════════════════════════════════════════
+let studentOpenInfo = {}; // studentId -> {date, at}
+function loadStudentOpenStatus(teacherUid){
+  db.collection('users')
+    .where('teacherId','==',teacherUid)
+    .where('role','==','student')
+    .onSnapshot(snap=>{
+      studentOpenInfo = {};
+      snap.docs.forEach(d=>{
+        const u=d.data();
+        if(u.studentId) studentOpenInfo[u.studentId] = { date:u.lastOpenDate||null, at:u.lastOpenAt||null };
+      });
+      if(document.getElementById('scr-eval')?.classList.contains('on')) renderEvalTab();
+    }, e=>console.warn('studentOpenStatus err',e));
 }
 
 </script>
