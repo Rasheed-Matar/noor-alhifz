@@ -647,8 +647,10 @@ function markPageOpenedToday(){
   if(!myTeacherId||!myStudentId) return;
   const today = TODAY();
   db.collection('userdata').doc(myTeacherId).set({
-    pageOpens: { [today]: { [myStudentId]: true } }
-  }, { merge:true }).catch(e=>console.warn('pageOpens err', e));
+    pageOpens: { [today]: { [myStudentId]: new Date().toISOString() } }
+  }, { merge:true }).catch(e=>{
+    console.warn('⚠️ تعذّر تسجيل فتح الصفحة (راجع صلاحيات Firestore لكتابة pageOpens):', e.code||e.message);
+  });
 }
 
 // ════════════════════════════════════════
