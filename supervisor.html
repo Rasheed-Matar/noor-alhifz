@@ -467,6 +467,10 @@ select.form-input{cursor:pointer;}
       </div>
       <div class="list-toolbar">
         <input class="search-inp" placeholder="بحث بالاسم أو الحلقة..." oninput="filterTeachers(this.value)">
+        <button class="btn-primary" style="flex:none;" onclick="openImportTeachersModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          استيراد من إكسل
+        </button>
         <button class="btn-gold" style="flex:none;" onclick="openDataReportModal('teachers')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           تقرير المحفّظين
@@ -870,6 +874,46 @@ select.form-input{cursor:pointer;}
   </div>
 </div>
 
+<!-- MODAL: Import Teachers from Excel -->
+<div class="modal-overlay" id="modal-import-teachers">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-head">
+      <span class="modal-head-title">📥 استيراد محفّظين من إكسل</span>
+      <button class="modal-close" onclick="closeModal('modal-import-teachers')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">ملفُّ بياناتِ المحفّظينَ (الاسم الرباعي، رقم الهوية، رقم الجوال، تاريخ الميلاد، مكان الميلاد، اسم الحلقة، عدد أفراد الأسرة) <span>*</span></label>
+        <label class="file-drop" id="impTFileLabel" for="impTFile">اضغط لاختيار الملف...
+          <input type="file" id="impTFile" accept=".xlsx,.xls,.csv" onchange="onImportTeacherFileChosen()">
+        </label>
+      </div>
+
+      <button class="btn-save" id="impTMatchBtn" style="margin-top:4px;" onclick="processTeacherImport()">🔍 تحليل الملف</button>
+
+      <div id="impTResultsWrap" style="display:none;margin-top:18px;">
+        <div class="import-summary">
+          <div class="import-chip" style="background:#f0faf4;border-color:#aee6c4;"><div class="n" id="impTChipReady" style="color:#1b6b4a;">0</div><div class="l">✅ جاهز للإضافة</div></div>
+          <div class="import-chip" style="background:#fffbf0;border-color:#ffc107;"><div class="n" id="impTChipExists" style="color:#b8860b;">0</div><div class="l">🟡 مسجّل مسبقاً</div></div>
+          <div class="import-chip" style="background:#fffbf0;border-color:#ffc107;"><div class="n" id="impTChipDup" style="color:#b8860b;">0</div><div class="l">🟠 مكرر بالملف</div></div>
+          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impTChipBad" style="color:#c0392b;">0</div><div class="l">🔴 غير صالح</div></div>
+        </div>
+        <div class="table-wrap" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;">
+          <table>
+            <thead><tr><th>#</th><th>رقم الهوية</th><th>الاسم</th><th>الحلقة</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+            <tbody id="impTPreviewTable"></tbody>
+          </table>
+        </div>
+        <div class="import-progress" id="impTProgressText"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="impTConfirmBtn" disabled onclick="confirmTeacherImport()">➕ إضافة المحفّظين المطابقين</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-import-teachers')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Confirm -->\n<div class="modal-overlay" id="modal-confirm">
   <div class="modal" style="max-width:380px;">
     <div class="modal-head"><span class="modal-head-title" id="confirmTitle">تأكيد</span><button class="modal-close" onclick="closeModal('modal-confirm')">✕</button></div>
@@ -909,6 +953,7 @@ select.form-input{cursor:pointer;}
         <div class="form-group"><label class="form-label">مكان الميلاد <span>*</span></label><input class="form-input" id="at-pob" placeholder="مثال: نابلس"></div>
         <div class="form-group"><label class="form-label">رقم الجوال (واتساب) <span>*</span></label><input class="form-input" id="at-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
         <div class="form-group full"><label class="form-label">اسم الحلقة</label><input class="form-input" id="at-circle" placeholder="مثال: حلقة البقرة"></div>
+        <div class="form-group full"><label class="form-label">عدد أفراد الأسرة</label><input class="form-input" id="at-family-count" type="number" min="0" placeholder="مثال: 6"></div>
         <div class="form-group full"><label class="form-label">كلمة مرور مؤقتة (6 أحرف فأكثر) <span>*</span></label><input class="form-input" id="at-pass" type="text" placeholder="سيتمكن المحفّظ من تغييرها بعد الدخول"></div>
       </div>
     </div>
@@ -1134,7 +1179,7 @@ function getPendingDeleteRequests(){
 //  ADD TEACHER (محفّظ جديد) — admin only
 // ════════════════════════════════════════
 function openAddTeacher(){
-  ['at-fname','at-father','at-grand','at-family','at-nid','at-dob','at-pob','at-phone','at-circle','at-pass'].forEach(i=>document.getElementById(i).value='');
+  ['at-fname','at-father','at-grand','at-family','at-nid','at-dob','at-pob','at-phone','at-circle','at-pass','at-family-count'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('at-dob').max = todayISO();
   om('modal-add-teacher');
 }
@@ -1162,6 +1207,8 @@ async function saveNewTeacher(){
   const phone  = document.getElementById('at-phone').value.trim();
   const circle = document.getElementById('at-circle').value.trim();
   const pass   = document.getElementById('at-pass').value;
+  const familyCountRaw = document.getElementById('at-family-count').value;
+  const familyMembersCount = familyCountRaw==='' ? null : Math.max(0, parseInt(familyCountRaw)||0);
 
   if(!fname||!father||!grand||!family){ toast('⚠️ أكمل الاسم الرباعي كاملاً'); return; }
   if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام بالضبط'); return; }
@@ -1191,6 +1238,7 @@ async function saveNewTeacher(){
         name, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
         nationalId: nid, dob, placeOfBirth: pob,
         phone, circle: circle||'حلقة القرآن',
+        familyMembersCount,
         role: 'teacher', status: 'approved',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -1509,6 +1557,7 @@ function openTeacherDetail(uid){
       <div class="teacher-avatar" style="width:60px;height:60px;font-size:20px;margin:0 auto 8px;">${ini(t.name)}</div>
       <div style="font-weight:700;font-size:15px;">${t.name}</div>
       <div style="font-size:12px;color:#7a8a7a;">${t.circle||'—'}</div>
+      ${t.familyMembersCount!=null?`<div style="font-size:12px;color:#7a8a7a;margin-top:4px;">👨‍👩‍👧‍👦 عدد أفراد الأسرة: <b style="color:var(--ink);">${t.familyMembersCount}</b></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--em);">${active.length}</div><div style="font-size:11px;color:#7a8a7a;">طالب</div></div>
@@ -1673,7 +1722,7 @@ function renderStats(){
     </div>`).join('');
 }
 
-['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report','modal-data-report','modal-import-students'].forEach(id=>{
+['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
@@ -2431,11 +2480,12 @@ function buildTeachersReportPage(teachers, label){
       <td style="direction:ltr;text-align:center;font-size:12.5px;">${t.phone||'—'}</td>
       <td style="text-align:center;">${t.circle||'حلقة القرآن'}</td>
       <td style="text-align:center;font-weight:800;color:#1b6b4a;">${(t.students||[]).length}</td>
+      <td style="text-align:center;font-size:12.5px;">${t.familyMembersCount!=null?t.familyMembersCount:'—'}</td>
       <td style="text-align:center;font-size:12px;">${joined?fmtDate(joined):'—'}</td>
     </tr>`;
   }).join('');
 
-  const emptyRow = teachers.length?'':`<tr><td colspan="9" class="empty-note">لا يوجد محفّظونَ مسجّلونَ بعد</td></tr>`;
+  const emptyRow = teachers.length?'':`<tr><td colspan="10" class="empty-note">لا يوجد محفّظونَ مسجّلونَ بعد</td></tr>`;
   const totalStudents = teachers.reduce((s,t)=>s+(t.students||[]).length,0);
   const circlesCount = new Set(teachers.map(t=>t.circle||'حلقة القرآن')).size;
 
@@ -2456,7 +2506,7 @@ function buildTeachersReportPage(teachers, label){
     </div>
     <table>
       <thead><tr>
-        <th>#</th><th>اسمُ المحفّظِ</th><th>رقمُ الهويةِ</th><th>تاريخُ الميلادِ</th><th>مكانُ الميلادِ</th><th>الجوالُ</th><th>الحلقةُ</th><th>عددُ الطلابِ</th><th>تاريخُ الانضمامِ</th>
+        <th>#</th><th>اسمُ المحفّظِ</th><th>رقمُ الهويةِ</th><th>تاريخُ الميلادِ</th><th>مكانُ الميلادِ</th><th>الجوالُ</th><th>الحلقةُ</th><th>عددُ الطلابِ</th><th>أفرادُ الأسرةِ</th><th>تاريخُ الانضمامِ</th>
       </tr></thead>
       <tbody>${rows||emptyRow}</tbody>
     </table>
@@ -2618,8 +2668,8 @@ const FIELD_SYNONYMS = {
   dob: ['تاريخ الميلاد','الميلاد','تاريخ الولاده'],
   pob: ['مكان الميلاد','مكان الولاده'],
   gender: ['الجنس','النوع'],
-  parentPhone: ['جوال ولي الامر','رقم جوال ولي الامر','الجوال','رقم الجوال','الهاتف','رقم الهاتف','جوال الطالب'],
-  juz: ['الجزء','الجزء الحالي','جزء الحفظ'],
+  parentPhone: ['جوال ولي الامر','رقم جوال ولي الامر','الجوال','رقم الجوال','الهاتف','رقم الهاتف','جوال الطالب','رقم جوال الواتس','جوال الواتس','الواتس'],
+  juz: ['الجزء','الجزء الحالي','جزء الحفظ','عدد اجزاء الحفظ'],
   notes: ['ملاحظات','ملاحظه']
 };
 
@@ -2644,6 +2694,12 @@ function findMasterColumn(sampleRow, fieldKey){
 function buildMasterHeaderMap(sampleRow){
   const map={};
   Object.keys(FIELD_SYNONYMS).forEach(f=>{ map[f]=findMasterColumn(sampleRow,f); });
+  // إذا وُجدت أعمدة منفصلة لاسم الأب/الجد/العائلة، فإن أي عمود طابق "الاسم الكامل"
+  // (مثل "اسم الطالب") يُعامَل كاسمٍ أوّلَ فقط، وليس اسماً كاملاً يُقسَّم بالخطأ
+  if((map.fatherName||map.grandfatherName||map.familyName) && !map.firstName && map.fullName){
+    map.firstName = map.fullName;
+    map.fullName = null;
+  }
   return map;
 }
 
@@ -2959,6 +3015,226 @@ async function confirmStudentImport(){
   }
 
   closeModal('modal-import-students');
+}
+
+
+
+// ════════════════════════════════════════════════════════
+//  استيراد محفّظين من إكسل — ملف واحد يحتوي كل بيانات المحفّظ
+// ════════════════════════════════════════════════════════
+const TEACHER_FIELD_SYNONYMS = {
+  nationalId: ['رقم الهويه','الهويه','رقم هويه المحفظ','الرقم القومي'],
+  fullName: ['الاسم رباعي','الاسم الرباعي','الاسم الكامل','الاسم','اسم المحفظ'],
+  phone: ['رقم الجوال','الجوال','رقم الهاتف','الهاتف','رقم جوال الواتس','جوال الواتس'],
+  dob: ['تاريخ الميلاد','الميلاد','تاريخ الولاده'],
+  pob: ['مكان الميلاد','مكان الولاده'],
+  circle: ['اسم الحلقه','الحلقه'],
+  familyMembersCount: ['عدد افراد الاسره','افراد الاسره','عدد الافراد']
+};
+
+let _importTeacherMatches=[];
+
+function findTeacherColumn(sampleRow, fieldKey){
+  const syns = TEACHER_FIELD_SYNONYMS[fieldKey].map(normHeader);
+  const keys = Object.keys(sampleRow);
+  for(const k of keys){ if(syns.includes(normHeader(k))) return k; }
+  for(const k of keys){ const nk=normHeader(k); if(syns.some(s=>nk.includes(s)||s.includes(nk))) return k; }
+  return null;
+}
+
+function buildTeacherHeaderMap(sampleRow){
+  const map={};
+  Object.keys(TEACHER_FIELD_SYNONYMS).forEach(f=>{ map[f]=findTeacherColumn(sampleRow,f); });
+  return map;
+}
+
+function extractTeacherRecord(row, map){
+  let nid = String(map.nationalId? row[map.nationalId]:'').trim().replace(/[\s\-]/g,'');
+  if(/^\d{1,8}$/.test(nid)) nid = nid.padStart(9,'0');
+  if(!/^\d{9}$/.test(nid)) return null;
+
+  const rawName = map.fullName? String(row[map.fullName]||'').trim() : '';
+  const parts = rawName.split(/\s+/).filter(Boolean);
+  const firstName=parts[0]||'';
+  const fatherName=parts[1]||'';
+  const grandfatherName=parts[2]||'';
+  const familyName = parts.length>3 ? parts.slice(3).join(' ') : (parts[3]||'');
+  const name = buildFullName(firstName,fatherName,grandfatherName,familyName) || rawName;
+
+  const dob = excelValueToISODate(map.dob? row[map.dob] : '');
+  const pob = map.pob? String(row[map.pob]||'').trim() : '';
+  const phone = normalizePhone(map.phone? row[map.phone] : '');
+  const circle = map.circle? String(row[map.circle]||'').trim() : '';
+
+  let familyMembersCount = map.familyMembersCount? parseInt(row[map.familyMembersCount]) : NaN;
+  familyMembersCount = (isNaN(familyMembersCount)||familyMembersCount<0) ? null : familyMembersCount;
+
+  return { nationalId:nid, name, firstName,fatherName,grandfatherName,familyName, dob, placeOfBirth:pob, phone, circle, familyMembersCount };
+}
+
+function openImportTeachersModal(){
+  document.getElementById('impTFile').value='';
+  const lbl=document.getElementById('impTFileLabel');
+  lbl.firstChild.textContent='اضغط لاختيار الملف...';
+  lbl.classList.remove('has-file');
+
+  document.getElementById('impTResultsWrap').style.display='none';
+  document.getElementById('impTProgressText').style.display='none';
+  const confirmBtn=document.getElementById('impTConfirmBtn');
+  confirmBtn.disabled=true;
+  confirmBtn.textContent='➕ إضافة المحفّظين المطابقين';
+
+  _importTeacherMatches=[];
+  om('modal-import-teachers');
+}
+
+function onImportTeacherFileChosen(){
+  const input=document.getElementById('impTFile');
+  const label=document.getElementById('impTFileLabel');
+  if(input.files && input.files[0]){
+    label.firstChild.textContent='📄 '+input.files[0].name;
+    label.classList.add('has-file');
+  } else {
+    label.firstChild.textContent='اضغط لاختيار الملف...';
+    label.classList.remove('has-file');
+  }
+}
+
+async function processTeacherImport(){
+  const file=document.getElementById('impTFile').files[0];
+  if(!file){ toast('⚠️ اختر ملف الإكسل'); return; }
+
+  const btn=document.getElementById('impTMatchBtn');
+  const orig=btn.textContent;
+  btn.disabled=true; btn.textContent='⏳ جارٍ التحليل...';
+
+  try{
+    const rows = await readExcelAsObjects(file);
+    if(!rows.length){ toast('⚠️ الملف فارغ أو غير مقروء'); return; }
+
+    const headerMap = buildTeacherHeaderMap(rows[0]);
+    if(!headerMap.nationalId){ toast('⚠️ لم أجد عمود "رقم الهوية" في الملف'); return; }
+
+    const seen=new Set();
+    const matches = rows.map(row=>{
+      const rec = extractTeacherRecord(row, headerMap);
+      if(!rec) return {nid:'—', status:'invalid', note:'رقم هوية غير صالح', record:null};
+
+      if(seen.has(rec.nationalId)) return {nid:rec.nationalId, status:'dup', note:'مكرر داخل نفس الملف', record:rec};
+      seen.add(rec.nationalId);
+
+      const existingUser = allUsers.find(u=>u.nationalId===rec.nationalId);
+      if(existingUser) return {nid:rec.nationalId, status:'exists', note:'مسجّل بالفعل كـ '+(roleLabelAr[existingUser.role]||existingUser.role), record:rec};
+
+      if(!rec.name || !rec.name.trim()) return {nid:rec.nationalId, status:'no_name', note:'بدون اسم', record:rec};
+
+      const warnings=[];
+      if(!rec.dob) warnings.push('بدون تاريخ ميلاد');
+      if(!rec.placeOfBirth) warnings.push('بدون مكان ميلاد');
+      if(!/^05[0-9]{8}$/.test(rec.phone)) warnings.push('جوال غير صالح');
+      if(!rec.circle) warnings.push('بدون اسم حلقة');
+
+      return {nid:rec.nationalId, status:'ready', note: warnings.join('، ')||'جاهز', record:rec};
+    });
+
+    _importTeacherMatches = matches;
+    renderTeacherImportPreview(matches);
+  } catch(e){
+    console.error(e);
+    toast('⚠️ خطأ في قراءة الملف: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+
+function renderTeacherImportPreview(matches){
+  const counts={};
+  matches.forEach(m=>counts[m.status]=(counts[m.status]||0)+1);
+
+  document.getElementById('impTChipReady').textContent=counts.ready||0;
+  document.getElementById('impTChipExists').textContent=counts.exists||0;
+  document.getElementById('impTChipDup').textContent=counts.dup||0;
+  document.getElementById('impTChipBad').textContent=(counts.no_name||0)+(counts.invalid||0);
+
+  const statusMeta={
+    ready:    {label:'✅ جاهز للإضافة',  cls:'badge-green'},
+    exists:   {label:'🟡 مسجّل مسبقاً',  cls:'badge-gold'},
+    dup:      {label:'🟠 مكرر بالملف',  cls:'badge-gold'},
+    no_name:  {label:'⚠️ بدون اسم',     cls:'badge-red'},
+    invalid:  {label:'🔴 هوية غير صالحة', cls:'badge-red'}
+  };
+
+  const tb=document.getElementById('impTPreviewTable');
+  tb.innerHTML = matches.map((m,i)=>{
+    const meta=statusMeta[m.status];
+    const name=m.record?(m.record.name||'—'):'—';
+    const circle=m.record?(m.record.circle||'—'):'—';
+    return `<tr>
+      <td style="text-align:center;color:#888;">${i+1}</td>
+      <td style="direction:ltr;text-align:center;">${m.nid}</td>
+      <td>${name}</td>
+      <td style="text-align:center;">${circle}</td>
+      <td><span class="badge ${meta.cls}">${meta.label}</span></td>
+      <td style="font-size:12px;color:#888;">${m.note||''}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('impTResultsWrap').style.display='';
+  const readyCount=counts.ready||0;
+  const confirmBtn=document.getElementById('impTConfirmBtn');
+  confirmBtn.disabled = readyCount===0;
+  confirmBtn.textContent = `➕ إضافة ${readyCount} محفّظ`;
+}
+
+async function confirmTeacherImport(){
+  const ready=(_importTeacherMatches||[]).filter(m=>m.status==='ready');
+  if(!ready.length) return;
+
+  const btn=document.getElementById('impTConfirmBtn');
+  btn.disabled=true;
+  const progEl=document.getElementById('impTProgressText');
+  progEl.style.display='';
+
+  let okCount=0, failCount=0;
+  const failedRows=[];
+
+  for(let i=0;i<ready.length;i++){
+    const r=ready[i].record;
+    progEl.textContent=`جارٍ إضافة ${i+1} من ${ready.length}: ${r.name}...`;
+
+    try{
+      const email=nidToEmail(r.nationalId);
+      const cred=await secondaryAuth.createUserWithEmailAndPassword(email, r.nationalId);
+      const newUid=cred.user.uid;
+      await secondaryAuth.signOut();
+
+      await db.collection('users').doc(newUid).set({
+        name:r.name, firstName:r.firstName, fatherName:r.fatherName, grandfatherName:r.grandfatherName, familyName:r.familyName,
+        nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth,
+        phone:r.phone, circle:r.circle||'حلقة القرآن',
+        familyMembersCount:r.familyMembersCount,
+        role:'teacher', status:'approved',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      okCount++;
+    } catch(e){
+      failCount++;
+      failedRows.push(r.name+' ('+r.nationalId+'): '+e.message);
+      try{ await secondaryAuth.signOut(); }catch(_){}
+    }
+  }
+
+  progEl.style.display='none';
+  btn.disabled=false;
+
+  if(failCount===0){
+    toast(`✅ تمت إضافة ${okCount} محفّظاً بنجاح — كلمة المرور الافتراضية: رقم الهوية`);
+  } else {
+    toast(`⚠️ أُضيف ${okCount}، وفشل ${failCount} — راجع الكونسول للتفاصيل`);
+    console.warn('فشل استيراد المحفّظين التالية:', failedRows);
+  }
+
+  closeModal('modal-import-teachers');
 }
 
 
