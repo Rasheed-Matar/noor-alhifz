@@ -644,12 +644,20 @@ function enterApp(user, userData){
 //  تسجيل فتح الطالب لصفحته اليوم (+10 من التقييم اليومي)
 // ════════════════════════════════════════
 function markPageOpenedToday(){
-  if(!myTeacherId||!myStudentId) return;
+  if(!myTeacherId||!myStudentId||!currentUser) return;
   const today = TODAY();
+  const nowIso = new Date().toISOString();
+
+  // المسار الأساسي المضمون: تحديث مستند المستخدم الخاص بالطالب نفسه
+  db.collection('users').doc(currentUser.uid).update({
+    lastOpenAt: nowIso, lastOpenDate: today
+  }).catch(e=>console.warn('lastOpenAt err', e.code||e.message));
+
+  // مسار احتياطي (يفيد إن سُمح للطالب مستقبلاً بالكتابة في مستند المحفّظ)
   db.collection('userdata').doc(myTeacherId).set({
-    pageOpens: { [today]: { [myStudentId]: new Date().toISOString() } }
+    pageOpens: { [today]: { [myStudentId]: nowIso } }
   }, { merge:true }).catch(e=>{
-    console.warn('⚠️ تعذّر تسجيل فتح الصفحة (راجع صلاحيات Firestore لكتابة pageOpens):', e.code||e.message);
+    console.warn('⚠️ تعذّر تسجيل فتح الصفحة في مستند المحفّظ (مسار احتياطي فقط، غير ضروري):', e.code||e.message);
   });
 }
 
