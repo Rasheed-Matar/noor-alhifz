@@ -87,6 +87,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .att-badge.p{background:var(--grnb);color:var(--grn);}
 .att-badge.a{background:var(--redb);color:var(--red);}
 .att-badge.e{background:var(--ambb);color:var(--amb);}
+.att-badge.l{background:#fff7e0;color:#b7791f;}
 .att-badge.u{background:#f5f5f5;color:var(--txm);}
 
 /* SESSION CARD */
@@ -122,6 +123,37 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .rank-item.other{background:var(--border);color:var(--txm);}
 .rank-name{font-size:10px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rank-score{font-size:15px;font-weight:800;}
+
+/* DAILY SCORE RING CARD */
+.score-card{background:linear-gradient(160deg,#fff,var(--cream));text-align:center;padding:28px 16px 22px;position:relative;overflow:hidden;}
+.score-card::before{content:'';position:absolute;top:-40px;left:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.10),transparent 70%);}
+.score-card::after{content:'';position:absolute;bottom:-50px;right:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(26,107,74,.08),transparent 70%);}
+.score-ring-wrap{position:relative;width:168px;height:168px;margin:0 auto 10px;z-index:1;}
+.score-ring{width:168px;height:168px;transform:rotate(-90deg);}
+.score-ring .ring-bg{fill:none;stroke:#eee6d0;stroke-width:10;}
+.score-ring .ring-fg{fill:none;stroke:var(--em);stroke-width:10;stroke-linecap:round;transition:stroke-dasharray 1s cubic-bezier(.22,.68,0,1.2),stroke .4s;}
+.score-ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-ring-num{font-size:40px;font-weight:800;color:var(--em);line-height:1;}
+.score-ring-sub{font-size:12px;color:var(--txm);margin-top:2px;}
+.score-card-title{font-size:15px;font-weight:700;color:var(--ink);margin-top:6px;position:relative;z-index:1;}
+.score-card-date{font-size:12px;color:var(--txl);margin-top:2px;position:relative;z-index:1;}
+
+/* EVAL BREAKDOWN ROWS */
+.eval-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f0ead8;}
+.eval-row:last-child{border-bottom:none;}
+.eval-row-ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--go);}
+.eval-row-info{flex:0 0 auto;min-width:84px;}
+.eval-row-lbl{font-size:12.5px;font-weight:700;color:var(--ink);}
+.eval-row-status{font-size:11px;color:var(--txm);margin-top:1px;}
+.eval-row-bar{flex:1;}
+.eval-row-bar .prog-bar-bg{height:7px;}
+.eval-row-score{flex-shrink:0;font-size:12.5px;font-weight:800;color:var(--em);min-width:46px;text-align:left;}
+.eval-bonus .eval-row-ico{background:var(--ambb);}
+.eval-bonus .eval-row-score{color:var(--gd);}
+.eval-bonus.done .eval-row-score{color:var(--grn);}
+.eval-total-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:12px;border-top:2px solid var(--border);font-size:14px;font-weight:700;color:var(--ink);}
+.eval-total-row span{font-size:20px;font-weight:800;color:var(--em);}
+.eval-formula-note{font-size:11px;color:var(--txl);text-align:center;margin-top:10px;line-height:1.6;}
 
 /* PROGRESS BAR */
 .prog-bar-wrap{margin:8px 0;}
@@ -225,7 +257,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
   </button>
   <button class="nav-btn" onclick="sw('rank')" id="nb-rank">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    الترتيب
+    تقييمي
   </button>
 </div>
 
@@ -287,7 +319,9 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       </div>
       <div class="stats-grid" style="margin-bottom:12px;">
         <div class="stat-box green"><div class="stat-num" id="att-present-count">0</div><div class="stat-lbl">حاضر</div></div>
+        <div class="stat-box amb"><div class="stat-num" id="att-late-count">0</div><div class="stat-lbl">متأخر</div></div>
         <div class="stat-box red"><div class="stat-num" id="att-absent-count">0</div><div class="stat-lbl">غائب</div></div>
+        <div class="stat-box gold"><div class="stat-num" id="att-excused-count">0</div><div class="stat-lbl">عذر</div></div>
       </div>
       <div class="prog-bar-wrap">
         <div class="prog-bar-label"><span>نسبة الحضور</span><span id="att-pct-lbl">0%</span></div>
@@ -331,8 +365,74 @@ body.page-exit{animation:pageExit .25s ease forwards;}
     </div>
   </div>
 
-  <!-- ══════════════════════════════ RANK ══════════════════════════════ -->
+  <!-- ══════════════════════════════ RANK / EVALUATION ══════════════════════════════ -->
   <div class="scr" id="scr-rank">
+
+    <div class="card score-card">
+      <div class="score-ring-wrap">
+        <svg class="score-ring" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" stroke-dasharray="0 327"></circle>
+        </svg>
+        <div class="score-ring-label">
+          <div class="score-ring-num" id="todayTotalScore">0</div>
+          <div class="score-ring-sub">من 100</div>
+        </div>
+      </div>
+      <div class="score-card-title">📊 تقييمي اليوم</div>
+      <div class="score-card-date" id="todayDateLbl">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        تفاصيل التقييم اليومي
+      </div>
+
+      <div class="eval-row">
+        <div class="eval-row-ico" id="evalAttIco">📋</div>
+        <div class="eval-row-info">
+          <div class="eval-row-lbl">الحضور</div>
+          <div class="eval-row-status" id="evalAttStatus">—</div>
+        </div>
+        <div class="eval-row-bar"><div class="prog-bar-bg"><div class="prog-bar-fill" id="evalAttBar" style="width:0%"></div></div></div>
+        <div class="eval-row-score" id="evalAttScore">0/30</div>
+      </div>
+
+      <div class="eval-row">
+        <div class="eval-row-ico">📖</div>
+        <div class="eval-row-info">
+          <div class="eval-row-lbl">الحفظ اليومي</div>
+          <div class="eval-row-status" id="evalHifzStatus">0%</div>
+        </div>
+        <div class="eval-row-bar"><div class="prog-bar-bg"><div class="prog-bar-fill" id="evalHifzBar" style="width:0%"></div></div></div>
+        <div class="eval-row-score" id="evalHifzScore">0/30</div>
+      </div>
+
+      <div class="eval-row">
+        <div class="eval-row-ico">🔄</div>
+        <div class="eval-row-info">
+          <div class="eval-row-lbl">المراجعة اليومية</div>
+          <div class="eval-row-status" id="evalMurajaaStatus">0%</div>
+        </div>
+        <div class="eval-row-bar"><div class="prog-bar-bg"><div class="prog-bar-fill" id="evalMurajaaBar" style="width:0%"></div></div></div>
+        <div class="eval-row-score" id="evalMurajaaScore">0/30</div>
+      </div>
+
+      <div class="eval-row eval-bonus" id="evalBonusRow">
+        <div class="eval-row-ico">⭐</div>
+        <div class="eval-row-info">
+          <div class="eval-row-lbl">فتح الصفحة اليوم</div>
+          <div class="eval-row-status" id="evalBonusStatus">جاري التحقق…</div>
+        </div>
+        <div class="eval-row-bar"><div class="prog-bar-bg"><div class="prog-bar-fill" id="evalBonusBar" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--gold2));"></div></div></div>
+        <div class="eval-row-score" id="evalBonusScore">0/10</div>
+      </div>
+
+      <div class="eval-total-row">المجموع الكلي <span id="evalTotalRow">0 / 100</span></div>
+      <div class="eval-formula-note">الحضور (٣٠) + الحفظ اليومي (٣٠) + المراجعة اليومية (٣٠) = ٩٠ نقطة، و١٠ نقاط إضافية عند فتح صفحتك للتأكد من متابعة تقييمك يومياً.</div>
+    </div>
+
     <div class="card">
       <div class="card-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -340,11 +440,11 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       </div>
       <div class="rank-display">
         <div class="rank-num" id="rank-num">—</div>
-        <div class="rank-label">ترتيبي بين الطلاب</div>
+        <div class="rank-label">ترتيبي بين الطلاب اليوم</div>
         <div class="rank-total" id="rank-total"></div>
       </div>
       <div class="divider"></div>
-      <div class="section-lbl">معيار الترتيب: عدد الجلسات خلال آخر 30 يوماً</div>
+      <div class="section-lbl">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
       <div id="rank-list"></div>
     </div>
 
@@ -436,6 +536,37 @@ function arabicMonth(y,m){
 }
 function monthKey(iso){return iso?iso.slice(0,7):'';}
 
+// ════════════════════════════════════════
+//  معادلة التقييم اليومي (حضور + حفظ + مراجعة = 90، + فتح الصفحة = 10)
+// ════════════════════════════════════════
+const ATT_SCORE_MAP = {present:30, late:15, excused:5, absent:0};
+const ATT_LABELS = {
+  present:{lbl:'حاضر',cls:'p',ico:'✅'},
+  late:{lbl:'متأخر',cls:'l',ico:'⏰'},
+  absent:{lbl:'غائب',cls:'a',ico:'❌'},
+  excused:{lbl:'عذر',cls:'e',ico:'📩'}
+};
+function computeDailyScore(studentId, date){
+  const attStatus = (teacherData.attendance[date]||{})[studentId];
+  const attScore = ATT_SCORE_MAP[attStatus] ?? 0;
+  const ev = ((teacherData.dailyEval||{})[date]||{})[studentId] || {};
+  const hifzScore = Math.max(0, Math.min(30, Number(ev.hifzScore)||0));
+  const murajaaScore = Math.max(0, Math.min(30, Number(ev.murajaaScore)||0));
+  const opened = !!(((teacherData.pageOpens||{})[date]||{})[studentId]);
+  const bonus = opened ? 10 : 0;
+  const total = Math.min(100, attScore+hifzScore+murajaaScore+bonus);
+  return {attStatus, attScore, hifzScore, murajaaScore, opened, bonus, total};
+}
+function scoreLabel(score){
+  if(score>=30) return 'ممتاز ✨';
+  if(score>=25) return 'ممتاز';
+  if(score>=20) return 'جيد جداً';
+  if(score>=15) return 'جيد';
+  if(score>=10) return 'متوسط';
+  if(score>=5)  return 'ضعيف';
+  return 'لم يُسجَّل بعد';
+}
+
 let toastTimer;
 function toast(msg){
   const el=document.getElementById('toast');
@@ -501,11 +632,23 @@ function enterApp(user, userData){
 
   loadTeacherData();
   loadExamResults();
+  markPageOpenedToday();
 
   // إظهار رسالة تغيير كلمة المرور عند أول دخول
   if(userData.firstLogin){
     setTimeout(()=>document.getElementById('modal-change-pw').classList.add('open'), 800);
   }
+}
+
+// ════════════════════════════════════════
+//  تسجيل فتح الطالب لصفحته اليوم (+10 من التقييم اليومي)
+// ════════════════════════════════════════
+function markPageOpenedToday(){
+  if(!myTeacherId||!myStudentId) return;
+  const today = TODAY();
+  db.collection('userdata').doc(myTeacherId).set({
+    pageOpens: { [today]: { [myStudentId]: true } }
+  }, { merge:true }).catch(e=>console.warn('pageOpens err', e));
 }
 
 // ════════════════════════════════════════
@@ -572,7 +715,9 @@ function loadTeacherData(){
         students: d.students||[],
         sessions: d.sessions||[],
         attendance: d.attendance||{},
-        exams: d.exams||[]
+        exams: d.exams||[],
+        dailyEval: d.dailyEval||{},
+        pageOpens: d.pageOpens||{}
       };
       myStudentData = teacherData.students.find(s=>s.id===myStudentId)||null;
       renderAll();
@@ -622,7 +767,10 @@ function renderDash(){
   // حضوري
   let present=0, total=0;
   Object.entries(teacherData.attendance).forEach(([date,rec])=>{
-    if(rec[myStudentId]!==undefined){ total++; if(rec[myStudentId]==='p') present++; }
+    if(rec[myStudentId]!==undefined){
+      total++;
+      if(rec[myStudentId]==='present'||rec[myStudentId]==='late') present++;
+    }
   });
   const pct = total>0 ? Math.round(present/total*100) : 0;
   document.getElementById('ds-att-pct').textContent = pct+'%';
@@ -693,18 +841,21 @@ function renderAttendance(){
     .filter(([d])=>d.startsWith(month) && teacherData.attendance[d][myStudentId]!==undefined)
     .sort((a,b)=>b[0].localeCompare(a[0]));
 
-  let pCount=0, aCount=0, eCount=0;
+  let pCount=0, lCount=0, aCount=0, eCount=0;
   days.forEach(([,rec])=>{
     const s=rec[myStudentId];
-    if(s==='p') pCount++;
-    else if(s==='a') aCount++;
-    else if(s==='e') eCount++;
+    if(s==='present') pCount++;
+    else if(s==='late') lCount++;
+    else if(s==='absent') aCount++;
+    else if(s==='excused') eCount++;
   });
-  const total=pCount+aCount+eCount;
-  const pct=total>0?Math.round(pCount/total*100):0;
+  const total=pCount+lCount+aCount+eCount;
+  const pct=total>0?Math.round((pCount+lCount)/total*100):0;
 
   document.getElementById('att-present-count').textContent=pCount;
+  document.getElementById('att-late-count').textContent=lCount;
   document.getElementById('att-absent-count').textContent=aCount;
+  document.getElementById('att-excused-count').textContent=eCount;
   document.getElementById('att-pct-lbl').textContent=pct+'%';
   document.getElementById('att-pct-bar').style.width=pct+'%';
 
@@ -714,10 +865,9 @@ function renderAttendance(){
     return;
   }
 
-  const statusMap={p:{lbl:'حاضر',cls:'p'},a:{lbl:'غائب',cls:'a'},e:{lbl:'عذر',cls:'e'}};
   el.innerHTML = days.map(([date,rec])=>{
     const s=rec[myStudentId];
-    const st=statusMap[s]||{lbl:'—',cls:'u'};
+    const st=ATT_LABELS[s]||{lbl:'—',cls:'u'};
     return`<div class="att-row">
       <div class="att-date">${fmtDate(date)}</div>
       <div class="att-badge ${st.cls}">${st.lbl}</div>
@@ -838,45 +988,72 @@ function renderExams(){
 }
 
 // ════════════════════════════════════════
-//  RANK
+//  التقييم اليومي والترتيب
 // ════════════════════════════════════════
-function calcMyRank(){
+function buildTodayRanking(){
   const active = teacherData.students.filter(s=>!s.archived);
-  const now=new Date();
-  const cutoff=new Date(now.getTime()-30*24*60*60*1000);
+  const today = TODAY();
+  const ranked = active.map(s=>({id:s.id, name:s.name, ...computeDailyScore(s.id, today)}))
+    .sort((a,b)=>b.total-a.total);
+  return { active, ranked, today };
+}
 
-  const scoreMap={};
-  teacherData.sessions.forEach(s=>{
-    if(new Date(s.date)>=cutoff){
-      scoreMap[s.studentId]=(scoreMap[s.studentId]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
-    }
-  });
-
-  const ranked = active.map(s=>({id:s.id,name:s.name,score:scoreMap[s.id]||0}))
-    .sort((a,b)=>b.score-a.score);
-
+function calcMyRank(){
+  const { ranked } = buildTodayRanking();
   const myIdx = ranked.findIndex(r=>r.id===myStudentId);
   return myIdx>=0 ? myIdx+1 : 0;
 }
 
+function setRing(pct){
+  const C = 2*Math.PI*52; // محيط الدائرة
+  const fg=document.getElementById('ringFg');
+  const val=Math.max(0,Math.min(100,pct));
+  fg.setAttribute('stroke-dasharray', `${(val/100*C).toFixed(1)} ${C.toFixed(1)}`);
+  const ringColor = val>=80?'var(--em)':val>=60?'var(--gold)':'var(--red)';
+  fg.style.stroke=ringColor;
+}
+
+function renderEvalCard(){
+  const today = TODAY();
+  const sc = computeDailyScore(myStudentId, today);
+
+  document.getElementById('todayDateLbl').textContent = fmtDate(today);
+  document.getElementById('todayTotalScore').textContent = sc.total;
+  setRing(sc.total);
+
+  // الحضور
+  const attInfo = ATT_LABELS[sc.attStatus];
+  document.getElementById('evalAttIco').textContent = attInfo?attInfo.ico:'⬜';
+  document.getElementById('evalAttStatus').textContent = attInfo?attInfo.lbl:'لم يُسجَّل بعد';
+  document.getElementById('evalAttBar').style.width = Math.round(sc.attScore/30*100)+'%';
+  document.getElementById('evalAttScore').textContent = `${sc.attScore}/30`;
+
+  // الحفظ
+  document.getElementById('evalHifzStatus').textContent = scoreLabel(sc.hifzScore);
+  document.getElementById('evalHifzBar').style.width = Math.round(sc.hifzScore/30*100)+'%';
+  document.getElementById('evalHifzScore').textContent = `${sc.hifzScore}/30`;
+
+  // المراجعة
+  document.getElementById('evalMurajaaStatus').textContent = scoreLabel(sc.murajaaScore);
+  document.getElementById('evalMurajaaBar').style.width = Math.round(sc.murajaaScore/30*100)+'%';
+  document.getElementById('evalMurajaaScore').textContent = `${sc.murajaaScore}/30`;
+
+  // فتح الصفحة
+  const bonusRow=document.getElementById('evalBonusRow');
+  bonusRow.classList.toggle('done', sc.opened);
+  document.getElementById('evalBonusStatus').textContent = sc.opened ? 'تم فتح الصفحة اليوم ✓' : 'لم تُفتح بعد';
+  document.getElementById('evalBonusBar').style.width = (sc.opened?100:0)+'%';
+  document.getElementById('evalBonusScore').textContent = `${sc.bonus}/10`;
+
+  document.getElementById('evalTotalRow').textContent = `${sc.total} / 100`;
+}
+
 function renderRank(){
-  const active = teacherData.students.filter(s=>!s.archived);
-  const now=new Date();
-  const cutoff=new Date(now.getTime()-30*24*60*60*1000);
-
-  const scoreMap={};
-  teacherData.sessions.forEach(s=>{
-    if(new Date(s.date)>=cutoff){
-      scoreMap[s.studentId]=(scoreMap[s.studentId]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
-    }
-  });
-
-  const ranked = active.map(s=>({id:s.id,name:s.name,score:scoreMap[s.id]||0}))
-    .sort((a,b)=>b.score-a.score);
+  renderEvalCard();
+  const { active, ranked } = buildTodayRanking();
 
   const myIdx = ranked.findIndex(r=>r.id===myStudentId);
   const myRank = myIdx>=0 ? myIdx+1 : 0;
-  const myScore = scoreMap[myStudentId]||0;
 
   document.getElementById('rank-num').textContent = myRank>0 ? '#'+myRank : '—';
   document.getElementById('rank-total').textContent = `من أصل ${active.length} طالب`;
@@ -886,10 +1063,11 @@ function renderRank(){
   const listEl = document.getElementById('rank-list');
   listEl.innerHTML = top10.map((r,i)=>{
     const isMe = r.id===myStudentId;
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ead8;${isMe?'background:rgba(26,107,74,.05);border-radius:10px;padding:10px;':''}">
-      <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--em)':'var(--border)'};color:${isMe?'#fff':'var(--txm)'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${i+1}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--em)':'var(--border)'};color:${isMe?'#fff':'var(--txm)'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${medal}</div>
       <div style="flex:1;font-size:13px;font-weight:${isMe?700:400};color:${isMe?'var(--em)':'var(--ink)'};">${r.name}${isMe?' (أنت)':''}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--gd);">${r.score} إنجاز</div>
+      <div style="font-size:13px;font-weight:700;color:var(--gd);">${r.total}/100</div>
     </div>`;
   }).join('');
 
@@ -900,7 +1078,10 @@ function renderRank(){
 
   let attPresent=0, attTotal=0;
   Object.values(teacherData.attendance).forEach(rec=>{
-    if(rec[myStudentId]!==undefined){ attTotal++; if(rec[myStudentId]==='p') attPresent++; }
+    if(rec[myStudentId]!==undefined){
+      attTotal++;
+      if(rec[myStudentId]==='present'||rec[myStudentId]==='late') attPresent++;
+    }
   });
 
   const allExams=getAllMyExams();
@@ -917,6 +1098,7 @@ function renderRank(){
     </div>
   `;
 }
+
 
 // ════════════════════════════════════════
 //  LOGOUT / NAVIGATE
