@@ -170,6 +170,33 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .badge-warn{background:var(--ambb);color:var(--amb)}
 .badge-bad{background:var(--redb);color:var(--red)}
 
+/* EVALUATION TAB */
+.eval-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:.7rem .9rem;border-bottom:1px solid var(--bdr);}
+.eval-row:last-child{border-bottom:none;}
+.eval-row:hover{background:rgba(10,61,43,.025);}
+.eval-rank{width:26px;height:26px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.eval-rank.top1{background:linear-gradient(135deg,#f0d060,#c9a227);color:#fff;}
+.eval-rank.top2{background:linear-gradient(135deg,#dcdcdc,#a8a8a8);color:#fff;}
+.eval-rank.top3{background:linear-gradient(135deg,#e0a96d,#b0723b);color:#fff;}
+.eval-info{flex:1 1 130px;min-width:110px;}
+.eval-name{font-size:13px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.eval-att-mini{font-size:11px;color:var(--txm);margin-top:1px;}
+.eval-stepper{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto;}
+.eval-stepper-lbl{font-size:10.5px;color:var(--txm);font-weight:600;}
+.eval-stepper-ctrl{display:flex;align-items:center;gap:6px;}
+.eval-stepper-ctrl button{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bdr);background:var(--wh);color:var(--gl);font-size:15px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;}
+.eval-stepper-ctrl button:hover:not(:disabled){background:var(--gl);color:#fff;border-color:var(--gl);}
+.eval-stepper-ctrl button:disabled{opacity:.35;cursor:not-allowed;}
+.eval-stepper-val{min-width:22px;text-align:center;font-size:14px;font-weight:800;color:var(--tx);}
+.eval-stepper-max{font-size:9.5px;color:var(--txl);}
+.eval-opened-tag{font-size:10px;padding:3px 8px;border-radius:6px;font-weight:700;flex-shrink:0;white-space:nowrap;}
+.eval-opened-tag.yes{background:var(--grnb);color:var(--grn);}
+.eval-opened-tag.no{background:var(--crd);color:var(--txm);}
+.eval-total-badge{min-width:56px;text-align:center;font-size:14px;font-weight:800;border-radius:10px;padding:6px 10px;flex-shrink:0;}
+.eval-total-badge.hi{background:var(--grnb);color:var(--grn);}
+.eval-total-badge.mid{background:#fff7e0;color:#b7791f;}
+.eval-total-badge.lo{background:var(--redb);color:var(--red);}
+
 .prog-student{padding:.7rem 0;border-bottom:1px solid var(--bdr)}
 .prog-student:last-child{border-bottom:none}
 .prog-hd{display:flex;align-items:center;gap:8px;margin-bottom:.5rem}
@@ -368,6 +395,10 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         ترشيح الاختبارات
         <span class="sb-badge gold" id="sb-exams-count" style="display:none;">0</span>
+      </button>
+      <button class="sb-item" data-tab="eval" onclick="sw('eval')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        تقييم الطلاب
       </button>
       <button class="sb-item" data-tab="messages" onclick="sw('messages')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -580,6 +611,38 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             </select>
           </div>
           <div class="panel-body" id="exams-list" style="padding:0;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EVALUATION (تقييم الطلاب) ═══ -->
+    <div class="scr" id="scr-eval">
+      <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-num" id="ev-avg">0</div><div class="stat-lbl">متوسط تقييم اليوم</div></div>
+        <div class="stat-card gold"><div class="stat-num" id="ev-top">—</div><div class="stat-lbl">الأعلى تقييماً</div></div>
+        <div class="stat-card blue"><div class="stat-num" id="ev-opened">0</div><div class="stat-lbl">فتحوا صفحتهم اليوم</div></div>
+        <div class="stat-card"><div class="stat-num" id="ev-pending">0</div><div class="stat-lbl">بانتظار تقييم المختبر</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd">
+          <div class="panel-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            تقييم الطلاب اليومي (من 100)
+          </div>
+          <input type="date" id="eval-date-sel" onchange="renderEvalTab()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
+        </div>
+        <div class="panel-body" id="eval-list" style="padding:0;"></div>
+      </div>
+
+      <div class="panel" style="margin-top:1.2rem;">
+        <div class="panel-hd"><div class="panel-title">ℹ️ آلية حساب التقييم اليومي</div></div>
+        <div class="panel-body" style="font-size:12.5px;color:var(--txm);line-height:1.9;">
+          🟢 الحضور: حاضر = 30 · متأخر = 15 · عذر = 5 · غائب = 0<br>
+          📖 الحفظ اليومي: تُسجَّل يدوياً بالضغط +٥/−٥ حسب إنجاز الطالب من المطلوب (من 30)<br>
+          🔄 المراجعة اليومية: تُسجَّل يدوياً بالضغط +٥/−٥ بنفس الطريقة (من 30)<br>
+          ⭐ فتح الطالب لصفحته الخاصة اليوم: +10 تلقائياً<br>
+          <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط +٥ ثلاث مرات ليحصل على 15/30.</b>
         </div>
       </div>
     </div>
@@ -911,7 +974,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
 let activatedStudentNids = new Set(); // رقم هويات الطلاب المفعّلين
-let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[];
+let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={};
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 
 const uid=()=>'_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
@@ -963,7 +1026,7 @@ function toast(msg,type='success'){
 }
 
 function sw(tab){
-  ['dash','att','sess','students','exams','messages','reports','settings'].forEach(t=>{
+  ['dash','att','sess','students','exams','eval','messages','reports','settings'].forEach(t=>{
     const scr=document.getElementById('scr-'+t); if(scr) scr.classList.remove('on');
   });
   document.getElementById('scr-'+tab).classList.add('on');
@@ -973,6 +1036,7 @@ function sw(tab){
   if(tab==='sess') renderSessSelect();
   if(tab==='students') renderStudentsList();
   if(tab==='exams'){ renderExamStudentSelect(); renderExamJuzOptions(); renderExamsList(); }
+  if(tab==='eval') renderEvalTab();
   if(tab==='messages') renderMessagesHub();
   if(tab==='reports') renderProgress();
   if(tab==='att') renderAttendance();
@@ -996,7 +1060,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
-  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];
+  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
@@ -1051,11 +1115,11 @@ function enterApp(user,data){
     if(snap.exists){
       suppressSave=true;
       const d=snap.data();
-      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[];
+      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; dailyEval=d.dailyEval||{}; pageOpens=d.pageOpens||{};
       renderAll();
       suppressSave=false;
     } else {
-      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];
+      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};
       renderAll();
     }
   },e=>console.log('snap err',e));
@@ -1202,6 +1266,107 @@ function editSessionRecord(sessionId){
 // ════════════════════════════════════════
 //  ATTENDANCE
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+//  EVALUATION (تقييم الطلاب اليومي)
+// ════════════════════════════════════════
+const ATT_SCORE_MAP={present:30,late:15,excused:5,absent:0};
+const ATT_LABEL_MAP={present:'حاضر',late:'متأخر',absent:'غائب',excused:'عذر'};
+
+function computeStudentDailyScore(studentId, date){
+  const attStatus=(attendance[date]||{})[studentId];
+  const attScore=ATT_SCORE_MAP[attStatus]??0;
+  const ev=((dailyEval[date]||{})[studentId])||{};
+  const hifzScore=Math.max(0,Math.min(30,Number(ev.hifzScore)||0));
+  const murajaaScore=Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
+  const opened=!!((pageOpens[date]||{})[studentId]);
+  const bonus=opened?10:0;
+  const total=Math.min(100, attScore+hifzScore+murajaaScore+bonus);
+  return {attStatus, attScore, hifzScore, murajaaScore, opened, bonus, total};
+}
+
+function evalCurrentDate(){
+  const dateInput=document.getElementById('eval-date-sel');
+  if(!dateInput.value){ dateInput.value=TODAY(); dateInput.max=TODAY(); }
+  return dateInput.value;
+}
+
+// زيادة/تنقيص نقاط الحفظ أو المراجعة بمقدار 5 (من 0 إلى 30) — يُحفظ فوراً
+function adjustEval(studentId, field, delta){
+  const date=evalCurrentDate();
+  if(!dailyEval[date]) dailyEval[date]={};
+  if(!dailyEval[date][studentId]) dailyEval[date][studentId]={hifzScore:0,murajaaScore:0};
+  const key = field==='hifz' ? 'hifzScore' : 'murajaaScore';
+  const cur = Number(dailyEval[date][studentId][key])||0;
+  const next = Math.max(0, Math.min(30, cur+delta));
+  dailyEval[date][studentId][key]=next;
+
+  userDocRef.set({
+    dailyEval: { [date]: { [studentId]: { [key]: next } } }
+  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+
+  renderEvalTab();
+}
+
+function renderEvalTab(){
+  const date=evalCurrentDate();
+
+  const active=students.filter(s=>!s.archived);
+  const el=document.getElementById('eval-list');
+  if(!active.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا يوجد طلاب بعد — أضف طلاباً أولاً</div></div>';
+    document.getElementById('ev-avg').textContent='0';
+    document.getElementById('ev-top').textContent='—';
+    document.getElementById('ev-opened').textContent='0';
+    document.getElementById('ev-pending').textContent='0';
+    return;
+  }
+
+  const ranked=active.map(s=>({id:s.id,name:s.name,...computeStudentDailyScore(s.id,date)}))
+    .sort((a,b)=>b.total-a.total);
+
+  const avg=Math.round(ranked.reduce((sum,r)=>sum+r.total,0)/ranked.length);
+  const openedCount=ranked.filter(r=>r.opened).length;
+  const pendingCount=ranked.filter(r=>r.hifzScore===0&&r.murajaaScore===0).length;
+  document.getElementById('ev-avg').textContent=avg;
+  document.getElementById('ev-top').textContent=ranked[0]?ranked[0].name:'—';
+  document.getElementById('ev-opened').textContent=`${openedCount}/${ranked.length}`;
+  document.getElementById('ev-pending').textContent=pendingCount;
+
+  el.innerHTML=ranked.map((r,i)=>{
+    const rankCls=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const totalCls=r.total>=80?'hi':r.total>=60?'mid':'lo';
+    const attLbl=ATT_LABEL_MAP[r.attStatus]||'لم يُسجَّل';
+    return `<div class="eval-row">
+      <div class="eval-rank ${rankCls}">${i+1}</div>
+      <div class="eval-info">
+        <div class="eval-name">${r.name}</div>
+        <div class="eval-att-mini">📋 ${attLbl} — ${r.attScore}/30</div>
+      </div>
+      <div class="eval-stepper">
+        <div class="eval-stepper-lbl">📖 الحفظ</div>
+        <div class="eval-stepper-ctrl">
+          <button type="button" onclick="adjustEval('${r.id}','hifz',-5)" ${r.hifzScore<=0?'disabled':''}>−</button>
+          <span class="eval-stepper-val">${r.hifzScore}</span>
+          <button type="button" onclick="adjustEval('${r.id}','hifz',5)" ${r.hifzScore>=30?'disabled':''}>+</button>
+        </div>
+        <div class="eval-stepper-max">/30</div>
+      </div>
+      <div class="eval-stepper">
+        <div class="eval-stepper-lbl">🔄 المراجعة</div>
+        <div class="eval-stepper-ctrl">
+          <button type="button" onclick="adjustEval('${r.id}','murajaa',-5)" ${r.murajaaScore<=0?'disabled':''}>−</button>
+          <span class="eval-stepper-val">${r.murajaaScore}</span>
+          <button type="button" onclick="adjustEval('${r.id}','murajaa',5)" ${r.murajaaScore>=30?'disabled':''}>+</button>
+        </div>
+        <div class="eval-stepper-max">/30</div>
+      </div>
+      <span class="eval-opened-tag ${r.opened?'yes':'no'}">${r.opened?'✓ فتح الصفحة':'لم يفتح'}</span>
+      <div class="eval-total-badge ${totalCls}">${r.total}<span style="font-size:9px;font-weight:600;"> /100</span></div>
+    </div>`;
+  }).join('');
+}
+
+
 function renderAttendance(){
   document.getElementById('att-date-label').textContent=getDateLabel();
   const active=students.filter(s=>!s.archived);
