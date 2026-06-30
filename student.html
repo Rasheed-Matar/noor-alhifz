@@ -416,7 +416,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-ico hifz">📖</div>
         <div class="today-card-body">
           <div class="today-card-lbl">الحفظ اليوم</div>
-          <div class="today-card-val" id="dashHifzVal">0/30</div>
+          <div class="today-card-val" id="dashHifzVal">—</div>
           <div class="today-card-sub" id="dashHifzSub"></div>
         </div>
       </div>
@@ -424,7 +424,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-ico murajaa">🔄</div>
         <div class="today-card-body">
           <div class="today-card-lbl">المراجعة اليوم</div>
-          <div class="today-card-val" id="dashMurajaaVal">0/30</div>
+          <div class="today-card-val" id="dashMurajaaVal">—</div>
           <div class="today-card-sub" id="dashMurajaaSub"></div>
         </div>
       </div>
@@ -994,16 +994,20 @@ function renderDash(){
   const lastMurajaaEntry = todaySess.flatMap(s=>s.murajaa||[]).slice(-1)[0];
 
   // الحفظ اليوم
-  document.getElementById('dashHifzVal').textContent = `${sc.hifzScore}/30`;
+  document.getElementById('dashHifzVal').textContent = lastHifzEntry
+    ? `${lastHifzEntry.surah} (${lastHifzEntry.from}-${lastHifzEntry.to})`
+    : 'لم يُسجَّل بعد';
   document.getElementById('dashHifzSub').textContent = lastHifzEntry
-    ? `📖 ${lastHifzEntry.surah} (${lastHifzEntry.from}-${lastHifzEntry.to})`
-    : (sc.hifzScore>0 ? 'واصل التقدّم بإذن الله' : 'لم يُسجَّل بعد');
+    ? `📖 ${lastHifzEntry.score||''}`
+    : 'بانتظار تسجيل المحفّظ';
 
   // المراجعة اليوم
-  document.getElementById('dashMurajaaVal').textContent = `${sc.murajaaScore}/30`;
+  document.getElementById('dashMurajaaVal').textContent = lastMurajaaEntry
+    ? `${lastMurajaaEntry.surah} (${lastMurajaaEntry.from}-${lastMurajaaEntry.to})`
+    : 'لم تُسجَّل بعد';
   document.getElementById('dashMurajaaSub').textContent = lastMurajaaEntry
-    ? `🔄 ${lastMurajaaEntry.surah} (${lastMurajaaEntry.from}-${lastMurajaaEntry.to})`
-    : (sc.murajaaScore>0 ? 'تثبيت الحفظ بإذن الله' : 'لم تُسجَّل بعد');
+    ? `🔄 ${lastMurajaaEntry.score||''}`
+    : 'بانتظار تسجيل المحفّظ';
 
   // الاختبارات
   const pendingExams = allExams.filter(e=>e.status==='pending').length;
@@ -1064,7 +1068,7 @@ function recapSessionHTML(s){
           <div class="recap-row-surah">${m.surah}</div>
           <div class="recap-row-range">من آية ${m.from} إلى ${m.to}</div>
         </div>
-        <span class="recap-row-tag ok">مراجعة</span>
+        <span class="recap-row-tag ${m.score==='ممتاز'?'exc':'ok'}">${m.score||'—'}</span>
       </div>`).join('')}
     <div class="recap-dua">${dua}</div>
   </div>`;
