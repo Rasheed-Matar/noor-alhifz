@@ -326,6 +326,10 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .hw-completion-badge{margin-right:auto;font-size:12px;font-weight:800;color:var(--grn,#1a6b4a);background:rgba(26,107,74,.1);border-radius:8px;padding:3px 10px}
 .hw-completion-pending{margin-right:auto;font-size:11px;font-weight:600;color:var(--amb,#c98a1c);background:rgba(201,138,28,.1);border-radius:8px;padding:3px 10px}
 
+.hw-entries{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px;}
+.hw-entry-pill{font-size:11px;font-weight:600;border-radius:20px;padding:3px 10px;display:inline-block;}
+.hw-entry-pill.hifz{background:rgba(26,107,74,.1);color:var(--gd);}
+.hw-entry-pill.murajaa{background:rgba(201,138,28,.1);color:var(--amb);}
 .toast-wrap{position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--gx);color:#fff;padding:.7rem 1.1rem;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:var(--sd3);transition:opacity .4s;border:1px solid rgba(201,162,39,.25)}
 .toast.success{border-color:rgba(22,163,74,.4)}
@@ -721,6 +725,8 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 
     <!-- ═══ HOMEWORK (الواجب البيتي) ═══ -->
     <div class="scr" id="scr-homework">
+
+      <!-- ═══ نموذج تسجيل الواجب ═══ -->
       <div class="panel">
         <div class="panel-hd">
           <div class="panel-title">
@@ -729,31 +735,92 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
           </div>
         </div>
         <div class="panel-body">
-          <div class="mf"><label>الطالب</label>
-            <select id="hw-student-select" onchange="renderHomeworkTab()">
-              <option value="">— اختر طالباً —</option>
-            </select>
+
+          <!-- اختيار الطلاب: فردي / جماعي -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;background:var(--cream);border-radius:10px;padding:8px 12px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--txm);">
+              <input type="checkbox" id="hw-bulk-toggle" onchange="toggleHwBulk(this.checked)" style="width:15px;height:15px;accent-color:var(--gd);">
+              تعيين لجميع الطلاب / اختيار جماعي
+            </label>
+            <span id="hw-bulk-count-lbl" style="font-size:12px;font-weight:700;color:var(--gd);margin-right:auto;display:none;">0 طالب</span>
           </div>
-          <div class="mf-row">
-            <div class="mf"><label>السورة</label>
-              <select id="hw-surah"></select>
+
+          <!-- فردي -->
+          <div id="hw-single-wrap">
+            <div class="mf"><label>الطالب</label>
+              <select id="hw-student-select">
+                <option value="">— اختر طالباً —</option>
+              </select>
             </div>
           </div>
-          <div class="mf-row">
-            <div class="mf"><label>من آية</label><input type="number" id="hw-from" value="1" min="1"></div>
-            <div class="mf"><label>إلى آية</label><input type="number" id="hw-to" value="1" min="1"></div>
+
+          <!-- جماعي: قائمة تحديد -->
+          <div id="hw-bulk-wrap" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:600;color:var(--txm);">اختر الطلاب:</span>
+              <button class="qbtn qbtn-outline" style="padding:4px 10px;font-size:11.5px;" onclick="toggleSelectAllHw()">تحديد الكل</button>
+            </div>
+            <div id="hw-bulk-students-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--bdr);border-radius:10px;"></div>
           </div>
+
+          <!-- تبويبات الحفظ / المراجعة -->
+          <div class="tab-row" style="margin-top:1rem;">
+            <button class="tab-btn active" id="hw-tb-hifz" onclick="hwTab('hifz')">📖 حفظ جديد</button>
+            <button class="tab-btn" id="hw-tb-murajaa" onclick="hwTab('murajaa')">🔄 مراجعة</button>
+          </div>
+
+          <!-- جزء الحفظ -->
+          <div id="hw-hifz-pane">
+            <div class="mf-row">
+              <div class="mf"><label>السورة</label>
+                <select id="hw-hifz-surah"></select>
+              </div>
+            </div>
+            <div class="mf-row">
+              <div class="mf"><label>من آية</label><input type="number" id="hw-hifz-from" value="1" min="1"></div>
+              <div class="mf"><label>إلى آية</label><input type="number" id="hw-hifz-to" value="1" min="1"></div>
+            </div>
+            <button class="qbtn qbtn-outline" id="hw-hifz-add-btn" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addHwHifzEntry()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              إضافة للحفظ
+            </button>
+            <div id="hw-hifz-entries-list"></div>
+          </div>
+
+          <!-- جزء المراجعة -->
+          <div id="hw-murajaa-pane" style="display:none;">
+            <div class="mf-row">
+              <div class="mf"><label>السورة</label>
+                <select id="hw-murajaa-surah"></select>
+              </div>
+            </div>
+            <div class="mf-row">
+              <div class="mf"><label>من آية</label><input type="number" id="hw-murajaa-from" value="1" min="1"></div>
+              <div class="mf"><label>إلى آية</label><input type="number" id="hw-murajaa-to" value="1" min="1"></div>
+            </div>
+            <button class="qbtn qbtn-outline" id="hw-murajaa-add-btn" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addHwMurajaaEntry()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              إضافة للمراجعة
+            </button>
+            <div id="hw-murajaa-entries-list"></div>
+          </div>
+
+          <div class="modal-divider"></div>
           <div class="mf"><label>ملاحظات للطالب (اختياري)</label><textarea id="hw-notes" rows="2" placeholder="مثال: ركّز على تثبيت التشكيل والتجويد"></textarea></div>
-          <button class="btn-submit-modal" onclick="saveHomework()">
+          <button class="btn-submit-modal" id="hw-submit-btn" onclick="saveHomework()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             حفظ الواجب البيتي
           </button>
         </div>
       </div>
 
+      <!-- ═══ قائمة الواجبات ═══ -->
       <div class="panel" style="margin-top:1.2rem;">
         <div class="panel-hd">
           <div class="panel-title">📔 الواجبات الأخيرة وتسجيل نسبة الإنجاز</div>
+          <select id="hw-filter-student" onchange="renderHwList()" style="height:30px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
+            <option value="">كل الطلاب</option>
+          </select>
         </div>
         <div class="panel-body" id="hw-list" style="padding:0;"></div>
       </div>
@@ -1515,46 +1582,133 @@ function renderEvalTab(){
 // ════════════════════════════════════════
 //  HOMEWORK (الواجب البيتي)
 // ════════════════════════════════════════
-function fillHwSurahSelect(){
-  const sel=document.getElementById('hw-surah');
-  if(sel && !sel.options.length){
-    sel.innerHTML=SURAHS.map(s=>`<option value="${s.num}|${s.name}|${s.ayahs}">${s.num}. ${s.name}</option>`).join('');
-  }
+// ════════════════════════════════════════
+//  HOMEWORK (الواجب البيتي)
+// ════════════════════════════════════════
+let hwHifzEntries=[], hwMurajaaEntries=[];
+let hwBulkMode=false;
+const hwBulkSelectedIds=new Set();
+
+function fillHwSurahSelects(){
+  ['hw-hifz-surah','hw-murajaa-surah'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(sel&&!sel.options.length)
+      sel.innerHTML=SURAHS.map(s=>`<option value="${s.num}|${s.name}|${s.ayahs}">${s.num}. ${s.name}</option>`).join('');
+  });
 }
 
-function renderHomeworkStudentSelect(){
-  const sel=document.getElementById('hw-student-select');
+function toggleHwBulk(checked){
+  hwBulkMode=checked;
+  document.getElementById('hw-single-wrap').style.display=checked?'none':'block';
+  document.getElementById('hw-bulk-wrap').style.display=checked?'block':'none';
+  document.getElementById('hw-bulk-count-lbl').style.display=checked?'inline':'none';
+  hwBulkSelectedIds.clear();
+  if(checked) renderHwBulkStudentsList();
+}
+
+function renderHwBulkStudentsList(){
+  const el=document.getElementById('hw-bulk-students-list'); if(!el) return;
   const active=students.filter(s=>!s.archived);
-  const cur=sel.value;
-  sel.innerHTML='<option value="">— اختر طالباً —</option>'+
-    active.map(s=>`<option value="${s.id}" ${cur===s.id?'selected':''}>${s.name}</option>`).join('');
+  el.innerHTML=active.map(s=>{
+    const checked=hwBulkSelectedIds.has(s.id);
+    return `<label class="student-row" style="cursor:pointer;${checked?'background:rgba(10,61,43,.04);':''}">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleHwBulkStudent('${s.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--gd);margin-left:6px;flex-shrink:0;">
+      <div class="st-avatar" style="background:var(--go);color:var(--gd);width:30px;height:30px;font-size:12px;">${ini(s.name)}</div>
+      <div class="st-info"><div class="st-name">${s.name}</div></div>
+    </label>`;
+  }).join('');
+  updateHwBulkCountLbl();
+}
+
+function toggleHwBulkStudent(id,checked){
+  if(checked) hwBulkSelectedIds.add(id); else hwBulkSelectedIds.delete(id);
+  updateHwBulkCountLbl();
+  renderHwBulkStudentsList();
+}
+
+function toggleSelectAllHw(){
+  const active=students.filter(s=>!s.archived);
+  const allSel=active.length>0&&active.every(s=>hwBulkSelectedIds.has(s.id));
+  if(allSel) hwBulkSelectedIds.clear(); else active.forEach(s=>hwBulkSelectedIds.add(s.id));
+  renderHwBulkStudentsList();
+}
+
+function updateHwBulkCountLbl(){
+  const lbl=document.getElementById('hw-bulk-count-lbl');
+  if(lbl) lbl.textContent=`${hwBulkSelectedIds.size} طالب محدد`;
+}
+
+function hwTab(tab){
+  document.getElementById('hw-tb-hifz').classList.toggle('active',tab==='hifz');
+  document.getElementById('hw-tb-murajaa').classList.toggle('active',tab==='murajaa');
+  document.getElementById('hw-hifz-pane').style.display=tab==='hifz'?'block':'none';
+  document.getElementById('hw-murajaa-pane').style.display=tab==='murajaa'?'block':'none';
+}
+
+function addHwHifzEntry(){
+  const sel=document.getElementById('hw-hifz-surah');
+  const [num,name]=sel.value.split('|');
+  const from=parseInt(document.getElementById('hw-hifz-from').value)||1;
+  const to=parseInt(document.getElementById('hw-hifz-to').value)||1;
+  hwHifzEntries.push({surah:name,surahNum:num,from,to});
+  renderHwEntries();
+}
+
+function addHwMurajaaEntry(){
+  const sel=document.getElementById('hw-murajaa-surah');
+  const [num,name]=sel.value.split('|');
+  const from=parseInt(document.getElementById('hw-murajaa-from').value)||1;
+  const to=parseInt(document.getElementById('hw-murajaa-to').value)||1;
+  hwMurajaaEntries.push({surah:name,surahNum:num,from,to});
+  renderHwEntries();
+}
+
+function renderHwEntries(){
+  const hEl=document.getElementById('hw-hifz-entries-list');
+  const mEl=document.getElementById('hw-murajaa-entries-list');
+  if(hEl) hEl.innerHTML=hwHifzEntries.map((e,i)=>`
+    <div class="student-row">
+      <div class="st-info"><div class="st-name">📖 ${e.surah} (${e.from}–${e.to})</div></div>
+      <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="hwHifzEntries.splice(${i},1);renderHwEntries()">×</button>
+    </div>`).join('');
+  if(mEl) mEl.innerHTML=hwMurajaaEntries.map((e,i)=>`
+    <div class="student-row">
+      <div class="st-info"><div class="st-name">🔄 ${e.surah} (${e.from}–${e.to})</div></div>
+      <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="hwMurajaaEntries.splice(${i},1);renderHwEntries()">×</button>
+    </div>`).join('');
 }
 
 function saveHomework(){
-  const studentId=(document.getElementById('hw-student-select')||{}).value;
-  if(!studentId){ toast('⚠️ اختر طالباً أولاً','error'); return; }
-  const sel=document.getElementById('hw-surah');
-  const [num,name]=sel.value.split('|');
-  const from=parseInt(document.getElementById('hw-from').value)||1;
-  const to=parseInt(document.getElementById('hw-to').value)||1;
+  if(!hwHifzEntries.length&&!hwMurajaaEntries.length){toast('⚠️ أضف حفظاً أو مراجعة على الأقل','error');return;}
   const notes=(document.getElementById('hw-notes')||{}).value||'';
   const date=TODAY();
-
-  if(!homework[date]) homework[date]={};
-  homework[date][studentId]={
-    surah:name, surahNum:num, from, to, notes,
-    dateLabel:getDateLabel(),
+  const dateLabel=getDateLabel();
+  let targets=[];
+  if(hwBulkMode){
+    if(!hwBulkSelectedIds.size){toast('⚠️ اختر طالباً واحداً على الأقل','error');return;}
+    targets=[...hwBulkSelectedIds];
+  } else {
+    const sid=(document.getElementById('hw-student-select')||{}).value;
+    if(!sid){toast('⚠️ اختر طالباً أولاً','error');return;}
+    targets=[sid];
+  }
+  const hwData={
+    hifz:hwHifzEntries.map(e=>({...e})),
+    murajaa:hwMurajaaEntries.map(e=>({...e})),
+    notes, dateLabel,
     createdAt:new Date().toISOString(),
     completion:null, completionAt:null
   };
-
-  userDocRef.set({
-    homework:{ [date]:{ [studentId]: homework[date][studentId] } }
-  },{merge:true}).catch(e=>console.warn('homework save err',e));
-
+  if(!homework[date]) homework[date]={};
+  const patch={};
+  targets.forEach(studentId=>{ homework[date][studentId]={...hwData}; patch[studentId]={...hwData}; });
+  userDocRef.set({homework:{[date]:patch}},{merge:true}).catch(e=>console.warn('homework save err',e));
+  hwHifzEntries=[]; hwMurajaaEntries=[];
   document.getElementById('hw-notes').value='';
-  toast('✅ تم حفظ الواجب البيتي بنجاح');
-  renderHomeworkTab();
+  renderHwEntries();
+  if(hwBulkMode){ hwBulkSelectedIds.clear(); renderHwBulkStudentsList(); }
+  toast(`✅ تم حفظ الواجب البيتي لـ ${targets.length} طالب`);
+  renderHwList();
 }
 
 function setHomeworkCompletion(date,studentId,pct){
@@ -1562,9 +1716,9 @@ function setHomeworkCompletion(date,studentId,pct){
   homework[date][studentId].completion=pct;
   homework[date][studentId].completionAt=new Date().toISOString();
   userDocRef.set({
-    homework:{ [date]:{ [studentId]:{ completion:pct, completionAt:homework[date][studentId].completionAt } } }
-  },{merge:true}).catch(e=>console.warn('homework completion save err',e));
-  renderHomeworkTab();
+    homework:{[date]:{[studentId]:{completion:pct,completionAt:homework[date][studentId].completionAt}}}
+  },{merge:true}).catch(e=>console.warn('hw completion err',e));
+  renderHwList();
   toast(`✅ تم تسجيل نسبة الإنجاز: ${pct}%`);
 }
 
@@ -1572,63 +1726,71 @@ function deleteHomework(date,studentId){
   if(!homework[date]||!homework[date][studentId]) return;
   if(!confirm('هل تريد حذف هذا الواجب؟')) return;
   delete homework[date][studentId];
-  userDocRef.set({
-    homework:{ [date]:{ [studentId]: firebase.firestore.FieldValue.delete() } }
-  },{merge:true}).catch(e=>console.warn('homework delete err',e));
-  renderHomeworkTab();
+  userDocRef.set({homework:{[date]:{[studentId]:firebase.firestore.FieldValue.delete()}}},{merge:true}).catch(e=>console.warn('hw delete err',e));
+  renderHwList();
 }
 
 function renderHomeworkTab(){
-  fillHwSurahSelect();
-  renderHomeworkStudentSelect();
+  fillHwSurahSelects();
+  const sel=document.getElementById('hw-student-select');
+  const flt=document.getElementById('hw-filter-student');
+  const active=students.filter(s=>!s.archived);
+  if(sel){
+    const curS=sel.value;
+    sel.innerHTML='<option value="">— اختر طالباً —</option>'+active.map(s=>`<option value="${s.id}"${curS===s.id?' selected':''}>${s.name}</option>`).join('');
+  }
+  if(flt){
+    const curF=flt.value;
+    flt.innerHTML='<option value="">كل الطلاب</option>'+active.map(s=>`<option value="${s.id}"${curF===s.id?' selected':''}>${s.name}</option>`).join('');
+  }
+  renderHwList();
+}
 
-  const filterStudentId=(document.getElementById('hw-student-select')||{}).value||'';
-  const el=document.getElementById('hw-list');
-  if(!el) return;
-
-  // تجميع كل الواجبات من كل التواريخ في قائمة مسطّحة، الأحدث أولاً
+function renderHwList(){
+  const el=document.getElementById('hw-list'); if(!el) return;
+  const filterStudentId=(document.getElementById('hw-filter-student')||{}).value||'';
   let rows=[];
   Object.keys(homework).forEach(date=>{
     Object.keys(homework[date]||{}).forEach(studentId=>{
       const hw=homework[date][studentId];
       if(!hw) return;
-      if(filterStudentId && studentId!==filterStudentId) return;
+      if(filterStudentId&&studentId!==filterStudentId) return;
       const student=students.find(s=>s.id===studentId);
-      rows.push({date, studentId, studentName:student?student.name:'طالب محذوف', ...hw});
+      rows.push({date,studentId,studentName:student?student.name:'طالب محذوف',...hw});
     });
   });
-  rows.sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||'').localeCompare(a.createdAt||''));
-  rows=rows.slice(0,40);
-
+  rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||'').localeCompare(a.createdAt||''));
+  rows=rows.slice(0,50);
   if(!rows.length){
-    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا توجد واجبات مسجّلة بعد — استخدم النموذج أعلاه لتسجيل أول واجب بيتي</div></div>';
+    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا توجد واجبات بعد</div></div>';
     return;
   }
-
   const PCTS=[25,50,75,100];
   el.innerHTML=rows.map(r=>{
-    const hasCompletion = r.completion!==null && r.completion!==undefined;
+    const hasCompletion=r.completion!==null&&r.completion!==undefined;
+    const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-entry-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
+    const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-entry-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
     return `<div class="hw-card">
       <div class="hw-card-top">
         <div class="hw-avatar">${ini(r.studentName)}</div>
         <div class="hw-info">
           <div class="hw-name">${r.studentName}</div>
-          <div class="hw-meta">📅 ${r.dateLabel||r.date} — ${r.surah} (آية ${r.from}-${r.to})</div>
+          <div class="hw-meta">📅 ${r.dateLabel||r.date}</div>
         </div>
-        <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${r.date}','${r.studentId}')" title="حذف الواجب">×</button>
+        <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${r.date}','${r.studentId}')">×</button>
       </div>
+      ${(hifzPills||muraPills)?`<div class="hw-entries">${hifzPills}${muraPills}</div>`:''}
       ${r.notes?`<div class="hw-notes">📝 ${r.notes}</div>`:''}
       <div class="hw-completion-row">
-        <span class="hw-completion-lbl">نسبة إنجاز الطالب:</span>
+        <span class="hw-completion-lbl">نسبة الإنجاز:</span>
         <div class="hw-pct-pills">
           ${PCTS.map(p=>`<button class="hw-pct-pill${hasCompletion&&r.completion===p?' sel':''}" onclick="setHomeworkCompletion('${r.date}','${r.studentId}',${p})">${p}%</button>`).join('')}
         </div>
-        ${hasCompletion?`<span class="hw-completion-badge">${r.completion}%</span>`:`<span class="hw-completion-pending">بانتظار التقييم</span>`}
+        ${hasCompletion?`<span class="hw-completion-badge">${r.completion}%</span>`:`<span class="hw-completion-pending">بانتظار</span>`}
       </div>
     </div>`;
   }).join('');
 }
-
 
 function renderAttendance(){
 
