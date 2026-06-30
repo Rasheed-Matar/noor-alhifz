@@ -1201,7 +1201,7 @@ function renderHifz(){
       ${s.murajaa&&s.murajaa.length?`
         <div class="section-lbl" style="margin-top:8px;">🔄 مراجعة</div>
         <div class="sess-items">
-          ${s.murajaa.map(m=>`<span class="sess-chip murajaa">${m.surah} (${m.from}-${m.to})</span>`).join('')}
+          ${s.murajaa.map(m=>`<span class="sess-chip murajaa">${m.surah} (${m.from}-${m.to})${m.score?` — ${m.score}`:''}</span>`).join('')}
         </div>
       `:''}
     </div>
