@@ -91,17 +91,45 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .att-badge.u{background:#f5f5f5;color:var(--txm);}
 
 /* ATTENDANCE TIMELINE ROW (جديد) */
-.att-row2{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid #f3eedb;}
+.att-row2{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #f3eedb;}
 .att-row2:last-child{border-bottom:none;}
-.att-row2-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-.att-row2-ico.p{background:var(--grnb);}
-.att-row2-ico.l{background:#fff7e0;}
-.att-row2-ico.a{background:var(--redb);}
-.att-row2-ico.e{background:var(--ambb);}
+.att-row2-ico{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;box-shadow:0 2px 6px rgba(27,107,74,.08);}
+.att-row2-ico.p{background:radial-gradient(circle at 35% 30%,#e3fbef,var(--grnb));}
+.att-row2-ico.l{background:radial-gradient(circle at 35% 30%,#fff7e0,#fff3d0);}
+.att-row2-ico.a{background:radial-gradient(circle at 35% 30%,#ffeaea,var(--redb));}
+.att-row2-ico.e{background:radial-gradient(circle at 35% 30%,#fff8e8,var(--ambb));}
 .att-row2-ico.u{background:#f5f5f5;}
 .att-row2-info{flex:1;min-width:0;}
 .att-row2-day{font-size:13px;font-weight:700;color:var(--ink);}
 .att-row2-date{font-size:11px;color:var(--txl);margin-top:1px;}
+.att-row2-dua{font-size:10.5px;color:var(--em2);margin-top:2px;font-weight:500;}
+
+/* ATTENDANCE — CIRCULAR STATS (تصميم دائري تحفيزي) */
+.att-circ-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+.att-circ{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.att-circ-bubble{width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 3px 10px rgba(27,107,74,.1);border:2px solid transparent;transition:transform .2s;}
+.att-circ:hover .att-circ-bubble{transform:translateY(-2px) scale(1.04);}
+.att-circ-ico{font-size:16px;line-height:1;}
+.att-circ-num{font-size:18px;font-weight:800;line-height:1.1;}
+.att-circ-lbl{font-size:10.5px;color:var(--txm);font-weight:600;}
+.att-circ.p .att-circ-bubble{background:radial-gradient(circle at 35% 28%,#e3fbef,var(--grnb));border-color:rgba(26,156,91,.25);}
+.att-circ.p .att-circ-num{color:var(--grn);}
+.att-circ.l .att-circ-bubble{background:radial-gradient(circle at 35% 28%,#fff7e0,#fff3d0);border-color:rgba(183,121,31,.25);}
+.att-circ.l .att-circ-num{color:var(--amb);}
+.att-circ.a .att-circ-bubble{background:radial-gradient(circle at 35% 28%,#ffeaea,var(--redb));border-color:rgba(229,62,62,.25);}
+.att-circ.a .att-circ-num{color:var(--red);}
+.att-circ.e .att-circ-bubble{background:radial-gradient(circle at 35% 28%,#fff8e8,var(--ambb));border-color:rgba(138,104,32,.25);}
+.att-circ.e .att-circ-num{color:var(--gd);}
+
+/* ATTENDANCE — RING PROGRESS (دائرة نسبة الحضور) */
+.att-ring-wrap{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(26,107,74,.05));border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px;}
+.att-ring-svg{flex-shrink:0;}
+.att-ring-bg{fill:none;stroke:#eee4c8;stroke-width:9;}
+.att-ring-fill{fill:none;stroke:url(#attRingGrad);stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset 1s ease;}
+.att-ring-pct{font-size:19px;font-weight:800;color:var(--em);}
+.att-ring-info{flex:1;min-width:0;}
+.att-ring-title{font-size:12.5px;color:var(--txm);font-weight:600;margin-bottom:3px;}
+.att-ring-dua{font-size:12px;color:var(--em);font-weight:700;line-height:1.5;}
 
 /* SESSION CARD */
 .sess-card{border:1px solid var(--border);border-right:4px solid var(--em2);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff;box-shadow:0 1px 4px rgba(27,107,74,.05);}
@@ -465,15 +493,30 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       <div class="month-sel">
         <select id="att-month-sel" onchange="renderAttendance()"></select>
       </div>
-      <div class="stats-grid" style="margin-bottom:12px;">
-        <div class="stat-box green"><div class="stat-num" id="att-present-count">0</div><div class="stat-lbl">حاضر</div></div>
-        <div class="stat-box amb"><div class="stat-num" id="att-late-count">0</div><div class="stat-lbl">متأخر</div></div>
-        <div class="stat-box red"><div class="stat-num" id="att-absent-count">0</div><div class="stat-lbl">غائب</div></div>
-        <div class="stat-box gold"><div class="stat-num" id="att-excused-count">0</div><div class="stat-lbl">عذر</div></div>
+      <div class="att-circ-grid">
+        <div class="att-circ p"><div class="att-circ-bubble"><div class="att-circ-ico">🌿</div><div class="att-circ-num" id="att-present-count">0</div></div><div class="att-circ-lbl">حاضر</div></div>
+        <div class="att-circ l"><div class="att-circ-bubble"><div class="att-circ-ico">⏰</div><div class="att-circ-num" id="att-late-count">0</div></div><div class="att-circ-lbl">متأخر</div></div>
+        <div class="att-circ a"><div class="att-circ-bubble"><div class="att-circ-ico">🤍</div><div class="att-circ-num" id="att-absent-count">0</div></div><div class="att-circ-lbl">غائب</div></div>
+        <div class="att-circ e"><div class="att-circ-bubble"><div class="att-circ-ico">📩</div><div class="att-circ-num" id="att-excused-count">0</div></div><div class="att-circ-lbl">عذر</div></div>
       </div>
-      <div class="prog-bar-wrap">
-        <div class="prog-bar-label"><span>نسبة الحضور</span><span id="att-pct-lbl">0%</span></div>
-        <div class="prog-bar-bg"><div class="prog-bar-fill" id="att-pct-bar" style="width:0%"></div></div>
+      <div class="att-ring-wrap">
+        <svg class="att-ring-svg" width="86" height="86" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="attRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:var(--em2)"/>
+              <stop offset="100%" style="stop-color:var(--gold)"/>
+            </linearGradient>
+          </defs>
+          <g transform="rotate(-90 50 50)">
+            <circle class="att-ring-bg" cx="50" cy="50" r="42"/>
+            <circle class="att-ring-fill" id="att-pct-ring" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
+          </g>
+          <text x="50" y="56" text-anchor="middle" id="att-pct-lbl-svg" style="font-size:20px;font-weight:800;fill:var(--em);font-family:'Tajawal',sans-serif;">0%</text>
+        </svg>
+        <div class="att-ring-info">
+          <div class="att-ring-title">🕌 نسبة الحضور لهذا الشهر</div>
+          <div class="att-ring-dua" id="att-pct-dua">بإذن الله رحلة مباركة في طلب العلم ✨</div>
+        </div>
       </div>
       <div class="divider"></div>
       <div id="att-list"><div class="empty"><div class="empty-ico">📅</div><div class="empty-txt">لا توجد بيانات لهذا الشهر</div></div></div>
@@ -712,10 +755,10 @@ function monthKey(iso){return iso?iso.slice(0,7):'';}
 // ════════════════════════════════════════
 const ATT_SCORE_MAP = {present:30, late:15, excused:5, absent:0};
 const ATT_LABELS = {
-  present:{lbl:'حاضر',cls:'p',ico:'✅'},
-  late:{lbl:'متأخر',cls:'l',ico:'⏰'},
-  absent:{lbl:'غائب',cls:'a',ico:'❌'},
-  excused:{lbl:'عذر',cls:'e',ico:'📩'}
+  present:{lbl:'حاضر',cls:'p',ico:'✅',dua:'بارك الله في التزامك 🌿'},
+  late:{lbl:'متأخر',cls:'l',ico:'⏰',dua:'الحمد لله على حضورك رغم التأخير'},
+  absent:{lbl:'غائب',cls:'a',ico:'❌',dua:'نفتقدك، نسأل الله ييسر حضورك القادم 🤍'},
+  excused:{lbl:'عذر',cls:'e',ico:'📩',dua:'نسأل الله لك العافية والتيسير'}
 };
 function computeDailyScore(studentId, date){
   const attStatus = (teacherData.attendance[date]||{})[studentId];
@@ -1142,8 +1185,24 @@ function renderAttendance(){
   document.getElementById('att-late-count').textContent=lCount;
   document.getElementById('att-absent-count').textContent=aCount;
   document.getElementById('att-excused-count').textContent=eCount;
-  document.getElementById('att-pct-lbl').textContent=pct+'%';
-  document.getElementById('att-pct-bar').style.width=pct+'%';
+
+  // الدائرة التحفيزية لنسبة الحضور
+  const RING_C=264; // محيط الدائرة (2πr، r=42)
+  const ringEl=document.getElementById('att-pct-ring');
+  const ringTxt=document.getElementById('att-pct-lbl-svg');
+  const duaEl=document.getElementById('att-pct-dua');
+  if(ringEl) ringEl.style.strokeDashoffset = RING_C - (RING_C*pct/100);
+  if(ringTxt) ringTxt.textContent = pct+'%';
+  if(duaEl){
+    let dua='بإذن الله رحلة مباركة في طلب العلم ✨';
+    if(total>0){
+      if(pct>=90) dua='ما شاء الله، التزام رائع! بارك الله فيك وثبّتك 🌿';
+      else if(pct>=70) dua='أحسنت، استمر على هذا العهد بارك الله فيك 🤲';
+      else if(pct>=50) dua='لا بأس، حاول الانتظام أكثر، أعانك الله ✨';
+      else dua='نفتقدك في الحلقة، عسى الله ييسر لك حضوراً أكثر 🤍';
+    }
+    duaEl.textContent=dua;
+  }
 
   const el=document.getElementById('att-list');
   if(!days.length){
@@ -1153,12 +1212,13 @@ function renderAttendance(){
 
   el.innerHTML = days.map(([date,rec])=>{
     const s=rec[myStudentId];
-    const st=ATT_LABELS[s]||{lbl:'لم يُسجَّل',cls:'u',ico:'⬜'};
+    const st=ATT_LABELS[s]||{lbl:'لم يُسجَّل',cls:'u',ico:'⬜',dua:''};
     return`<div class="att-row2">
       <div class="att-row2-ico ${st.cls}">${st.ico||'⬜'}</div>
       <div class="att-row2-info">
         <div class="att-row2-day">${dayName(date)}</div>
         <div class="att-row2-date">${fmtDate(date)}</div>
+        ${st.dua?`<div class="att-row2-dua">${st.dua}</div>`:''}
       </div>
       <div class="att-badge ${st.cls}">${st.lbl}</div>
     </div>`;
