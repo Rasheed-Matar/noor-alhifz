@@ -539,10 +539,23 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             اختر الطالب
           </div></div>
           <div class="panel-body" style="padding-top:.6rem;">
-            <select class="mf-select-full" id="sess-student-select" onchange="selectSessStudent(this.value)" style="width:100%;height:44px;border:1.5px solid var(--bdr);border-radius:9px;padding:0 12px;font-size:13.5px;font-family:inherit;margin-bottom:.8rem;">
-              <option value="">— اختر طالباً —</option>
-            </select>
-            <div id="sess-student-info"></div>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;color:var(--gd);font-weight:600;background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:.8rem;">
+              <input type="checkbox" id="bulk-mode-toggle" onchange="toggleBulkMode(this.checked)" style="width:15px;height:15px;accent-color:var(--gd);">
+              تسجيل جماعي لعدة طلاب دفعة واحدة
+            </label>
+            <div id="sess-single-wrap">
+              <select class="mf-select-full" id="sess-student-select" onchange="selectSessStudent(this.value)" style="width:100%;height:44px;border:1.5px solid var(--bdr);border-radius:9px;padding:0 12px;font-size:13.5px;font-family:inherit;margin-bottom:.8rem;">
+                <option value="">— اختر طالباً —</option>
+              </select>
+              <div id="sess-student-info"></div>
+            </div>
+            <div id="sess-bulk-wrap" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+                <span style="font-size:12px;color:var(--txm);" id="bulk-count-lbl">0 طالب محدد</span>
+                <button class="panel-act" onclick="toggleSelectAllBulk()">تحديد الكل / إلغاء</button>
+              </div>
+              <div id="bulk-students-list" style="max-height:340px;overflow-y:auto;"></div>
+            </div>
           </div>
         </div>
 
@@ -954,6 +967,7 @@ let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
 let activatedStudentNids = new Set(); // رقم هويات الطلاب المفعّلين
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={};
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
+let bulkMode=false, bulkSelectedIds=new Set();
 
 const uid=()=>'_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 function TODAY(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -1268,7 +1282,7 @@ function editSessionRecord(sessionId){
   setTimeout(()=>{
     const notesEl=document.getElementById('sess-notes');
     if(notesEl) notesEl.value=rec.notes||'';
-    const btn=document.querySelector('.btn-submit-modal');
+    const btn=document.getElementById('sess-submit-btn');
     if(btn) btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> حفظ التعديل على الجلسة';
   },0);
   toast('✏️ يمكنك الآن تعديل إنجاز اليوم لهذا الطالب');
@@ -1464,6 +1478,13 @@ function selectSessStudent(studentId){
   hifzEntries=[]; murajaaEntries=[];
   editingSessionId=null;
   editingHifzIdx=null; editingMurajaaIdx=null;
+  if(bulkMode){
+    bulkMode=false;
+    const t=document.getElementById('bulk-mode-toggle'); if(t) t.checked=false;
+    const sw1=document.getElementById('sess-single-wrap'), sw2=document.getElementById('sess-bulk-wrap');
+    if(sw1) sw1.style.display='block';
+    if(sw2) sw2.style.display='none';
+  }
   const infoEl=document.getElementById('sess-student-info');
   const formEl=document.getElementById('sess-form-area');
   if(!studentId){
@@ -1490,14 +1511,110 @@ function selectSessStudent(studentId){
     setTimeout(()=>{
       const notesEl=document.getElementById('sess-notes');
       if(notesEl) notesEl.value=todayRec.notes||'';
-      const btn=document.querySelector('.btn-submit-modal');
+      const btn=document.getElementById('sess-submit-btn');
       if(btn) btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> حفظ التعديل على إنجاز اليوم';
+      // تعبئة آخر إدخال حفظ ومراجعة تلقائياً في النموذج دون الحاجة للضغط على "اضغط للتعديل"
+      if(hifzEntries.length) editHifzEntry(hifzEntries.length-1);
+      if(murajaaEntries.length) editMurajaaEntry(murajaaEntries.length-1);
     },0);
   }
   renderHifzEntries(); renderMurajaaEntries();
 }
 
-function buildSessForm(){
+// ════════════════════════════════════════
+//  التسجيل الجماعي — نفس الحفظ/المراجعة لعدة طلاب دفعة واحدة
+// ════════════════════════════════════════
+function toggleBulkMode(checked){
+  bulkMode=checked;
+  document.getElementById('sess-single-wrap').style.display = checked?'none':'block';
+  document.getElementById('sess-bulk-wrap').style.display = checked?'block':'none';
+  currentSessStudentId=null; editingSessionId=null;
+  hifzEntries=[]; murajaaEntries=[]; editingHifzIdx=null; editingMurajaaIdx=null;
+  const formEl=document.getElementById('sess-form-area');
+  if(checked){
+    bulkSelectedIds.clear();
+    renderBulkStudentsList();
+    formEl.innerHTML=buildSessForm(true);
+    renderHifzEntries(); renderMurajaaEntries();
+  } else {
+    const sel=document.getElementById('sess-student-select');
+    if(sel) sel.value='';
+    document.getElementById('sess-student-info').innerHTML='';
+    formEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">اختر طالباً أولاً من القائمة</div></div>';
+  }
+}
+
+function renderBulkStudentsList(){
+  const el=document.getElementById('bulk-students-list'); if(!el) return;
+  const active=students.filter(s=>!s.archived);
+  const today=TODAY();
+  el.innerHTML=active.map(s=>{
+    const hasToday=sessions.some(x=>x.studentId===s.id&&x.date===today);
+    const checked=bulkSelectedIds.has(s.id);
+    return `<label class="student-row" style="cursor:pointer;${checked?'background:rgba(10,61,43,.04);':''}">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleBulkStudent('${s.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--gd);margin-left:6px;flex-shrink:0;">
+      <div class="st-avatar" style="background:var(--go);color:var(--gd);width:30px;height:30px;font-size:12px;">${ini(s.name)}</div>
+      <div class="st-info"><div class="st-name">${s.name}</div><div class="st-meta">${hasToday?'سُجِّل له اليوم — ستُضاف هذه البيانات لما سبق':'لم يُسجَّل له شيء اليوم'}</div></div>
+    </label>`;
+  }).join('');
+  updateBulkCountLbl();
+}
+
+function toggleBulkStudent(studentId,checked){
+  if(checked) bulkSelectedIds.add(studentId); else bulkSelectedIds.delete(studentId);
+  updateBulkCountLbl();
+}
+
+function toggleSelectAllBulk(){
+  const active=students.filter(s=>!s.archived);
+  const allSelected=active.length>0&&active.every(s=>bulkSelectedIds.has(s.id));
+  if(allSelected){ bulkSelectedIds.clear(); }
+  else { active.forEach(s=>bulkSelectedIds.add(s.id)); }
+  renderBulkStudentsList();
+}
+
+function updateBulkCountLbl(){
+  const lbl=document.getElementById('bulk-count-lbl');
+  if(lbl) lbl.textContent=`${bulkSelectedIds.size} طالب محدد`;
+}
+
+function saveBulkSession(){
+  if(!bulkSelectedIds.size){ toast('⚠️ اختر طالباً واحداً على الأقل','error'); return; }
+  if(!hifzEntries.length&&!murajaaEntries.length){ toast('⚠️ أضف حفظاً أو مراجعة على الأقل','error'); return; }
+  const notesVal=(document.getElementById('sess-notes')||{}).value||'';
+  const today=TODAY();
+  let updatedCount=0, newCount=0;
+  bulkSelectedIds.forEach(studentId=>{
+    let record=sessions.find(x=>x.studentId===studentId&&x.date===today);
+    if(record){
+      // الطالب لديه تسجيل اليوم بالفعل — تُضاف بيانات التسجيل الجماعي إلى ما سبق تسجيله له
+      record.hifz=[...(record.hifz||[]), ...hifzEntries.map(e=>({...e}))];
+      record.murajaa=[...(record.murajaa||[]), ...murajaaEntries.map(e=>({...e}))];
+      if(notesVal) record.notes=record.notes?`${record.notes} | ${notesVal}`:notesVal;
+      record.updatedAt=new Date().toISOString();
+      updatedCount++;
+    } else {
+      sessions.push({
+        id:uid(), studentId, date:today, dateLabel:getDateLabel(),
+        hifz:hifzEntries.map(e=>({...e})), murajaa:murajaaEntries.map(e=>({...e})),
+        notes:notesVal, createdAt:new Date().toISOString()
+      });
+      newCount++;
+    }
+  });
+  save();
+  hifzEntries=[]; murajaaEntries=[]; editingHifzIdx=null; editingMurajaaIdx=null;
+  const selectedCount=bulkSelectedIds.size;
+  bulkSelectedIds.clear();
+  renderBulkStudentsList();
+  document.getElementById('sess-form-area').innerHTML=buildSessForm(true);
+  renderHifzEntries(); renderMurajaaEntries();
+  toast(`✅ تم تسجيل الإنجاز لعدد ${selectedCount} طالب (${newCount} جديد، ${updatedCount} تم تحديثه)`);
+}
+
+function buildSessForm(isBulk){
+  const submitOnclick = isBulk ? 'saveBulkSession()' : 'saveSession()';
+  const submitLabel = isBulk ? 'حفظ للطلاب المحددين' : 'حفظ الجلسة';
   return `
     <div class="tab-row">
       <button class="tab-btn active" id="tb-hifz" onclick="sessTab('hifz')">حفظ جديد</button>
@@ -1553,9 +1670,9 @@ function buildSessForm(){
     </div>
     <div class="modal-divider"></div>
     <div class="mf"><label>ملاحظات</label><textarea id="sess-notes" rows="2" placeholder="ملاحظات إضافية (اختياري)"></textarea></div>
-    <button class="btn-submit-modal" onclick="saveSession()">
+    <button class="btn-submit-modal" id="sess-submit-btn" onclick="${submitOnclick}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-      حفظ الجلسة
+      ${submitLabel}
     </button>`;
 }
 
