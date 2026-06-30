@@ -882,21 +882,29 @@ select.form-input{cursor:pointer;}
       <button class="modal-close" onclick="closeModal('modal-import-teachers')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">ملفُّ بياناتِ المحفّظينَ (الاسم الرباعي، رقم الهوية، رقم الجوال، تاريخ الميلاد، مكان الميلاد، اسم الحلقة، عدد أفراد الأسرة) <span>*</span></label>
-        <label class="file-drop" id="impTFileLabel" for="impTFile">اضغط لاختيار الملف...
-          <input type="file" id="impTFile" accept=".xlsx,.xls,.csv" onchange="onImportTeacherFileChosen()">
-        </label>
+      <div class="pdf-filter-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">الكشف الأساسي (يحتوي كل بيانات المحفّظين: الاسم الرباعي، رقم الهوية، رقم الجوال، تاريخ الميلاد، مكان الميلاد، اسم الحلقة، عدد أفراد الأسرة) <span>*</span></label>
+          <label class="file-drop" id="impTMasterLabel" for="impTMasterFile">اضغط لاختيار الملف...
+            <input type="file" id="impTMasterFile" accept=".xlsx,.xls,.csv" onchange="onImportFileChosen('impTMasterFile','impTMasterLabel')">
+          </label>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">كشف أرقام هويات المحفّظين المطلوب إضافتهم <span>*</span></label>
+          <label class="file-drop" id="impTIdsLabel" for="impTIdsFile">اضغط لاختيار الملف...
+            <input type="file" id="impTIdsFile" accept=".xlsx,.xls,.csv" onchange="onImportFileChosen('impTIdsFile','impTIdsLabel')">
+          </label>
+        </div>
       </div>
 
-      <button class="btn-save" id="impTMatchBtn" style="margin-top:4px;" onclick="processTeacherImport()">🔍 تحليل الملف</button>
+      <button class="btn-save" id="impTMatchBtn" style="margin-top:4px;" onclick="processTeacherImport()">🔍 مطابقة البيانات</button>
 
       <div id="impTResultsWrap" style="display:none;margin-top:18px;">
         <div class="import-summary">
           <div class="import-chip" style="background:#f0faf4;border-color:#aee6c4;"><div class="n" id="impTChipReady" style="color:#1b6b4a;">0</div><div class="l">✅ جاهز للإضافة</div></div>
           <div class="import-chip" style="background:#fffbf0;border-color:#ffc107;"><div class="n" id="impTChipExists" style="color:#b8860b;">0</div><div class="l">🟡 مسجّل مسبقاً</div></div>
-          <div class="import-chip" style="background:#fffbf0;border-color:#ffc107;"><div class="n" id="impTChipDup" style="color:#b8860b;">0</div><div class="l">🟠 مكرر بالملف</div></div>
-          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impTChipBad" style="color:#c0392b;">0</div><div class="l">🔴 غير صالح</div></div>
+          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impTChipNotFound" style="color:#c0392b;">0</div><div class="l">🔴 غير موجود بالكشف الأساسي</div></div>
+          <div class="import-chip" style="background:#fff5f5;border-color:#f5c6cb;"><div class="n" id="impTChipBad" style="color:#c0392b;">0</div><div class="l">⚠️ بدون اسم</div></div>
         </div>
         <div class="table-wrap" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;">
           <table>
@@ -1164,6 +1172,9 @@ function renderEverything(){
 }
 
 function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role==='teacher'); }
+function findStudentAuthDoc(teacherId, localId){
+  return allUsers.find(u=>u.role==='student' && u.teacherId===teacherId && u.studentId===localId);
+}
 function getAllStudents(){
   let rows=[];
   getTeachers().forEach(t=>{
@@ -1186,6 +1197,50 @@ function openAddTeacher(){
   ['at-fname','at-father','at-grand','at-family','at-nid','at-dob','at-pob','at-phone','at-circle','at-pass','at-family-count'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('at-dob').max = todayISO();
   om('modal-add-teacher');
+}
+
+// ════════════════════════════════════════
+//  ADMIN PASSWORD RESET (teacher/student)
+// ════════════════════════════════════════
+// يعمل فقط إذا كان المستخدم لا يزال يستخدم كلمة المرور الافتراضية (رقم الهوية)،
+// لأن Firebase Auth من جهة العميل لا يسمح بتغيير كلمة مرور مستخدم آخر دون معرفة كلمته الحالية.
+async function adminResetPassword(uid, kind){
+  const inputId = kind==='teacher' ? 'et-newpass' : 'es2-newpass';
+  const newPass = document.getElementById(inputId).value;
+  if(!newPass || newPass.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
+
+  let nationalId, authUid;
+  if(kind==='teacher'){
+    const t=allUsers.find(x=>x.id===uid);
+    if(!t){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+    nationalId=t.nationalId; authUid=t.id;
+  } else {
+    const authDoc=allUsers.find(x=>x.id===uid);
+    if(!authDoc){ toast('⚠️ لا يوجد حساب دخول مفعّل لهذا الطالب بعد'); return; }
+    nationalId=authDoc.nationalId; authUid=authDoc.id;
+  }
+
+  if(!nationalId || !authUid){ toast('⚠️ بيانات غير مكتملة'); return; }
+
+  const email = nidToEmail(nationalId);
+
+  try{
+    const cred = await secondaryAuth.signInWithEmailAndPassword(email, nationalId);
+    await cred.user.updatePassword(newPass);
+    await secondaryAuth.signOut();
+    await db.collection('users').doc(authUid).update({ firstLogin:true });
+    toast('✅ تم تعيين كلمة المرور الجديدة بنجاح');
+    closeModal('modal-detail');
+  } catch(e){
+    try{ await secondaryAuth.signOut(); }catch(_){}
+    if(e.code==='auth/wrong-password' || e.code==='auth/invalid-credential' || e.code==='auth/invalid-login-credentials'){
+      toast('⚠️ هذا المستخدم غيّر كلمة مروره مسبقاً، ولا يمكن تعيين كلمة جديدة له تلقائياً دون خادم مساعد (Cloud Function). تواصل معه لإعادة ضبطها يدوياً.');
+    } else if(e.code==='auth/user-not-found'){
+      toast('⚠️ لا يوجد حساب دخول مفعّل بهذا الرقم بعد');
+    } else {
+      toast('⚠️ خطأ: '+e.message);
+    }
+  }
 }
 
 function isValidNid(v){ return /^[0-9]{9}$/.test((v||'').trim()); }
@@ -1562,17 +1617,82 @@ function openTeacherDetail(uid){
       <div class="teacher-avatar" style="width:60px;height:60px;font-size:20px;margin:0 auto 8px;">${ini(t.name)}</div>
       <div style="font-weight:700;font-size:15px;">${t.name}</div>
       <div style="font-size:12px;color:#7a8a7a;">${t.circle||'—'}</div>
-      ${t.familyMembersCount!=null?`<div style="font-size:12px;color:#7a8a7a;margin-top:4px;">👨‍👩‍👧‍👦 عدد أفراد الأسرة: <b style="color:var(--ink);">${t.familyMembersCount}</b></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--em);">${active.length}</div><div style="font-size:11px;color:#7a8a7a;">طالب</div></div>
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--gold3);">${(t.sessions||[]).length}</div><div style="font-size:11px;color:#7a8a7a;">جلسة</div></div>
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:#1a4a8a;">${present}/${active.length}</div><div style="font-size:11px;color:#7a8a7a;">حضور اليوم</div></div>
     </div>
+
+    <div class="modal-divider"></div>
+    <div class="section-title-sm">✏️ تعديل بيانات المحفّظ</div>
+    <div class="mf"><label>الاسم الرباعي</label>
+      <div class="name-grid4">
+        <input type="text" id="et-fname" value="${t.firstName||''}" placeholder="الاسم الأول">
+        <input type="text" id="et-father" value="${t.fatherName||''}" placeholder="اسم الأب">
+        <input type="text" id="et-grand" value="${t.grandfatherName||''}" placeholder="اسم الجد">
+        <input type="text" id="et-family" value="${t.familyName||''}" placeholder="العائلة">
+      </div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>رقم الهوية</label><input type="tel" id="et-nid" value="${t.nationalId||''}" maxlength="9" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+      <div class="mf"><label>رقم الجوال</label><input type="tel" id="et-phone" value="${t.phone||''}" maxlength="10" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>تاريخ الميلاد</label><input type="date" id="et-dob" value="${t.dob||''}"></div>
+      <div class="mf"><label>مكان الميلاد</label><input type="text" id="et-pob" value="${t.placeOfBirth||''}"></div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>اسم الحلقة</label><input type="text" id="et-circle" value="${t.circle||''}"></div>
+      <div class="mf"><label>عدد أفراد الأسرة</label><input type="number" id="et-famcount" value="${t.familyMembersCount??''}" min="0"></div>
+    </div>
+    <button class="btn-save" style="width:100%;" onclick="saveTeacherEdits('${t.id}')">💾 حفظ تعديلات البيانات</button>
+
+    <div class="modal-divider"></div>
+    <div class="section-title-sm">🔐 تغيير كلمة المرور</div>
+    <div style="font-size:11.5px;color:#7a8a7a;margin-bottom:8px;line-height:1.6;">
+      يعمل تغيير كلمة المرور تلقائياً إذا لم يكن المحفّظ قد غيّرها بعد (لا يزال يستخدم رقم هويته ككلمة مرور). إن كان قد غيّرها مسبقاً، سيظهر تنبيه بذلك.
+    </div>
+    <div class="mf"><input type="password" id="et-newpass" placeholder="كلمة المرور الجديدة (٦ أحرف فأكثر)"></div>
+    <button class="btn-save" style="width:100%;background:linear-gradient(135deg,#7c4dff,#5e35b1);" onclick="adminResetPassword('${t.id}','teacher')">🔑 تعيين كلمة المرور الجديدة</button>
+
+    <div class="modal-divider"></div>
     <button class="btn-save" style="width:100%;" onclick="quickMsgTeacher('${t.id}');closeModal('modal-detail');">إرسال رسالة لهذا المحفظ</button>
     <button class="btn-save" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#1a9c5b,#16a34a);" onclick="sendTeacherCredentials('${t.id}');closeModal('modal-detail');">🔐 إرسال بيانات الدخول عبر واتساب</button>
   `;
   om('modal-detail');
+}
+
+function saveTeacherEdits(uid){
+  const fname=document.getElementById('et-fname').value.trim();
+  const father=document.getElementById('et-father').value.trim();
+  const grand=document.getElementById('et-grand').value.trim();
+  const family=document.getElementById('et-family').value.trim();
+  const nid=document.getElementById('et-nid').value.trim();
+  const phone=document.getElementById('et-phone').value.trim();
+  const dob=document.getElementById('et-dob').value;
+  const pob=document.getElementById('et-pob').value.trim();
+  const circle=document.getElementById('et-circle').value.trim();
+  const famCountRaw=document.getElementById('et-famcount').value;
+
+  if(!fname||!father||!grand||!family){ toast('⚠️ الاسم الرباعي مطلوب بالكامل'); return; }
+  if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام'); return; }
+  if(phone && !/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
+
+  const dup=allUsers.find(u=>u.id!==uid && u.nationalId===nid);
+  if(dup){ toast('⚠️ رقم الهوية مستخدم بالفعل لمستخدم آخر'); return; }
+
+  const updates={
+    name: buildFullName(fname,father,grand,family),
+    firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+    nationalId:nid, phone, dob, placeOfBirth:pob, circle: circle||'حلقة القرآن',
+    familyMembersCount: famCountRaw===''?null:parseInt(famCountRaw)
+  };
+
+  db.collection('users').doc(uid).update(updates).then(()=>{
+    toast('✅ تم حفظ تعديلات المحفّظ');
+    closeModal('modal-detail');
+  }).catch(e=>toast('⚠️ خطأ: '+e.message));
 }
 
 function quickMsgTeacher(uid){
@@ -1632,10 +1752,13 @@ function renderStudents(data){
     return;
   }
   tb.innerHTML=data.map(s=>`
-    <tr>
+    <tr onclick="openStudentDetailAdmin('${s.teacherId}','${s.id}')" style="cursor:pointer;">
       <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(s.name)}</div><div><div class="teacher-name">${s.name}</div></div></div></td>
       <td>${s.teacherName||'—'}</td><td>${s.juz||0}</td>
-      <td>${s.parentPhone?`<button class="td-btn msg" onclick="quickMsgParent('${s.parentPhone}','${(s.name||'').replace(/'/g,"")}')">واتساب</button>`:'—'}</td>
+      <td><div class="td-action" onclick="event.stopPropagation()">
+        ${s.parentPhone?`<button class="td-btn msg" onclick="quickMsgParent('${s.parentPhone}','${(s.name||'').replace(/'/g,"")}')">واتساب</button>`:''}
+        <button class="td-btn edit" onclick="openStudentDetailAdmin('${s.teacherId}','${s.id}')">تعديل</button>
+      </div></td>
       <td><span class="badge ${s.pendingDeletion?'badge-gold':s.archived?'badge-red':'badge-green'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span></td>
     </tr>`).join('');
 }
@@ -1645,6 +1768,101 @@ function filterStudents(q){
   if(tFilter) data=data.filter(s=>s.teacherId===tFilter);
   renderStudents(data);
 }
+function openStudentDetailAdmin(teacherId, localId){
+  const teacherObj=allUsers.find(x=>x.id===teacherId); if(!teacherObj){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  const s=(teacherObj.students||[]).find(x=>x.id===localId); if(!s){ toast('⚠️ تعذّر العثور على الطالب'); return; }
+  const authDoc=findStudentAuthDoc(teacherId, localId);
+
+  document.getElementById('detailModalTitle').textContent=s.name;
+  document.getElementById('detailModalBody').innerHTML=`
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="teacher-avatar" style="width:60px;height:60px;font-size:20px;margin:0 auto 8px;background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(s.name)}</div>
+      <div style="font-weight:700;font-size:15px;">${s.name}</div>
+      <div style="font-size:12px;color:#7a8a7a;">المحفّظ: ${teacherObj.name}</div>
+    </div>
+
+    <div class="section-title-sm">✏️ تعديل بيانات الطالب</div>
+    <div class="mf"><label>الاسم الرباعي</label>
+      <div class="name-grid4">
+        <input type="text" id="es2-fname" value="${s.firstName||''}" placeholder="الاسم الأول">
+        <input type="text" id="es2-father" value="${s.fatherName||''}" placeholder="اسم الأب">
+        <input type="text" id="es2-grand" value="${s.grandfatherName||''}" placeholder="اسم الجد">
+        <input type="text" id="es2-family" value="${s.familyName||''}" placeholder="العائلة">
+      </div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>رقم الهوية</label><input type="tel" id="es2-nid" value="${s.nationalId||''}" maxlength="9" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+      <div class="mf"><label>رقم جوال ولي الأمر</label><input type="tel" id="es2-phone" value="${s.parentPhone||''}" maxlength="10" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>تاريخ الميلاد</label><input type="date" id="es2-dob" value="${s.dob||''}"></div>
+      <div class="mf"><label>مكان الميلاد</label><input type="text" id="es2-pob" value="${s.placeOfBirth||''}"></div>
+    </div>
+    <div class="mf-row">
+      <div class="mf"><label>الجنس</label><select id="es2-gender"><option ${s.gender==='ذكر'?'selected':''}>ذكر</option><option ${s.gender==='أنثى'?'selected':''}>أنثى</option></select></div>
+      <div class="mf"><label>الجزء الحالي</label><input type="number" id="es2-juz" value="${s.juz||0}" min="0" max="30"></div>
+    </div>
+    <div class="mf"><label>ملاحظات</label><textarea id="es2-notes" rows="2">${s.notes||''}</textarea></div>
+    <button class="btn-save" style="width:100%;" onclick="saveStudentEdits('${teacherId}','${localId}')">💾 حفظ تعديلات البيانات</button>
+
+    <div class="modal-divider"></div>
+    <div class="section-title-sm">🔐 تغيير كلمة المرور</div>
+    ${authDoc ? `
+    <div style="font-size:11.5px;color:#7a8a7a;margin-bottom:8px;line-height:1.6;">
+      يعمل تغيير كلمة المرور تلقائياً إذا لم يكن الطالب قد غيّرها بعد (لا يزال يستخدم رقم هويته ككلمة مرور). إن كان قد غيّرها مسبقاً، سيظهر تنبيه بذلك.
+    </div>
+    <div class="mf"><input type="password" id="es2-newpass" placeholder="كلمة المرور الجديدة (٦ أحرف فأكثر)"></div>
+    <button class="btn-save" style="width:100%;background:linear-gradient(135deg,#7c4dff,#5e35b1);" onclick="adminResetPassword('${authDoc.id}','student')">🔑 تعيين كلمة المرور الجديدة</button>
+    ` : `
+    <div style="font-size:12px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;line-height:1.6;">
+      ⚠️ لم يُفعَّل حساب دخول لهذا الطالب بعد، لذا لا يمكن تعيين كلمة مرور حالياً.
+    </div>`}
+  `;
+  om('modal-detail');
+}
+
+function saveStudentEdits(teacherId, localId){
+  const teacherObj=allUsers.find(x=>x.id===teacherId); if(!teacherObj){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  const fname=document.getElementById('es2-fname').value.trim();
+  const father=document.getElementById('es2-father').value.trim();
+  const grand=document.getElementById('es2-grand').value.trim();
+  const family=document.getElementById('es2-family').value.trim();
+  const nid=document.getElementById('es2-nid').value.trim();
+  const phone=document.getElementById('es2-phone').value.trim();
+  const dob=document.getElementById('es2-dob').value;
+  const pob=document.getElementById('es2-pob').value.trim();
+  const gender=document.getElementById('es2-gender').value;
+  const juz=parseInt(document.getElementById('es2-juz').value)||0;
+  const notes=document.getElementById('es2-notes').value.trim();
+
+  if(!fname||!father||!grand||!family){ toast('⚠️ الاسم الرباعي مطلوب بالكامل'); return; }
+  if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام'); return; }
+  if(phone && !/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
+
+  const dupAcrossUsers=allUsers.find(u=>u.id!==teacherId && u.nationalId===nid);
+  const dupAcrossStudents=getAllStudents().find(s=>s.id!==localId && s.nationalId===nid);
+  if(dupAcrossUsers||dupAcrossStudents){ toast('⚠️ رقم الهوية مستخدم بالفعل لمستخدم آخر'); return; }
+
+  const fullName=buildFullName(fname,father,grand,family);
+  const updatedStudents=(teacherObj.students||[]).map(x=>x.id===localId?{
+    ...x, name:fullName, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+    nationalId:nid, parentPhone:phone, dob, placeOfBirth:pob, gender, juz, notes
+  }:x);
+
+  db.collection('userdata').doc(teacherId).set({students:updatedStudents},{merge:true}).then(()=>{
+    const authDoc=findStudentAuthDoc(teacherId, localId);
+    if(authDoc){
+      return db.collection('users').doc(authDoc.id).update({
+        name:fullName, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+        nationalId:nid, phone, dob, placeOfBirth:pob, gender
+      });
+    }
+  }).then(()=>{
+    toast('✅ تم حفظ تعديلات الطالب');
+    closeModal('modal-detail');
+  }).catch(e=>toast('⚠️ خطأ: '+e.message));
+}
+
 function quickMsgParent(phone,name){
   const msg=`السلام عليكم ورحمة الله\nبخصوص الطالب/ة ${name} — مركز الكتاب لتعليم القرآن الكريم.`;
   openWA(phone,msg);
@@ -3113,10 +3331,10 @@ function extractTeacherRecord(row, map){
 }
 
 function openImportTeachersModal(){
-  document.getElementById('impTFile').value='';
-  const lbl=document.getElementById('impTFileLabel');
-  lbl.firstChild.textContent='اضغط لاختيار الملف...';
-  lbl.classList.remove('has-file');
+  document.getElementById('impTMasterFile').value='';
+  document.getElementById('impTIdsFile').value='';
+  const ml=document.getElementById('impTMasterLabel'); ml.firstChild.textContent='اضغط لاختيار الملف...'; ml.classList.remove('has-file');
+  const il=document.getElementById('impTIdsLabel'); il.firstChild.textContent='اضغط لاختيار الملف...'; il.classList.remove('has-file');
 
   document.getElementById('impTResultsWrap').style.display='none';
   document.getElementById('impTProgressText').style.display='none';
@@ -3131,60 +3349,57 @@ function openImportTeachersModal(){
   om('modal-import-teachers');
 }
 
-function onImportTeacherFileChosen(){
-  const input=document.getElementById('impTFile');
-  const label=document.getElementById('impTFileLabel');
-  if(input.files && input.files[0]){
-    label.firstChild.textContent='📄 '+input.files[0].name;
-    label.classList.add('has-file');
-  } else {
-    label.firstChild.textContent='اضغط لاختيار الملف...';
-    label.classList.remove('has-file');
-  }
-}
-
 async function processTeacherImport(){
-  const file=document.getElementById('impTFile').files[0];
-  if(!file){ toast('⚠️ اختر ملف الإكسل'); return; }
+  const masterFile=document.getElementById('impTMasterFile').files[0];
+  const idsFile=document.getElementById('impTIdsFile').files[0];
+
+  if(!masterFile){ toast('⚠️ اختر الكشف الأساسي'); return; }
+  if(!idsFile){ toast('⚠️ اختر كشف أرقام الهويات'); return; }
 
   const btn=document.getElementById('impTMatchBtn');
   const orig=btn.textContent;
   btn.disabled=true; btn.textContent='⏳ جارٍ التحليل...';
 
   try{
-    const rows = await readExcelAsObjects(file);
-    if(!rows.length){ toast('⚠️ الملف فارغ أو غير مقروء'); return; }
+    const masterRows = await readExcelAsObjects(masterFile);
+    const idsAOA = await readExcelAsAOA(idsFile);
 
-    const headerMap = buildTeacherHeaderMap(rows[0]);
-    if(!headerMap.nationalId){ toast('⚠️ لم أجد عمود "رقم الهوية" في الملف'); return; }
+    if(!masterRows.length){ toast('⚠️ الكشف الأساسي فارغ أو غير مقروء'); return; }
 
-    const seen=new Set();
-    const matches = rows.map(row=>{
+    const headerMap = buildTeacherHeaderMap(masterRows[0]);
+    if(!headerMap.nationalId){ toast('⚠️ لم أجد عمود "رقم الهوية" في الكشف الأساسي'); return; }
+
+    const masterByNid = {};
+    masterRows.forEach(row=>{
       const rec = extractTeacherRecord(row, headerMap);
-      if(!rec) return {nid:'—', status:'invalid', note:'رقم هوية غير صالح', record:null};
+      if(rec) masterByNid[rec.nationalId] = rec;
+    });
 
-      if(seen.has(rec.nationalId)) return {nid:rec.nationalId, status:'dup', note:'مكرر داخل نفس الملف', record:rec};
-      seen.add(rec.nationalId);
+    const requestedIds = extractIdCandidates(idsAOA);
+    if(!requestedIds.length){ toast('⚠️ لم أجد أي أرقام هوية صالحة (9 أرقام) في كشف الهويات'); return; }
 
-      const existingUser = allUsers.find(u=>u.nationalId===rec.nationalId);
-      if(existingUser) return {nid:rec.nationalId, status:'exists', note:'مسجّل بالفعل كـ '+(roleLabelAr[existingUser.role]||existingUser.role), record:rec};
+    const matches = requestedIds.map(nid=>{
+      const inMaster = masterByNid[nid];
+      const existingUser = allUsers.find(u=>u.nationalId===nid);
 
-      if(!rec.name || !rec.name.trim()) return {nid:rec.nationalId, status:'no_name', note:'بدون اسم', record:rec};
+      if(existingUser) return {nid, status:'exists', note:'مسجّل بالفعل كـ '+(roleLabelAr[existingUser.role]||existingUser.role), record:inMaster||null};
+      if(!inMaster) return {nid, status:'not_found', note:'غير موجود في الكشف الأساسي', record:null};
+      if(!inMaster.name || !inMaster.name.trim()) return {nid, status:'no_name', note:'لا يوجد اسم في الكشف الأساسي', record:inMaster};
 
       const warnings=[];
-      if(!rec.dob) warnings.push('بدون تاريخ ميلاد');
-      if(!rec.placeOfBirth) warnings.push('بدون مكان ميلاد');
-      if(!/^05[0-9]{8}$/.test(rec.phone)) warnings.push('جوال غير صالح');
-      if(!rec.circle) warnings.push('بدون اسم حلقة');
+      if(!inMaster.dob) warnings.push('بدون تاريخ ميلاد');
+      if(!inMaster.placeOfBirth) warnings.push('بدون مكان ميلاد');
+      if(!/^05[0-9]{8}$/.test(inMaster.phone)) warnings.push('جوال غير صالح');
+      if(!inMaster.circle) warnings.push('بدون اسم حلقة');
 
-      return {nid:rec.nationalId, status:'ready', note: warnings.join('، ')||'جاهز', record:rec};
+      return {nid, status:'ready', note: warnings.join('، ')||'جاهز', record:inMaster};
     });
 
     _importTeacherMatches = matches;
     renderTeacherImportPreview(matches);
   } catch(e){
     console.error(e);
-    toast('⚠️ خطأ في قراءة الملف: '+e.message);
+    toast('⚠️ خطأ في قراءة الملفات: '+e.message);
   } finally {
     btn.disabled=false; btn.textContent=orig;
   }
@@ -3196,15 +3411,14 @@ function renderTeacherImportPreview(matches){
 
   document.getElementById('impTChipReady').textContent=counts.ready||0;
   document.getElementById('impTChipExists').textContent=counts.exists||0;
-  document.getElementById('impTChipDup').textContent=counts.dup||0;
-  document.getElementById('impTChipBad').textContent=(counts.no_name||0)+(counts.invalid||0);
+  document.getElementById('impTChipNotFound').textContent=counts.not_found||0;
+  document.getElementById('impTChipBad').textContent=counts.no_name||0;
 
   const statusMeta={
-    ready:    {label:'✅ جاهز للإضافة',  cls:'badge-green'},
-    exists:   {label:'🟡 مسجّل مسبقاً',  cls:'badge-gold'},
-    dup:      {label:'🟠 مكرر بالملف',  cls:'badge-gold'},
-    no_name:  {label:'⚠️ بدون اسم',     cls:'badge-red'},
-    invalid:  {label:'🔴 هوية غير صالحة', cls:'badge-red'}
+    ready:     {label:'✅ جاهز للإضافة',          cls:'badge-green'},
+    exists:    {label:'🟡 مسجّل مسبقاً',          cls:'badge-gold'},
+    not_found: {label:'🔴 غير موجود بالأساسي',   cls:'badge-red'},
+    no_name:   {label:'⚠️ بدون اسم',             cls:'badge-red'}
   };
 
   const tb=document.getElementById('impTPreviewTable');
