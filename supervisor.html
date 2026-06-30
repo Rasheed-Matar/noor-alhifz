@@ -1580,179 +1580,213 @@ function downloadTaReportExcel(){
 
   // ── ألوان ثيم المشروع ──
   const C={
-    darkGreen:'0D4F35', midGreen:'1B6B4A', lightGreen:'E8F5ED',
-    gold:'C9A84C', goldLight:'FFF8E7',
-    white:'FFFFFF',
+    darkGreen:'0A3D2B', midGreen:'1B6B4A', em2:'25906A',
+    gold:'C9A84C',  goldDark:'A07828', goldLight:'FFF8E7', goldBg:'FDF3DC',
+    cream:'FDFAF3', white:'FFFFFF', ink:'1A1A2E',
     red:'C0392B',   redLight:'FFF5F5',
     amber:'D97706', amberLight:'FFFBEB',
     blue:'1565C0',  blueLight:'EFF4FF',
-    gray:'6B7280',  grayLight:'F8F9FA',
-    border:'D1D5DB', headerText:'FFFFFF',
-    rowAlt:'F5FBF7', ink:'1A1A2E'
+    gray:'6B7280',  grayLight:'F5F0E8',
+    border:'D4C89A', rowAlt:'F5FBF7',
+    decor:'0F4A33', decorLine:'D4A843'
   };
 
   const fill=c=>({patternType:'solid',fgColor:{rgb:c}});
-  const font=(bold,sz,color)=>({bold:!!bold,sz:sz||11,color:{rgb:color||C.ink},name:'Calibri'});
-  const border=()=>({
-    top:{style:'thin',color:{rgb:C.border}},
-    bottom:{style:'thin',color:{rgb:C.border}},
-    left:{style:'thin',color:{rgb:C.border}},
-    right:{style:'thin',color:{rgb:C.border}}
-  });
-  const borderThick=c=>({
-    top:{style:'medium',color:{rgb:c||C.midGreen}},
-    bottom:{style:'medium',color:{rgb:c||C.midGreen}},
-    left:{style:'medium',color:{rgb:c||C.midGreen}},
-    right:{style:'medium',color:{rgb:c||C.midGreen}}
-  });
+  const font=(bold,sz,color,italic)=>({bold:!!bold,sz:sz||11,color:{rgb:color||C.ink},name:'Calibri',italic:!!italic});
+  const bdr=(style,color)=>({style:style||'thin',color:{rgb:color||C.border}});
+  const border=()=>({top:bdr(),bottom:bdr(),left:bdr(),right:bdr()});
+  const borderM=(c)=>({top:bdr('medium',c||C.midGreen),bottom:bdr('medium',c||C.midGreen),left:bdr('medium',c||C.midGreen),right:bdr('medium',c||C.midGreen)});
+  const borderT=(c)=>({top:bdr('thick',c||C.darkGreen),bottom:bdr('thick',c||C.darkGreen),left:bdr('thick',c||C.darkGreen),right:bdr('thick',c||C.darkGreen)});
   const align=(h,v)=>({horizontal:h||'center',vertical:v||'center',wrapText:true,readingOrder:2});
 
-  // ── حساب الإجماليات ──
-  const totPresent =data.rows.reduce((s,r)=>s+r.present,0);
-  const totAbsent  =data.rows.reduce((s,r)=>s+r.absent,0);
-  const totLate    =data.rows.reduce((s,r)=>s+r.late,0);
-  const totExcused =data.rows.reduce((s,r)=>s+r.excused,0);
-  const totalDays  =data.rows[0]?.totalDays||data.days.length;
-  const avgCommit  =data.rows.length?Math.round(data.rows.reduce((s,r)=>s+r.commitmentPct,0)/data.rows.length):0;
+  // ── إجماليات ──
+  const totPresent=data.rows.reduce((s,r)=>s+r.present,0);
+  const totAbsent =data.rows.reduce((s,r)=>s+r.absent,0);
+  const totLate   =data.rows.reduce((s,r)=>s+r.late,0);
+  const totExcused=data.rows.reduce((s,r)=>s+r.excused,0);
+  const totalDays =data.rows[0]?.totalDays||data.days.length;
+  const avgCommit =data.rows.length?Math.round(data.rows.reduce((s,r)=>s+r.commitmentPct,0)/data.rows.length):0;
 
-  // ── إنشاء ورقة العمل ──
-  const ws={'!ref':'A1'};
+  const ws={'!ref':'A1','!merges':[]};
+  // عرض الأعمدة: شعار، اسم المحفظ، جوال، حلقة، حضور، غياب، تأخير، اعتذار، نسبة
+  ws['!cols']=[{wch:6},{wch:26},{wch:16},{wch:22},{wch:9},{wch:9},{wch:9},{wch:9},{wch:13}];
+  ws['!rows']=[];
+
   const COLS=['A','B','C','D','E','F','G','H','I'];
-  // عرض الأعمدة: #، اسم المحفظ، جوال، حلقة، حضور، غياب، تأخير، اعتذار، نسبة
-  ws['!cols']=[{wch:5},{wch:26},{wch:16},{wch:22},{wch:9},{wch:9},{wch:9},{wch:9},{wch:13}];
-
   function cell(v,s){return{v,s,t:typeof v==='number'?'n':'s'};}
+  function merge(r1,c1,r2,c2){ ws['!merges'].push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+  function fillRow(r,bg,bObj){ COLS.forEach(c=>{ if(!ws[c+r]) ws[c+r]={v:'',s:{fill:fill(bg),border:bObj||border()}}; }); }
 
-  let R=1; // صف حالي (1-based)
+  let R=1;
 
-  // ══ الصف 1: عنوان رئيسي مدمج ══
-  ws['A1']=cell('📋 تقرير حضور المحفّظين',{
-    font:font(true,16,C.white),fill:fill(C.darkGreen),
-    alignment:align('center'),border:borderThick(C.darkGreen)
+  // ══ صف 1: بسم الله الرحمن الرحيم (أخضر غامق / ذهبي) ══
+  ws['!rows'][0]={hpx:28};
+  ws['A1']=cell('بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ',{
+    font:{bold:true,sz:14,color:{rgb:C.gold},name:'Amiri',italic:false},
+    fill:fill(C.darkGreen),alignment:align('center'),border:borderT()
   });
-  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}}];
-  for(let c=1;c<9;c++) ws[COLS[c]+'1']={v:'',s:{fill:fill(C.darkGreen),border:borderThick(C.darkGreen)}};
+  merge(0,0,0,8); fillRow(1,C.darkGreen,borderT());
   R=2;
 
-  // ══ الصف 2: معلومات التقرير ──
-  ws['A2']=cell('مركز الكتاب لتعليم القرآن الكريم والسنة النبوية',{
-    font:font(true,12,C.darkGreen),fill:fill(C.goldLight),alignment:align('center'),border:border()
-  });
-  ws['!merges'].push({s:{r:1,c:0},e:{r:1,c:8}});
-  for(let c=1;c<9;c++) ws[COLS[c]+'2']={v:'',s:{fill:fill(C.goldLight),border:border()}};
-  R=3;
+  // ══ الصفوف 2-4: ترويسة مدمجة (شعار نصي + اسم المركز) ══
+  ws['!rows'][1]={hpx:20};
+  // عمود الشعار (A-B): صندوق مزخرف بالأخضر
+  const logoStyle={font:{bold:true,sz:18,color:{rgb:C.gold},name:'Calibri'},fill:fill(C.decor),alignment:align('center'),
+    border:{top:bdr('thick',C.decorLine),bottom:bdr('medium',C.decorLine),left:bdr('thick',C.decorLine),right:bdr('medium',C.decorLine)}};
+  ws['A2']=cell('❊',logoStyle);
+  merge(1,0,3,1); ['B2','A3','B3','A4','B4'].forEach(k=>{ ws[k]={v:'',s:logoStyle}; });
 
-  // ══ الصفوف 3-5: بيانات وصفية (عمودان) ══
+  // عمود المركز (C-I): اسم المركز كبيراً
+  ws['!rows'][2]={hpx:32};
+  ws['C2']=cell('مركزُ الكِتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ',{
+    font:{bold:true,sz:15,color:{rgb:C.darkGreen},name:'Amiri'},fill:fill(C.goldBg),
+    alignment:align('center'),border:{top:bdr('thick',C.gold),bottom:bdr('thin',C.gold),left:bdr('medium',C.gold),right:bdr('thick',C.gold)}
+  });
+  merge(1,2,1,8); for(let c=3;c<9;c++) ws[COLS[c]+'2']={v:'',s:{fill:fill(C.goldBg),border:{top:bdr('thick',C.gold),bottom:bdr('thin',C.gold),left:bdr('thin',C.gold),right:bdr('thick',C.gold)}}};
+
+  ws['C3']=cell('المسجدُ الكبيرُ — النصيراتُ',{
+    font:{bold:false,sz:11,color:{rgb:C.goldDark},name:'Calibri'},fill:fill(C.goldBg),
+    alignment:align('center'),border:{top:bdr('thin',C.gold),bottom:bdr('thin',C.gold),left:bdr('medium',C.gold),right:bdr('thick',C.gold)}
+  });
+  merge(2,2,2,8); for(let c=3;c<9;c++) ws[COLS[c]+'3']={v:'',s:{fill:fill(C.goldBg),border:{top:bdr('thin',C.gold),bottom:bdr('thin',C.gold),left:bdr('thin',C.gold),right:bdr('thick',C.gold)}}};
+
+  // ══ صف 4: اسم التقرير ══
+  ws['!rows'][3]={hpx:26};
+  ws['C4']=cell(`📑 تقريرُ حضورِ المحفّظينَ — ${periodLabel}`,{
+    font:{bold:true,sz:13,color:{rgb:C.white},name:'Calibri'},fill:fill(C.midGreen),
+    alignment:align('center'),border:{top:bdr('thin',C.gold),bottom:bdr('thick',C.decorLine),left:bdr('medium',C.gold),right:bdr('thick',C.gold)}
+  });
+  merge(3,2,3,8); for(let c=3;c<9;c++) ws[COLS[c]+'4']={v:'',s:{fill:fill(C.midGreen),border:{top:bdr('thin',C.gold),bottom:bdr('thick',C.decorLine),left:bdr('thin',C.gold),right:bdr('thick',C.gold)}}};
+  R=5;
+
+  // ══ شريط زخرفي ذهبي ══
+  ws['!rows'][R-1]={hpx:6};
+  ws['A'+R]=cell('◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆  ◇  ◆',{
+    font:{bold:false,sz:7,color:{rgb:C.gold},name:'Calibri'},fill:fill(C.darkGreen),alignment:align('center'),border:{}
+  });
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.darkGreen)}};
+  R++;
+
+  // ══ الصفوف 6-8: بيانات وصفية ══
+  const metaLblSt={font:font(true,11,C.white),fill:fill(C.midGreen),alignment:align('right'),border:border()};
+  const metaValSt={font:font(false,11,C.ink),fill:fill(C.cream),alignment:align('right'),border:border()};
   const meta=[
-    ['نوع التقرير',periodLabel,'الفترة',data.label],
-    ['الحلقة',data.circleLabel,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
-    ['المشرف',currentSupervisorName,'عدد أيام الفترة',totalDays+' يوم'],
+    ['نوعُ التقريرِ',periodLabel,'الفترةُ',data.label],
+    ['الحلقةُ',data.circleLabel,'تاريخُ الطباعةِ',now.toLocaleDateString('ar-EG')],
+    ['المشرفُ',currentSupervisorName,'عددُ أيامِ الفترةِ',totalDays+' يوم'],
   ];
-  const metaLblStyle={font:font(true,11,C.white),fill:fill(C.midGreen),alignment:align('right'),border:border()};
-  const metaValStyle={font:font(false,11,C.ink),fill:fill(C.lightGreen),alignment:align('right'),border:border()};
   meta.forEach((row,i)=>{
     const r=R+i;
-    ws['A'+r]=cell(row[0],metaLblStyle);
-    ws['B'+r]=cell(row[1],metaValStyle);
-    ws['!merges'].push({s:{r:r-1,c:1},e:{r:r-1,c:3}});
-    ws['C'+r]={v:'',s:metaValStyle}; ws['D'+r]={v:'',s:metaValStyle};
-    ws['E'+r]=cell(row[2],metaLblStyle);
-    ws['F'+r]=cell(row[3],metaValStyle);
-    ws['!merges'].push({s:{r:r-1,c:5},e:{r:r-1,c:8}});
-    for(let c=6;c<9;c++) ws[COLS[c]+r]={v:'',s:metaValStyle};
+    ws['!rows'][r-1]={hpx:22};
+    ws['A'+r]=cell(row[0],metaLblSt);
+    ws['B'+r]=cell(row[1],metaValSt);
+    merge(r-1,1,r-1,3); ws['C'+r]={v:'',s:metaValSt}; ws['D'+r]={v:'',s:metaValSt};
+    ws['E'+r]=cell(row[2],metaLblSt);
+    ws['F'+r]=cell(row[3],metaValSt);
+    merge(r-1,5,r-1,8); for(let c=6;c<9;c++) ws[COLS[c]+r]={v:'',s:metaValSt};
   });
-  R+=3; // صف 6
+  R+=3;
 
-  // ══ صف فارغ ══
-  COLS.forEach(c=>{ws[c+R]={v:'',s:{fill:fill(C.white)}};});
-  R++; // صف 7
+  // ══ شريط ذهبي فاصل ══
+  ws['!rows'][R-1]={hpx:6};
+  ws['A'+R]=cell('',{fill:fill(C.decorLine),border:{}});
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.decorLine)}};
+  R++;
 
-  // ══ بطاقات الإحصاء (صف واحد، 4 أعمدة) ══
+  // ══ بطاقات إحصائية ══
   const stats=[
-    {lbl:'إجمالي الحضور',val:totPresent,bg:C.lightGreen,fg:C.midGreen,brdr:C.midGreen},
-    {lbl:'إجمالي الغياب',val:totAbsent,bg:C.redLight,fg:C.red,brdr:C.red},
-    {lbl:'إجمالي التأخير',val:totLate,bg:C.amberLight,fg:C.amber,brdr:C.amber},
-    {lbl:'متوسط الالتزام',val:avgCommit+'%',bg:C.blueLight,fg:C.blue,brdr:C.blue},
+    {lbl:'إجماليُّ الحضورِ',val:totPresent,bg:C.lightGreen||'E8F5ED',fg:C.midGreen,brd:C.midGreen},
+    {lbl:'إجماليُّ الغيابِ',val:totAbsent, bg:'FFF5F5',fg:C.red,    brd:C.red},
+    {lbl:'إجماليُّ التأخيرِ',val:totLate,  bg:'FFFBEB',fg:C.amber,  brd:C.amber},
+    {lbl:'متوسطُ الالتزامِ',val:avgCommit+'%',bg:'EFF4FF',fg:C.blue,brd:C.blue},
   ];
-  const statCols=[[0,1],[2,3],[4,5],[6,8]]; // نطاقات الأعمدة لكل بطاقة
+  const sCols=[[0,1],[2,3],[4,5],[6,8]];
+  ws['!rows'][R-1]={hpx:20}; ws['!rows'][R]={hpx:40};
   stats.forEach((st,i)=>{
-    const [cs,ce]=statCols[i];
-    // تسمية
-    ws[COLS[cs]+R]=cell(st.lbl,{font:font(true,10,st.fg),fill:fill(st.bg),alignment:align('center'),border:{...border(),top:{style:'medium',color:{rgb:st.brdr}},right:{style:'medium',color:{rgb:st.brdr}},left:{style:'medium',color:{rgb:st.brdr}}}});
-    if(cs<ce){ws['!merges'].push({s:{r:R-1,c:cs},e:{r:R-1,c:ce}});for(let c=cs+1;c<=ce;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(st.bg),border:border()}};}
-    // قيمة
-    const R2=R+1;
-    ws[COLS[cs]+R2]=cell(st.val,{font:font(true,18,st.fg),fill:fill(st.bg),alignment:align('center'),border:{...border(),bottom:{style:'medium',color:{rgb:st.brdr}},right:{style:'medium',color:{rgb:st.brdr}},left:{style:'medium',color:{rgb:st.brdr}}}});
-    if(cs<ce){ws['!merges'].push({s:{r:R2-1,c:cs},e:{r:R2-1,c:ce}});for(let c=cs+1;c<=ce;c++) ws[COLS[c]+R2]={v:'',s:{fill:fill(st.bg),border:border()}};}
+    const [cs,ce]=sCols[i];
+    const bT={top:bdr('medium',st.brd),bottom:bdr('thin',st.brd),left:bdr('medium',st.brd),right:bdr('medium',st.brd)};
+    const bB={top:bdr('thin',st.brd),bottom:bdr('medium',st.brd),left:bdr('medium',st.brd),right:bdr('medium',st.brd)};
+    ws[COLS[cs]+R]=cell(st.lbl,{font:font(true,10,st.fg),fill:fill(st.bg),alignment:align('center'),border:bT});
+    if(cs<ce){ merge(R-1,cs,R-1,ce); for(let c=cs+1;c<=ce;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(st.bg),border:bT}}; }
+    ws[COLS[cs]+(R+1)]=cell(st.val,{font:font(true,20,st.fg),fill:fill(st.bg),alignment:align('center'),border:bB});
+    if(cs<ce){ merge(R,cs,R,ce); for(let c=cs+1;c<=ce;c++) ws[COLS[c]+(R+1)]={v:'',s:{fill:fill(st.bg),border:bB}}; }
   });
-  ws['!rows']=ws['!rows']||[];
-  ws['!rows'][R-1]={hpx:20};
-  ws['!rows'][R]={hpx:38};
-  R+=2; // صف 9
+  R+=2;
 
-  // ══ صف فارغ ══
-  COLS.forEach(c=>{ws[c+R]={v:'',s:{fill:fill(C.white)}};});
-  ws['!rows'][R-1]={hpx:8};
-  R++; // صف 10
+  // ══ شريط ذهبي فاصل ══
+  ws['!rows'][R-1]={hpx:6};
+  ws['A'+R]=cell('',{fill:fill(C.decorLine),border:{}});
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.decorLine)}};
+  R++;
 
   // ══ رأس الجدول ══
+  ws['!rows'][R-1]={hpx:30};
   const headers=['#','اسمُ المحفّظِ','رقمُ الجوالِ','الحلقةُ','حضورٌ','غيابٌ','تأخيرٌ','اعتذارٌ','نسبةُ الالتزامِ'];
-  const hdrStyle={font:font(true,11,C.white),fill:fill(C.midGreen),alignment:align('center'),border:borderThick()};
-  headers.forEach((h,i)=>{ ws[COLS[i]+R]=cell(h,hdrStyle); });
-  ws['!rows'][R-1]={hpx:28};
+  headers.forEach((h,i)=>{
+    ws[COLS[i]+R]=cell(h,{
+      font:{bold:true,sz:11,color:{rgb:C.gold},name:'Calibri'},
+      fill:fill(C.darkGreen),alignment:align('center'),
+      border:{top:bdr('thick',C.gold),bottom:bdr('medium',C.gold),left:bdr('medium',C.gold),right:bdr('medium',C.gold)}
+    });
+  });
   R++;
 
   // ══ صفوف البيانات ══
   data.rows.forEach((row,i)=>{
-    const isAlt=i%2===1;
-    const rowBg=isAlt?C.rowAlt:C.white;
-    const baseSt={font:font(false,11,C.ink),fill:fill(rowBg),alignment:align('center'),border:border()};
-    const nameSt={font:font(true,11,C.darkGreen),fill:fill(rowBg),alignment:align('right'),border:border()};
-    const numSt=(bg,fg)=>({font:font(true,12,fg),fill:fill(bg),alignment:align('center'),border:border()});
-
-    ws[COLS[0]+R]=cell(i+1,baseSt);
-    ws[COLS[1]+R]=cell(row.name,nameSt);
-    ws[COLS[2]+R]=cell(row.phone,{...baseSt,alignment:align('center')});
-    ws[COLS[3]+R]=cell(row.circle,{...baseSt,alignment:align('right')});
-    ws[COLS[4]+R]=cell(row.present,row.present>0?numSt(C.lightGreen,C.midGreen):baseSt);
-    ws[COLS[5]+R]=cell(row.absent, row.absent>0 ?numSt(C.redLight,C.red)      :baseSt);
-    ws[COLS[6]+R]=cell(row.late,   row.late>0   ?numSt(C.amberLight,C.amber)  :baseSt);
-    ws[COLS[7]+R]=cell(row.excused,row.excused>0?numSt(C.blueLight,C.blue)    :baseSt);
-    const pct=row.commitmentPct;
-    const pctBg=pct>=80?C.lightGreen:pct>=50?C.amberLight:C.redLight;
-    const pctFg=pct>=80?C.midGreen:pct>=50?C.amber:C.red;
-    ws[COLS[8]+R]=cell(pct+'%',numSt(pctBg,pctFg));
     ws['!rows'][R-1]={hpx:22};
+    const isAlt=i%2===1;
+    const rowBg=isAlt?C.rowAlt:'FFFFFF';
+    const lBrd=isAlt?bdr('thin',C.em2):bdr('thin',C.border);
+    const bse={font:font(false,11,C.ink),fill:fill(rowBg),alignment:align('center'),border:{top:lBrd,bottom:lBrd,left:lBrd,right:lBrd}};
+    const nme={font:font(true,11,C.darkGreen),fill:fill(rowBg),alignment:align('right'),border:{top:lBrd,bottom:lBrd,left:lBrd,right:lBrd}};
+    const num=(bg,fg)=>({font:font(true,12,fg),fill:fill(bg),alignment:align('center'),border:{top:lBrd,bottom:lBrd,left:lBrd,right:lBrd}});
+
+    ws['A'+R]=cell(i+1,bse);
+    ws['B'+R]=cell(row.name,nme);
+    ws['C'+R]=cell(row.phone,bse);
+    ws['D'+R]=cell(row.circle,{...bse,alignment:align('right')});
+    ws['E'+R]=cell(row.present,row.present>0?num('E8F5ED',C.midGreen):bse);
+    ws['F'+R]=cell(row.absent, row.absent>0 ?num('FFF5F5',C.red)     :bse);
+    ws['G'+R]=cell(row.late,   row.late>0   ?num('FFFBEB',C.amber)   :bse);
+    ws['H'+R]=cell(row.excused,row.excused>0?num('EFF4FF',C.blue)    :bse);
+    const pct=row.commitmentPct;
+    ws['I'+R]=cell(pct+'%',num(pct>=80?'E8F5ED':pct>=50?'FFFBEB':'FFF5F5', pct>=80?C.midGreen:pct>=50?C.amber:C.red));
     R++;
   });
 
   // ══ صف الإجماليات ══
-  const totStyle=(bg,fg)=>({font:font(true,12,fg),fill:fill(bg),alignment:align('center'),border:borderThick(bg==='FFFFFF'?C.midGreen:bg)});
-  ws['A'+R]=cell('الإجمالي',{font:font(true,12,C.white),fill:fill(C.darkGreen),alignment:align('center'),border:borderThick()});
-  ws['B'+R]={v:'',s:{fill:fill(C.darkGreen),border:borderThick()}};
-  ws['!merges'].push({s:{r:R-1,c:0},e:{r:R-1,c:3}});
-  ws['C'+R]={v:'',s:{fill:fill(C.darkGreen),border:borderThick()}};
-  ws['D'+R]={v:'',s:{fill:fill(C.darkGreen),border:borderThick()}};
-  ws['E'+R]=cell(totPresent, totStyle(C.lightGreen,C.midGreen));
-  ws['F'+R]=cell(totAbsent,  totStyle(C.redLight,C.red));
-  ws['G'+R]=cell(totLate,    totStyle(C.amberLight,C.amber));
-  ws['H'+R]=cell(totExcused, totStyle(C.blueLight,C.blue));
-  ws['I'+R]=cell(avgCommit+'%',totStyle(C.goldLight,C.gold));
-  ws['!rows'][R-1]={hpx:26};
+  ws['!rows'][R-1]={hpx:28};
+  const tBrd={top:bdr('medium',C.gold),bottom:bdr('thick',C.gold),left:bdr('medium',C.gold),right:bdr('medium',C.gold)};
+  ws['A'+R]=cell('الإجماليُّ',{font:font(true,12,C.gold),fill:fill(C.darkGreen),alignment:align('center'),border:tBrd});
+  merge(R-1,0,R-1,3); for(let c=1;c<4;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.darkGreen),border:tBrd}};
+  ws['E'+R]=cell(totPresent,{font:font(true,13,C.midGreen),fill:fill('E8F5ED'),alignment:align('center'),border:borderM(C.midGreen)});
+  ws['F'+R]=cell(totAbsent, {font:font(true,13,C.red),     fill:fill('FFF5F5'),alignment:align('center'),border:borderM(C.red)});
+  ws['G'+R]=cell(totLate,   {font:font(true,13,C.amber),   fill:fill('FFFBEB'),alignment:align('center'),border:borderM(C.amber)});
+  ws['H'+R]=cell(totExcused,{font:font(true,13,C.blue),    fill:fill('EFF4FF'),alignment:align('center'),border:borderM(C.blue)});
+  ws['I'+R]=cell(avgCommit+'%',{font:font(true,13,C.goldDark),fill:fill(C.goldBg),alignment:align('center'),border:borderM(C.gold)});
   R++;
 
-  // ══ تذييل ══
-  COLS.forEach(c=>{ws[c+R]={v:'',s:{fill:fill(C.white)}};});
+  // ══ شريط ذهبي ختامي ══
+  ws['!rows'][R-1]={hpx:6};
+  ws['A'+R]=cell('',{fill:fill(C.decorLine),border:{}});
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.decorLine)}};
   R++;
-  ws['A'+R]=cell('✦ وثيقةٌ رسميةٌ — مركز الكتاب لتعليم القرآن الكريم والسنة النبوية',{
-    font:font(false,10,C.gray),fill:fill(C.grayLight),alignment:align('center'),border:border()
+
+  // ══ تذييل رسمي ══
+  ws['!rows'][R-1]={hpx:20};
+  ws['A'+R]=cell('✦  وَثِيقَةٌ رَسْمِيَّةٌ — مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ  ✦',{
+    font:{bold:false,sz:10,color:{rgb:C.goldDark},name:'Calibri'},fill:fill(C.grayLight),alignment:align('center'),
+    border:{top:bdr('thin',C.decorLine),bottom:bdr('thin',C.decorLine),left:bdr('thin',C.decorLine),right:bdr('thin',C.decorLine)}
   });
-  ws['!merges'].push({s:{r:R-1,c:0},e:{r:R-1,c:8}});
-  for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.grayLight),border:border()}};
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.grayLight),border:{top:bdr('thin',C.decorLine),bottom:bdr('thin',C.decorLine),left:bdr('thin',C.decorLine),right:bdr('thin',C.decorLine)}}};
+  R++;
 
-  // ══ نطاق الورقة ══
+  // ══ صف أخضر ختامي ══
+  ws['!rows'][R-1]={hpx:6};
+  ws['A'+R]=cell('',{fill:fill(C.darkGreen),border:{}});
+  merge(R-1,0,R-1,8); for(let c=1;c<9;c++) ws[COLS[c]+R]={v:'',s:{fill:fill(C.darkGreen)}};
+
   ws['!ref']=`A1:I${R}`;
-
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'حضور المحفظين');
   XLSX.writeFile(wb,'تقرير_حضور_المحفظين.xlsx');
