@@ -1894,8 +1894,8 @@ function openStudentDetail(studentId){
           </button>`:''}
         </div>
         <div class="prog-detail">
-          ${(sess.hifz||[]).map(h=>`<span class="prog-tag">📖 ${h.surah} (${h.from}-${h.to})</span>`).join('')}
-          ${(sess.murajaa||[]).map(m=>`<span class="prog-tag">🔄 ${m.surah} (${m.from}-${m.to})</span>`).join('')}
+          ${(sess.hifz||[]).map(h=>`<span class="prog-tag">📖 ${h.surah} (${h.from}-${h.to})${h.score?` — ${h.score}`:''}</span>`).join('')}
+          ${(sess.murajaa||[]).map(m=>`<span class="prog-tag">🔄 ${m.surah} (${m.from}-${m.to})${m.score?` — ${m.score}`:''}</span>`).join('')}
         </div>
       </div>`).join(''):'<div class="empty-state"><div class="empty-state-txt">لا توجد جلسات مسجلة بعد</div></div>'}
   `;
@@ -2421,8 +2421,8 @@ function buildUnifiedTable(studentsList,from,to,content){
 
     if(showProgress){
       const stdSess=sessions.filter(x=>x.studentId===s.id&&new Date(x.createdAt)>=from&&new Date(x.createdAt)<=to);
-      const hifzList=stdSess.flatMap(x=>x.hifz||[]).map(h=>`${h.surah} (${h.from}-${h.to})`);
-      const murajaaList=stdSess.flatMap(x=>x.murajaa||[]).map(m=>`${m.surah} (${m.from}-${m.to})`);
+      const hifzList=stdSess.flatMap(x=>x.hifz||[]).map(h=>`${h.surah} (${h.from}-${h.to})${h.score?` — ${h.score}`:''}`);
+      const murajaaList=stdSess.flatMap(x=>x.murajaa||[]).map(m=>`${m.surah} (${m.from}-${m.to})${m.score?` — ${m.score}`:''}`);
       row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${hifzList.length?hifzList.join('، '):'—'}</td>
         <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${murajaaList.length?murajaaList.join('، '):'—'}</td>`;
     }
