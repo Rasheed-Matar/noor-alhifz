@@ -111,6 +111,43 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .sess-chip.hifz{background:rgba(26,107,74,.1);color:var(--em);}
 .sess-chip.murajaa{background:rgba(201,168,76,.15);color:var(--gd);}
 
+/* RECAP CARD — جلسات الحفظ بأسلوب روحاني تحفيزي */
+.recap-card{position:relative;border-radius:16px;padding:16px 18px;margin-bottom:12px;background:linear-gradient(135deg,#fff,var(--cream));border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(27,107,74,.06);}
+.recap-card::before{content:'';position:absolute;top:0;right:0;width:5px;height:100%;background:linear-gradient(180deg,var(--em),var(--gold));}
+.recap-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.recap-date{font-size:12px;color:var(--txm);font-weight:700;display:flex;align-items:center;gap:6px;}
+.recap-date-badge{font-size:10px;background:var(--go);color:var(--gd);padding:2px 9px;border-radius:20px;font-weight:700;}
+.recap-row{display:flex;align-items:center;gap:10px;padding:7px 0;}
+.recap-row:not(:last-of-type){border-bottom:1px dashed #ecdfc0;}
+.recap-row-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.recap-row-ico.hifz{background:rgba(26,107,74,.1);}
+.recap-row-ico.murajaa{background:rgba(201,168,76,.16);}
+.recap-row-body{flex:1;min-width:0;}
+.recap-row-surah{font-size:13.5px;font-weight:800;color:var(--ink);}
+.recap-row-range{font-size:11px;color:var(--txm);margin-top:1px;}
+.recap-row-tag{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0;}
+.recap-row-tag.exc{background:var(--grnb);color:var(--grn);}
+.recap-row-tag.ok{background:var(--go);color:var(--gd);}
+.recap-dua{margin-top:10px;padding-top:10px;border-top:1px dashed #ecdfc0;font-size:11.5px;color:var(--em);text-align:center;font-weight:600;}
+
+/* EXAM RECAP CARD */
+.exam-recap{position:relative;border-radius:16px;padding:16px 18px;margin-bottom:12px;background:linear-gradient(135deg,#fff,var(--cream));border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(27,107,74,.06);}
+.exam-recap.passed::before{background:linear-gradient(180deg,var(--grn),var(--em));}
+.exam-recap.failed::before{background:linear-gradient(180deg,var(--red),#c0392b);}
+.exam-recap.pending::before{background:linear-gradient(180deg,var(--amb),var(--gold));}
+.exam-recap::before{content:'';position:absolute;top:0;right:0;width:5px;height:100%;background:linear-gradient(180deg,var(--em),var(--gold));}
+.exam-recap-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.exam-recap-type{font-size:10.5px;font-weight:700;padding:3px 11px;border-radius:20px;background:var(--go);color:var(--gd);}
+.exam-recap-juz{font-size:14.5px;font-weight:800;color:var(--ink);margin-top:8px;display:flex;align-items:center;gap:6px;}
+.exam-recap-status{font-size:12.5px;font-weight:700;margin-top:5px;display:flex;align-items:center;gap:5px;}
+.exam-recap-status.pending{color:var(--amb);}
+.exam-recap-status.passed{color:var(--grn);}
+.exam-recap-status.failed{color:var(--red);}
+.exam-recap-score{font-size:24px;font-weight:800;flex-shrink:0;}
+.exam-recap-score.pass{color:var(--grn);}
+.exam-recap-score.fail{color:var(--red);}
+.exam-recap-date{font-size:10.5px;color:var(--txl);margin-top:8px;}
+
 /* EXAM CARD */
 .exam-card{border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;background:#fff;box-shadow:0 1px 4px rgba(27,107,74,.05);position:relative;overflow:hidden;}
 .exam-card.passed{border-color:rgba(26,156,91,.35);}
@@ -129,10 +166,24 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .exam-score-big.fail{color:var(--red);}
 
 /* RANK CARD */
-.rank-display{text-align:center;padding:24px 16px;}
-.rank-num{font-size:64px;font-weight:800;color:var(--em);line-height:1;}
-.rank-label{font-size:16px;color:var(--txm);margin-top:8px;}
+.rank-display{text-align:center;padding:28px 16px 22px;position:relative;}
+.rank-medal-wrap{position:relative;width:120px;height:120px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.12),transparent 72%);}
+.rank-medal-circle{width:104px;height:104px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(0,0,0,.12);border:4px solid #fff;}
+.rank-medal-circle.gold{background:linear-gradient(150deg,#ffe9a8,#e8b923 60%,#c9962a);}
+.rank-medal-circle.silver{background:linear-gradient(150deg,#f2f2f2,#c9c9c9 60%,#a3a3a3);}
+.rank-medal-circle.bronze{background:linear-gradient(150deg,#f0c08a,#cd7f32 60%,#a8602a);}
+.rank-medal-circle.plain{background:linear-gradient(150deg,#eef6f1,var(--em) 130%);}
+.rank-medal-ico{font-size:30px;line-height:1;}
+.rank-medal-num{font-size:22px;font-weight:800;color:#fff;line-height:1;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,.25);}
+.rank-medal-circle.plain .rank-medal-ico{display:none;}
+.rank-medal-circle.plain .rank-medal-num{font-size:34px;}
+.rank-num{display:none;}
+.rank-label{font-size:15px;color:var(--txm);font-weight:600;margin-top:2px;}
 .rank-total{font-size:13px;color:var(--txl);margin-top:4px;}
+.rank-badge-row{display:flex;justify-content:center;gap:8px;margin-top:14px;}
+.rank-badge-chip{font-size:11.5px;font-weight:700;padding:5px 14px;border-radius:20px;}
+.rank-badge-chip.top{background:var(--grnb);color:var(--grn);}
+.rank-badge-chip.mid{background:var(--go);color:var(--gd);}
 .rank-podium{display:flex;gap:8px;align-items:flex-end;justify-content:center;margin-top:20px;}
 .rank-item{text-align:center;border-radius:10px 10px 0 0;padding:10px 12px 6px;font-size:12px;font-weight:600;color:#fff;min-width:70px;}
 .rank-item.me{background:var(--em);box-shadow:0 4px 12px rgba(26,107,74,.3);}
@@ -226,6 +277,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .today-card-body{flex:1;min-width:0;}
 .today-card-lbl{font-size:10.5px;color:var(--txm);}
 .today-card-val{font-size:13.5px;font-weight:800;color:var(--ink);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.today-card-sub{font-size:10px;color:var(--em);margin-top:2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* TOAST */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
@@ -357,6 +409,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-body">
           <div class="today-card-lbl">حضور اليوم</div>
           <div class="today-card-val" id="dashAttVal">—</div>
+          <div class="today-card-sub" id="dashAttSub"></div>
         </div>
       </div>
       <div class="today-card">
@@ -364,6 +417,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-body">
           <div class="today-card-lbl">الحفظ اليوم</div>
           <div class="today-card-val" id="dashHifzVal">0/30</div>
+          <div class="today-card-sub" id="dashHifzSub"></div>
         </div>
       </div>
       <div class="today-card">
@@ -371,6 +425,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-body">
           <div class="today-card-lbl">المراجعة اليوم</div>
           <div class="today-card-val" id="dashMurajaaVal">0/30</div>
+          <div class="today-card-sub" id="dashMurajaaSub"></div>
         </div>
       </div>
       <div class="today-card">
@@ -378,33 +433,15 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="today-card-body">
           <div class="today-card-lbl">الاختبارات</div>
           <div class="today-card-val" id="dashExamVal">—</div>
+          <div class="today-card-sub" id="dashExamSub"></div>
         </div>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-box green">
-        <div class="stat-num" id="ds-att-pct">—</div>
-        <div class="stat-lbl">نسبة الحضور الكلية</div>
-      </div>
-      <div class="stat-box gold">
-        <div class="stat-num" id="ds-sessions">—</div>
-        <div class="stat-lbl">الجلسات الكلية</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num" id="ds-hifz">—</div>
-        <div class="stat-lbl">سور محفوظة</div>
-      </div>
-      <div class="stat-box amb">
-        <div class="stat-num" id="ds-rank">—</div>
-        <div class="stat-lbl">ترتيبي في الحلقة</div>
       </div>
     </div>
 
     <div class="card">
       <div class="card-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        آخر جلسات الحفظ
+        آخر جلسات الحفظ والمراجعة
       </div>
       <div id="ds-recent-sessions"><div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد جلسات بعد</div></div></div>
     </div>
@@ -551,9 +588,15 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         ترتيبي في الحلقة
       </div>
       <div class="rank-display">
-        <div class="rank-num" id="rank-num">—</div>
+        <div class="rank-medal-wrap">
+          <div class="rank-medal-circle plain" id="rank-medal-circle">
+            <div class="rank-medal-ico" id="rank-medal-ico"></div>
+            <div class="rank-medal-num" id="rank-num">—</div>
+          </div>
+        </div>
         <div class="rank-label">ترتيبي بين الطلاب اليوم</div>
         <div class="rank-total" id="rank-total"></div>
+        <div class="rank-badge-row" id="rank-badge-row"></div>
       </div>
       <div class="section-lbl" style="text-align:center;">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
     </div>
@@ -641,6 +684,7 @@ let myExamResults = [];       // من examResults collection
 let fsUnsub = null;
 let resultsUnsub = null;
 let pendingFirstLogin = false; // يُعرض بعد إغلاق نافذة الصلاة على النبي ﷺ
+let myLastOpenDate = null;     // آخر تاريخ فتح الطالب لصفحته (من مستنده الخاص — مصدر موثوق)
 
 // ════════════════════════════════════════
 //  HELPERS
@@ -679,7 +723,8 @@ function computeDailyScore(studentId, date){
   const ev = ((teacherData.dailyEval||{})[date]||{})[studentId] || {};
   const hifzScore = Math.max(0, Math.min(30, Number(ev.hifzScore)||0));
   const murajaaScore = Math.max(0, Math.min(30, Number(ev.murajaaScore)||0));
-  const opened = !!(((teacherData.pageOpens||{})[date]||{})[studentId]);
+  // المصدر الموثوق لفتح الصفحة: مستند الطالب نفسه (myLastOpenDate) — وليس فقط الكتابة في مستند المحفّظ التي قد تُرفض بصلاحيات Firestore
+  const opened = (studentId===myStudentId && myLastOpenDate===date) || !!(((teacherData.pageOpens||{})[date]||{})[studentId]);
   const bonus = opened ? 10 : 0;
   const total = Math.min(100, attScore+hifzScore+murajaaScore+bonus);
   return {attStatus, attScore, hifzScore, murajaaScore, opened, bonus, total};
@@ -761,6 +806,7 @@ function enterApp(user, userData){
   loadExamResults();
 
   pendingFirstLogin = !!userData.firstLogin;
+  myLastOpenDate = userData.lastOpenDate || null;
   const alreadyOpenedToday = userData.lastOpenDate === TODAY();
 
   if(!alreadyOpenedToday){
@@ -775,7 +821,9 @@ function enterApp(user, userData){
 // يُستدعى فقط عند ضغط الطالب على نافذة "اللهم صلِّ وسلِّم وبارك على سيدنا محمد"
 function confirmPageOpen(){
   document.getElementById('modal-salawat').classList.remove('open');
+  myLastOpenDate = TODAY(); // تحديث فوري محلي — يضمن ظهور +10 لحظياً دون انتظار الشبكة
   markPageOpenedToday();
+  renderAll();
 
   // إظهار رسالة تغيير كلمة المرور (إن كان أول دخول) بعد إغلاق نافذة الصلاة
   if(pendingFirstLogin){
@@ -915,29 +963,8 @@ function renderDash(){
   // جزء الطالب
   document.getElementById('wb-juz').textContent = `الجزء الحالي: ${myStudentData.juz||0}`;
 
-  // جلساتي
   const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
-  document.getElementById('ds-sessions').textContent = mySess.length;
-
-  // حضوري (الإجمالي التاريخي)
-  let present=0, total=0;
-  Object.entries(teacherData.attendance).forEach(([date,rec])=>{
-    if(rec[myStudentId]!==undefined){
-      total++;
-      if(rec[myStudentId]==='present'||rec[myStudentId]==='late') present++;
-    }
-  });
-  const pct = total>0 ? Math.round(present/total*100) : 0;
-  document.getElementById('ds-att-pct').textContent = pct+'%';
-
-  // حفظ (إجمالي السور)
-  let surahCount=0;
-  mySess.forEach(s=>{ surahCount+=(s.hifz||[]).length; });
-  document.getElementById('ds-hifz').textContent = surahCount;
-
-  // ترتيبي
-  const rank = calcMyRank();
-  document.getElementById('ds-rank').textContent = rank>0 ? '#'+rank : '—';
+  const allExams = getAllMyExams();
 
   // ━━━ تقييم اليوم (الحلقة العلوية) ━━━
   const today = TODAY();
@@ -958,44 +985,113 @@ function renderDash(){
   const attInfo = ATT_LABELS[sc.attStatus];
   document.getElementById('dashAttIco').textContent = attInfo ? attInfo.ico : '⬜';
   document.getElementById('dashAttVal').textContent = attInfo ? attInfo.lbl : 'لم يُسجَّل بعد';
+  const attSubMap={present:'بارك الله في التزامك 🌿',late:'الحمد لله على حضورك',excused:'نسأل الله لك العافية',absent:'نفتقدك في الحلقة 🤍'};
+  document.getElementById('dashAttSub').textContent = attSubMap[sc.attStatus]||'بانتظار تسجيل المحفّظ';
 
-  // الحفظ والمراجعة اليوم
+  // جلسة اليوم — لاستخراج اسم السورة المحفوظة/المراجَعة اليوم
+  const todaySess = mySess.filter(s=>s.date===today);
+  const lastHifzEntry = todaySess.flatMap(s=>s.hifz||[]).slice(-1)[0];
+  const lastMurajaaEntry = todaySess.flatMap(s=>s.murajaa||[]).slice(-1)[0];
+
+  // الحفظ اليوم
   document.getElementById('dashHifzVal').textContent = `${sc.hifzScore}/30`;
+  document.getElementById('dashHifzSub').textContent = lastHifzEntry
+    ? `📖 ${lastHifzEntry.surah} (${lastHifzEntry.from}-${lastHifzEntry.to})`
+    : (sc.hifzScore>0 ? 'واصل التقدّم بإذن الله' : 'لم يُسجَّل بعد');
+
+  // المراجعة اليوم
   document.getElementById('dashMurajaaVal').textContent = `${sc.murajaaScore}/30`;
+  document.getElementById('dashMurajaaSub').textContent = lastMurajaaEntry
+    ? `🔄 ${lastMurajaaEntry.surah} (${lastMurajaaEntry.from}-${lastMurajaaEntry.to})`
+    : (sc.murajaaScore>0 ? 'تثبيت الحفظ بإذن الله' : 'لم تُسجَّل بعد');
 
   // الاختبارات
-  const allExams = getAllMyExams();
   const pendingExams = allExams.filter(e=>e.status==='pending').length;
   const examEl2 = document.getElementById('dashExamVal');
-  if(pendingExams>0) examEl2.textContent = `${pendingExams} في الانتظار`;
-  else if(allExams[0]) examEl2.textContent = allExams[0].status==='passed' ? 'آخر نتيجة: ناجح ✅' : (allExams[0].status==='failed' ? 'آخر نتيجة: لم ينجح' : '—');
-  else examEl2.textContent = 'لا يوجد';
+  const examSubEl = document.getElementById('dashExamSub');
+  if(pendingExams>0){
+    examEl2.textContent = `${pendingExams} في الانتظار`;
+    examSubEl.textContent = 'وفّقك الله ونجّحك 🤲';
+  } else if(allExams[0]){
+    examEl2.textContent = allExams[0].status==='passed' ? 'ناجح ✅' : 'لم ينجح';
+    examSubEl.textContent = allExams[0].status==='passed' ? 'أحسنت، بارك الله فيك' : 'لا بأس، حاول مجدداً';
+  } else {
+    examEl2.textContent = 'لا يوجد';
+    examSubEl.textContent = '';
+  }
 
-  // آخر 3 جلسات
+  // ━━━ آخر جلسات الحفظ والمراجعة (تصميم روحاني) ━━━
   const recent3 = [...mySess].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,3);
   const sessEl = document.getElementById('ds-recent-sessions');
   if(!recent3.length){
-    sessEl.innerHTML='<div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لا توجد جلسات بعد</div></div>';
+    sessEl.innerHTML='<div class="empty"><div class="empty-ico">📖</div><div class="empty-txt">لم تبدأ رحلتك بعد — أول جلسة بإذن الله قريباً</div></div>';
   } else {
-    sessEl.innerHTML = recent3.map(s=>`
-      <div class="sess-card">
-        <div class="sess-date">🗓️ ${fmtDate(s.date)}</div>
-        <div class="sess-items">
-          ${(s.hifz||[]).map(h=>`<span class="sess-chip hifz">📖 ${h.surah} (${h.from}-${h.to}) — ${h.score||''}</span>`).join('')}
-          ${(s.murajaa||[]).map(m=>`<span class="sess-chip murajaa">🔄 ${m.surah} (${m.from}-${m.to})</span>`).join('')}
-        </div>
-      </div>
-    `).join('');
+    sessEl.innerHTML = recent3.map(s=>recapSessionHTML(s)).join('');
   }
 
-  // آخر 2 اختبار
+  // ━━━ آخر الاختبارات (تصميم روحاني) ━━━
   const examEl = document.getElementById('ds-recent-exams');
   const recent2 = allExams.slice(0,2);
   if(!recent2.length){
     examEl.innerHTML='<div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div>';
   } else {
-    examEl.innerHTML = recent2.map(e=>examCardHTML(e)).join('');
+    examEl.innerHTML = recent2.map(e=>examRecapHTML(e)).join('');
   }
+}
+
+const HIFZ_DUAS=['بارك الله في حفظك وثبّتك على كتابه ✨','اللهم اجعل القرآن ربيع قلبك 🌿','زادك الله من فضله علماً وحفظاً'];
+function recapSessionHTML(s){
+  const dua = HIFZ_DUAS[Math.floor(Math.random()*HIFZ_DUAS.length)];
+  const isToday = s.date===TODAY();
+  return `<div class="recap-card">
+    <div class="recap-head">
+      <div class="recap-date">🗓️ ${fmtDate(s.date)}</div>
+      ${isToday?'<span class="recap-date-badge">اليوم</span>':''}
+    </div>
+    ${(s.hifz||[]).map(h=>`
+      <div class="recap-row">
+        <div class="recap-row-ico hifz">📖</div>
+        <div class="recap-row-body">
+          <div class="recap-row-surah">${h.surah}</div>
+          <div class="recap-row-range">من آية ${h.from} إلى ${h.to}</div>
+        </div>
+        <span class="recap-row-tag ${h.score==='ممتاز'?'exc':'ok'}">${h.score||'—'}</span>
+      </div>`).join('')}
+    ${(s.murajaa||[]).map(m=>`
+      <div class="recap-row">
+        <div class="recap-row-ico murajaa">🔄</div>
+        <div class="recap-row-body">
+          <div class="recap-row-surah">${m.surah}</div>
+          <div class="recap-row-range">من آية ${m.from} إلى ${m.to}</div>
+        </div>
+        <span class="recap-row-tag ok">مراجعة</span>
+      </div>`).join('')}
+    <div class="recap-dua">${dua}</div>
+  </div>`;
+}
+
+function examRecapHTML(e){
+  const typeLabel = e.type==='scattered'?'متفرّق':'مجتمع';
+  const cardCls = e.status==='passed'?'passed':e.status==='failed'?'failed':'pending';
+  let statusHTML='', scoreHTML='';
+  if(e.status==='pending'){
+    statusHTML=`<div class="exam-recap-status pending">⏳ في انتظار الاختبار — وفّقك الله</div>`;
+  } else if(e.status==='passed'){
+    statusHTML=`<div class="exam-recap-status passed">✅ ناجح بفضل الله</div>`;
+    scoreHTML=`<div class="exam-recap-score pass">${e.score}</div>`;
+  } else if(e.status==='failed'){
+    statusHTML=`<div class="exam-recap-status failed">↻ يحتاج إعادة محاولة</div>`;
+    scoreHTML=`<div class="exam-recap-score fail">${e.score}</div>`;
+  }
+  return `<div class="exam-recap ${cardCls}">
+    <div class="exam-recap-top">
+      <span class="exam-recap-type">${typeLabel}</span>
+      ${scoreHTML}
+    </div>
+    <div class="exam-recap-juz">📘 الجزء ${e.juzNum} — ${e.juzName||''}</div>
+    ${statusHTML}
+    <div class="exam-recap-date">🗓️ ${fmtDate(e.examDate||e.nominatedAt)}</div>
+  </div>`;
 }
 
 // ════════════════════════════════════════
@@ -1251,8 +1347,38 @@ function renderRank(){
   const myIdx = ranked.findIndex(r=>r.id===myStudentId);
   const myRank = myIdx>=0 ? myIdx+1 : 0;
 
-  document.getElementById('rank-num').textContent = myRank>0 ? '#'+myRank : '—';
   document.getElementById('rank-total').textContent = `من أصل ${active.length} طالب`;
+
+  const circleEl=document.getElementById('rank-medal-circle');
+  const icoEl=document.getElementById('rank-medal-ico');
+  const numEl=document.getElementById('rank-num');
+  const badgeRow=document.getElementById('rank-badge-row');
+
+  if(myRank<=0){
+    circleEl.className='rank-medal-circle plain';
+    icoEl.textContent=''; numEl.textContent='—';
+    badgeRow.innerHTML='';
+  } else if(myRank===1){
+    circleEl.className='rank-medal-circle gold';
+    icoEl.textContent='🏆'; numEl.textContent='#1';
+    badgeRow.innerHTML='<span class="rank-badge-chip top">🥇 الأول على الحلقة</span>';
+  } else if(myRank===2){
+    circleEl.className='rank-medal-circle silver';
+    icoEl.textContent='🥈'; numEl.textContent='#2';
+    badgeRow.innerHTML='<span class="rank-badge-chip top">المركز الثاني</span>';
+  } else if(myRank===3){
+    circleEl.className='rank-medal-circle bronze';
+    icoEl.textContent='🥉'; numEl.textContent='#3';
+    badgeRow.innerHTML='<span class="rank-badge-chip top">المركز الثالث</span>';
+  } else if(myRank<=10){
+    circleEl.className='rank-medal-circle plain';
+    icoEl.textContent=''; numEl.textContent='#'+myRank;
+    badgeRow.innerHTML='<span class="rank-badge-chip mid">⭐ ضمن العشرة الأوائل</span>';
+  } else {
+    circleEl.className='rank-medal-circle plain';
+    icoEl.textContent=''; numEl.textContent='#'+myRank;
+    badgeRow.innerHTML='';
+  }
 
   // إحصائيات كاملة
   const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
