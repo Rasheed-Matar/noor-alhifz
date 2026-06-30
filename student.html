@@ -90,17 +90,33 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .att-badge.l{background:#fff7e0;color:#b7791f;}
 .att-badge.u{background:#f5f5f5;color:var(--txm);}
 
+/* ATTENDANCE TIMELINE ROW (جديد) */
+.att-row2{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid #f3eedb;}
+.att-row2:last-child{border-bottom:none;}
+.att-row2-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.att-row2-ico.p{background:var(--grnb);}
+.att-row2-ico.l{background:#fff7e0;}
+.att-row2-ico.a{background:var(--redb);}
+.att-row2-ico.e{background:var(--ambb);}
+.att-row2-ico.u{background:#f5f5f5;}
+.att-row2-info{flex:1;min-width:0;}
+.att-row2-day{font-size:13px;font-weight:700;color:var(--ink);}
+.att-row2-date{font-size:11px;color:var(--txl);margin-top:1px;}
+
 /* SESSION CARD */
-.sess-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:#fafaf6;}
-.sess-date{font-size:12px;color:var(--txm);margin-bottom:6px;}
+.sess-card{border:1px solid var(--border);border-right:4px solid var(--em2);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff;box-shadow:0 1px 4px rgba(27,107,74,.05);}
+.sess-date{font-size:12px;color:var(--txm);margin-bottom:8px;display:flex;align-items:center;gap:6px;font-weight:600;}
 .sess-items{display:flex;flex-wrap:wrap;gap:6px;}
-.sess-chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.sess-chip{padding:5px 12px;border-radius:20px;font-size:11.5px;font-weight:600;}
 .sess-chip.hifz{background:rgba(26,107,74,.1);color:var(--em);}
 .sess-chip.murajaa{background:rgba(201,168,76,.15);color:var(--gd);}
 
 /* EXAM CARD */
-.exam-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:#fafaf6;position:relative;}
-.exam-type{font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;display:inline-block;margin-bottom:6px;}
+.exam-card{border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;background:#fff;box-shadow:0 1px 4px rgba(27,107,74,.05);position:relative;overflow:hidden;}
+.exam-card.passed{border-color:rgba(26,156,91,.35);}
+.exam-card.failed{border-color:rgba(229,62,62,.3);}
+.exam-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.exam-type{font-size:11px;font-weight:700;padding:3px 11px;border-radius:20px;display:inline-block;}
 .exam-type.scattered{background:rgba(26,107,74,.1);color:var(--em);}
 .exam-type.combined{background:rgba(201,168,76,.15);color:var(--gd);}
 .exam-juz{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
@@ -108,7 +124,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .exam-status.pending{color:var(--amb);}
 .exam-status.passed{color:var(--grn);}
 .exam-status.failed{color:var(--red);}
-.exam-score-big{position:absolute;top:14px;left:14px;font-size:26px;font-weight:800;color:var(--em);}
+.exam-score-big{font-size:26px;font-weight:800;color:var(--em);flex-shrink:0;}
 .exam-score-big.pass{color:var(--grn);}
 .exam-score-big.fail{color:var(--red);}
 
@@ -177,6 +193,39 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .wb-title{font-size:18px;font-weight:700;margin-bottom:4px;}
 .wb-sub{font-size:13px;opacity:.8;}
 .wb-juz{font-size:13px;opacity:.9;margin-top:10px;background:rgba(255,255,255,.15);display:inline-block;padding:4px 12px;border-radius:20px;}
+
+/* TODAY HERO (لوحتي) */
+.today-hero{background:linear-gradient(160deg,#fff,var(--cream));border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;cursor:pointer;transition:box-shadow .2s;}
+.today-hero:hover{box-shadow:0 6px 18px rgba(27,107,74,.1);}
+.today-hero::before{content:'';position:absolute;top:-40px;left:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.10),transparent 70%);}
+.today-ring-wrap{position:relative;width:82px;height:82px;flex-shrink:0;z-index:1;}
+.today-ring{width:82px;height:82px;transform:rotate(-90deg);}
+.today-ring .ring-bg{fill:none;stroke:#eee6d0;stroke-width:8;}
+.today-ring .ring-fg{fill:none;stroke:var(--em);stroke-width:8;stroke-linecap:round;transition:stroke-dasharray .8s;}
+.today-ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.today-ring-num{font-size:21px;font-weight:800;color:var(--em);line-height:1;}
+.today-ring-sub{font-size:8.5px;color:var(--txm);}
+.today-hero-info{flex:1;z-index:1;min-width:0;}
+.today-hero-title{font-size:12.5px;color:var(--txm);margin-bottom:5px;}
+.today-hero-level{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;font-weight:800;padding:4px 12px;border-radius:20px;}
+.today-hero-level.exc{background:var(--grnb);color:var(--grn);}
+.today-hero-level.good{background:var(--go);color:var(--gd);}
+.today-hero-level.mid{background:var(--ambb);color:var(--amb);}
+.today-hero-level.low{background:var(--redb);color:var(--red);}
+.today-hero-link{font-size:11px;color:var(--em);margin-top:9px;display:flex;align-items:center;gap:4px;font-weight:600;}
+.today-hero-link svg{width:12px;height:12px;}
+
+/* TODAY GRID (4 بطاقات: حضور/حفظ/مراجعة/اختبارات) */
+.today-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.today-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(27,107,74,.05);}
+.today-card-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.today-card-ico.att{background:var(--grnb);}
+.today-card-ico.hifz{background:var(--go);}
+.today-card-ico.murajaa{background:rgba(201,168,76,.14);}
+.today-card-ico.exam{background:var(--ambb);}
+.today-card-body{flex:1;min-width:0;}
+.today-card-lbl{font-size:10.5px;color:var(--txm);}
+.today-card-val{font-size:13.5px;font-weight:800;color:var(--ink);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* TOAST */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
@@ -280,10 +329,63 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       <div class="wb-juz" id="wb-juz">الجزء الحالي: —</div>
     </div>
 
+    <!-- تقييم اليوم -->
+    <div class="today-hero" onclick="sw('rank')">
+      <div class="today-ring-wrap">
+        <svg class="today-ring" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle class="ring-fg" id="dashRingFg" cx="60" cy="60" r="52" stroke-dasharray="0 327"></circle>
+        </svg>
+        <div class="today-ring-label">
+          <div class="today-ring-num" id="dashTodayScore">0</div>
+          <div class="today-ring-sub">من 100</div>
+        </div>
+      </div>
+      <div class="today-hero-info">
+        <div class="today-hero-title">📊 تقييمك اليوم</div>
+        <span class="today-hero-level" id="dashTodayLevel">—</span>
+        <div class="today-hero-link">
+          عرض تفاصيل التقييم
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 19l-7-7 7-7M4 12h16"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="today-grid">
+      <div class="today-card">
+        <div class="today-card-ico att" id="dashAttIco">📋</div>
+        <div class="today-card-body">
+          <div class="today-card-lbl">حضور اليوم</div>
+          <div class="today-card-val" id="dashAttVal">—</div>
+        </div>
+      </div>
+      <div class="today-card">
+        <div class="today-card-ico hifz">📖</div>
+        <div class="today-card-body">
+          <div class="today-card-lbl">الحفظ اليوم</div>
+          <div class="today-card-val" id="dashHifzVal">0/30</div>
+        </div>
+      </div>
+      <div class="today-card">
+        <div class="today-card-ico murajaa">🔄</div>
+        <div class="today-card-body">
+          <div class="today-card-lbl">المراجعة اليوم</div>
+          <div class="today-card-val" id="dashMurajaaVal">0/30</div>
+        </div>
+      </div>
+      <div class="today-card">
+        <div class="today-card-ico exam">📝</div>
+        <div class="today-card-body">
+          <div class="today-card-lbl">الاختبارات</div>
+          <div class="today-card-val" id="dashExamVal">—</div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-box green">
         <div class="stat-num" id="ds-att-pct">—</div>
-        <div class="stat-lbl">نسبة الحضور</div>
+        <div class="stat-lbl">نسبة الحضور الكلية</div>
       </div>
       <div class="stat-box gold">
         <div class="stat-num" id="ds-sessions">—</div>
@@ -291,7 +393,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       </div>
       <div class="stat-box">
         <div class="stat-num" id="ds-hifz">—</div>
-        <div class="stat-lbl">آيات محفوظة</div>
+        <div class="stat-lbl">سور محفوظة</div>
       </div>
       <div class="stat-box amb">
         <div class="stat-num" id="ds-rank">—</div>
@@ -368,6 +470,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       </div>
       <div id="exams-stats" class="stats-grid" style="margin-bottom:12px;">
         <div class="stat-box green"><div class="stat-num" id="ex-pass">0</div><div class="stat-lbl">ناجح</div></div>
+        <div class="stat-box amb"><div class="stat-num" id="ex-pending">0</div><div class="stat-lbl">في الانتظار</div></div>
         <div class="stat-box red"><div class="stat-num" id="ex-fail">0</div><div class="stat-lbl">لم ينجح</div></div>
       </div>
       <div id="exams-list"><div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div></div>
@@ -452,9 +555,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="rank-label">ترتيبي بين الطلاب اليوم</div>
         <div class="rank-total" id="rank-total"></div>
       </div>
-      <div class="divider"></div>
-      <div class="section-lbl">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
-      <div id="rank-list"></div>
+      <div class="section-lbl" style="text-align:center;">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
     </div>
 
     <div class="card">
@@ -550,6 +651,11 @@ function fmtDate(iso){
   if(!iso) return '—';
   const d=new Date(iso);
   return d.toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+}
+function dayName(iso){
+  if(!iso) return '';
+  const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  return days[new Date(iso).getDay()];
 }
 function arabicMonth(y,m){
   const d=new Date(y,m-1,1);
@@ -796,6 +902,7 @@ function renderAll(){
   const activeTab = document.querySelector('.nav-btn.active')?.id?.replace('nb-','');
   if(activeTab==='att') renderAttendance();
   if(activeTab==='hifz') renderHifz();
+  if(activeTab==='exams') renderExams();
   if(activeTab==='rank') renderRank();
 }
 
@@ -812,7 +919,7 @@ function renderDash(){
   const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
   document.getElementById('ds-sessions').textContent = mySess.length;
 
-  // حضوري
+  // حضوري (الإجمالي التاريخي)
   let present=0, total=0;
   Object.entries(teacherData.attendance).forEach(([date,rec])=>{
     if(rec[myStudentId]!==undefined){
@@ -823,7 +930,7 @@ function renderDash(){
   const pct = total>0 ? Math.round(present/total*100) : 0;
   document.getElementById('ds-att-pct').textContent = pct+'%';
 
-  // حفظ
+  // حفظ (إجمالي السور)
   let surahCount=0;
   mySess.forEach(s=>{ surahCount+=(s.hifz||[]).length; });
   document.getElementById('ds-hifz').textContent = surahCount;
@@ -831,6 +938,38 @@ function renderDash(){
   // ترتيبي
   const rank = calcMyRank();
   document.getElementById('ds-rank').textContent = rank>0 ? '#'+rank : '—';
+
+  // ━━━ تقييم اليوم (الحلقة العلوية) ━━━
+  const today = TODAY();
+  const sc = computeDailyScore(myStudentId, today);
+  document.getElementById('dashTodayScore').textContent = sc.total;
+  setRing(sc.total, 'dashRingFg');
+
+  const levelEl = document.getElementById('dashTodayLevel');
+  let levelTxt, levelCls;
+  if(sc.total>=85){ levelTxt='ممتاز ✨'; levelCls='exc'; }
+  else if(sc.total>=70){ levelTxt='جيد جداً'; levelCls='good'; }
+  else if(sc.total>=50){ levelTxt='جيد'; levelCls='mid'; }
+  else { levelTxt='بحاجة لتحسين'; levelCls='low'; }
+  levelEl.textContent = levelTxt;
+  levelEl.className = 'today-hero-level '+levelCls;
+
+  // حضور اليوم
+  const attInfo = ATT_LABELS[sc.attStatus];
+  document.getElementById('dashAttIco').textContent = attInfo ? attInfo.ico : '⬜';
+  document.getElementById('dashAttVal').textContent = attInfo ? attInfo.lbl : 'لم يُسجَّل بعد';
+
+  // الحفظ والمراجعة اليوم
+  document.getElementById('dashHifzVal').textContent = `${sc.hifzScore}/30`;
+  document.getElementById('dashMurajaaVal').textContent = `${sc.murajaaScore}/30`;
+
+  // الاختبارات
+  const allExams = getAllMyExams();
+  const pendingExams = allExams.filter(e=>e.status==='pending').length;
+  const examEl2 = document.getElementById('dashExamVal');
+  if(pendingExams>0) examEl2.textContent = `${pendingExams} في الانتظار`;
+  else if(allExams[0]) examEl2.textContent = allExams[0].status==='passed' ? 'آخر نتيجة: ناجح ✅' : (allExams[0].status==='failed' ? 'آخر نتيجة: لم ينجح' : '—');
+  else examEl2.textContent = 'لا يوجد';
 
   // آخر 3 جلسات
   const recent3 = [...mySess].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,3);
@@ -840,7 +979,7 @@ function renderDash(){
   } else {
     sessEl.innerHTML = recent3.map(s=>`
       <div class="sess-card">
-        <div class="sess-date">${fmtDate(s.date)}</div>
+        <div class="sess-date">🗓️ ${fmtDate(s.date)}</div>
         <div class="sess-items">
           ${(s.hifz||[]).map(h=>`<span class="sess-chip hifz">📖 ${h.surah} (${h.from}-${h.to}) — ${h.score||''}</span>`).join('')}
           ${(s.murajaa||[]).map(m=>`<span class="sess-chip murajaa">🔄 ${m.surah} (${m.from}-${m.to})</span>`).join('')}
@@ -851,7 +990,6 @@ function renderDash(){
 
   // آخر 2 اختبار
   const examEl = document.getElementById('ds-recent-exams');
-  const allExams = getAllMyExams();
   const recent2 = allExams.slice(0,2);
   if(!recent2.length){
     examEl.innerHTML='<div class="empty"><div class="empty-ico">📝</div><div class="empty-txt">لا توجد اختبارات بعد</div></div>';
@@ -915,9 +1053,13 @@ function renderAttendance(){
 
   el.innerHTML = days.map(([date,rec])=>{
     const s=rec[myStudentId];
-    const st=ATT_LABELS[s]||{lbl:'—',cls:'u'};
-    return`<div class="att-row">
-      <div class="att-date">${fmtDate(date)}</div>
+    const st=ATT_LABELS[s]||{lbl:'لم يُسجَّل',cls:'u',ico:'⬜'};
+    return`<div class="att-row2">
+      <div class="att-row2-ico ${st.cls}">${st.ico||'⬜'}</div>
+      <div class="att-row2-info">
+        <div class="att-row2-day">${dayName(date)}</div>
+        <div class="att-row2-date">${fmtDate(date)}</div>
+      </div>
       <div class="att-badge ${st.cls}">${st.lbl}</div>
     </div>`;
   }).join('');
@@ -949,7 +1091,7 @@ function renderHifz(){
 
   el.innerHTML = mySess.map(s=>`
     <div class="sess-card">
-      <div class="sess-date">${fmtDate(s.date)}</div>
+      <div class="sess-date">🗓️ ${fmtDate(s.date)}</div>
       ${s.hifz&&s.hifz.length?`
         <div class="section-lbl" style="margin-top:8px;">📖 حفظ جديد</div>
         <div class="sess-items">
@@ -998,6 +1140,7 @@ function getAllMyExams(){
 function examCardHTML(e){
   const typeLabel = e.type==='scattered'?'متفرّق':'مجتمع';
   const typeCls = e.type==='scattered'?'scattered':'combined';
+  const cardCls = e.status==='passed'?'passed':e.status==='failed'?'failed':'';
   let statusHTML='', scoreHTML='';
 
   if(e.status==='pending'){
@@ -1010,12 +1153,14 @@ function examCardHTML(e){
     scoreHTML=`<div class="exam-score-big fail">${e.score}</div>`;
   }
 
-  return`<div class="exam-card">
-    ${scoreHTML}
-    <span class="exam-type ${typeCls}">${typeLabel}</span>
-    <div class="exam-juz">الجزء ${e.juzNum} — ${e.juzName||''}</div>
+  return`<div class="exam-card ${cardCls}">
+    <div class="exam-card-top">
+      <span class="exam-type ${typeCls}">${typeLabel}</span>
+      ${scoreHTML}
+    </div>
+    <div class="exam-juz">📘 الجزء ${e.juzNum} — ${e.juzName||''}</div>
     ${statusHTML}
-    <div style="font-size:11px;color:var(--txl);margin-top:4px;">${fmtDate(e.examDate||e.nominatedAt)}</div>
+    <div style="font-size:11px;color:var(--txl);margin-top:6px;">🗓️ ${fmtDate(e.examDate||e.nominatedAt)}</div>
     ${e.result&&e.result.notes?`<div style="font-size:12px;color:var(--txm);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">ملاحظات: ${e.result.notes}</div>`:''}
   </div>`;
 }
@@ -1024,8 +1169,10 @@ function renderExams(){
   const allExams = getAllMyExams();
   const pass = allExams.filter(e=>e.status==='passed').length;
   const fail = allExams.filter(e=>e.status==='failed').length;
+  const pending = allExams.filter(e=>e.status==='pending').length;
   document.getElementById('ex-pass').textContent=pass;
   document.getElementById('ex-fail').textContent=fail;
+  document.getElementById('ex-pending').textContent=pending;
 
   const el=document.getElementById('exams-list');
   if(!allExams.length){
@@ -1052,9 +1199,10 @@ function calcMyRank(){
   return myIdx>=0 ? myIdx+1 : 0;
 }
 
-function setRing(pct){
+function setRing(pct, elId){
   const C = 2*Math.PI*52; // محيط الدائرة
-  const fg=document.getElementById('ringFg');
+  const fg=document.getElementById(elId||'ringFg');
+  if(!fg) return;
   const val=Math.max(0,Math.min(100,pct));
   fg.setAttribute('stroke-dasharray', `${(val/100*C).toFixed(1)} ${C.toFixed(1)}`);
   const ringColor = val>=80?'var(--em)':val>=60?'var(--gold)':'var(--red)';
@@ -1105,19 +1253,6 @@ function renderRank(){
 
   document.getElementById('rank-num').textContent = myRank>0 ? '#'+myRank : '—';
   document.getElementById('rank-total').textContent = `من أصل ${active.length} طالب`;
-
-  // قائمة أفضل 10
-  const top10 = ranked.slice(0,10);
-  const listEl = document.getElementById('rank-list');
-  listEl.innerHTML = top10.map((r,i)=>{
-    const isMe = r.id===myStudentId;
-    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0ead8;${isMe?'background:rgba(26,107,74,.05);border-radius:10px;padding:10px;':''}">
-      <div style="width:28px;height:28px;border-radius:50%;background:${isMe?'var(--em)':'var(--border)'};color:${isMe?'#fff':'var(--txm)'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${medal}</div>
-      <div style="flex:1;font-size:13px;font-weight:${isMe?700:400};color:${isMe?'var(--em)':'var(--ink)'};">${r.name}${isMe?' (أنت)':''}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--gd);">${r.total}/100</div>
-    </div>`;
-  }).join('');
 
   // إحصائيات كاملة
   const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
