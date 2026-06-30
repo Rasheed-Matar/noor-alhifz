@@ -308,6 +308,24 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .tab-btn{flex:1;padding:.5rem;border-radius:7px;font-size:12.5px;font-weight:600;font-family:inherit;border:none;background:transparent;color:var(--txm);cursor:pointer;transition:all .2s}
 .tab-btn.active{background:var(--gd);color:var(--gld)}
 
+.hw-card{border-bottom:1px solid var(--bdr);padding:14px 16px;transition:background .15s}
+.hw-card:last-child{border-bottom:none}
+.hw-card:hover{background:rgba(10,61,43,.025)}
+.hw-card-top{display:flex;align-items:center;gap:10px}
+.hw-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gl),var(--gm));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;flex-shrink:0}
+.hw-info{flex:1;min-width:0}
+.hw-name{font-weight:700;font-size:13.5px;color:var(--gd)}
+.hw-meta{font-size:11.5px;color:var(--txm);margin-top:2px}
+.hw-notes{font-size:12px;color:var(--txm);background:var(--cream);border-radius:8px;padding:6px 10px;margin-top:8px;line-height:1.6}
+.hw-completion-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px}
+.hw-completion-lbl{font-size:11.5px;color:var(--txm);font-weight:600}
+.hw-pct-pills{display:flex;gap:5px}
+.hw-pct-pill{border:1.5px solid var(--bdr);background:var(--wh);color:var(--txm);font-family:inherit;font-size:11px;font-weight:700;border-radius:7px;padding:4px 8px;cursor:pointer;transition:all .15s}
+.hw-pct-pill:hover{border-color:var(--gold)}
+.hw-pct-pill.sel{background:var(--grn,#1a6b4a);border-color:var(--grn,#1a6b4a);color:#fff}
+.hw-completion-badge{margin-right:auto;font-size:12px;font-weight:800;color:var(--grn,#1a6b4a);background:rgba(26,107,74,.1);border-radius:8px;padding:3px 10px}
+.hw-completion-pending{margin-right:auto;font-size:11px;font-weight:600;color:var(--amb,#c98a1c);background:rgba(201,138,28,.1);border-radius:8px;padding:3px 10px}
+
 .toast-wrap{position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--gx);color:#fff;padding:.7rem 1.1rem;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:var(--sd3);transition:opacity .4s;border:1px solid rgba(201,162,39,.25)}
 .toast.success{border-color:rgba(22,163,74,.4)}
@@ -442,6 +460,10 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         ترشيح الاختبارات
         <span class="sb-badge gold" id="sb-exams-count" style="display:none;">0</span>
+      </button>
+      <button class="sb-item" data-tab="homework" onclick="sw('homework')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+        الواجب البيتي
       </button>
       <button class="sb-item" data-tab="eval" onclick="sw('eval')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -694,6 +716,46 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
           ⭐ فتح الطالب لصفحته الخاصة اليوم (مرة واحدة تكفي): +10 تلقائياً<br>
           <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط على صندوق "الحفظ" 3 مرات ليصل إلى 15/30.</b>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══ HOMEWORK (الواجب البيتي) ═══ -->
+    <div class="scr" id="scr-homework">
+      <div class="panel">
+        <div class="panel-hd">
+          <div class="panel-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+            تسجيل واجب بيتي جديد
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="mf"><label>الطالب</label>
+            <select id="hw-student-select" onchange="renderHomeworkTab()">
+              <option value="">— اختر طالباً —</option>
+            </select>
+          </div>
+          <div class="mf-row">
+            <div class="mf"><label>السورة</label>
+              <select id="hw-surah"></select>
+            </div>
+          </div>
+          <div class="mf-row">
+            <div class="mf"><label>من آية</label><input type="number" id="hw-from" value="1" min="1"></div>
+            <div class="mf"><label>إلى آية</label><input type="number" id="hw-to" value="1" min="1"></div>
+          </div>
+          <div class="mf"><label>ملاحظات للطالب (اختياري)</label><textarea id="hw-notes" rows="2" placeholder="مثال: ركّز على تثبيت التشكيل والتجويد"></textarea></div>
+          <button class="btn-submit-modal" onclick="saveHomework()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            حفظ الواجب البيتي
+          </button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:1.2rem;">
+        <div class="panel-hd">
+          <div class="panel-title">📔 الواجبات الأخيرة وتسجيل نسبة الإنجاز</div>
+        </div>
+        <div class="panel-body" id="hw-list" style="padding:0;"></div>
       </div>
     </div>
 
@@ -998,7 +1060,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
 let activatedStudentNids = new Set(); // رقم هويات الطلاب المفعّلين
-let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={};
+let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 let bulkMode=false, bulkSelectedIds=new Set();
 
@@ -1051,7 +1113,7 @@ function toast(msg,type='success'){
 }
 
 function sw(tab){
-  ['dash','att','sess','students','exams','eval','messages','reports','settings'].forEach(t=>{
+  ['dash','att','sess','students','exams','eval','messages','reports','settings','homework'].forEach(t=>{
     const scr=document.getElementById('scr-'+t); if(scr) scr.classList.remove('on');
   });
   document.getElementById('scr-'+tab).classList.add('on');
@@ -1062,6 +1124,7 @@ function sw(tab){
   if(tab==='students') renderStudentsList();
   if(tab==='exams'){ renderExamStudentSelect(); renderExamJuzOptions(); renderExamsList(); }
   if(tab==='eval') renderEvalTab();
+  if(tab==='homework') renderHomeworkTab();
   if(tab==='messages') renderMessagesHub();
   if(tab==='reports') renderProgress();
   if(tab==='att') renderAttendance();
@@ -1085,7 +1148,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
-  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};
+  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
@@ -1145,11 +1208,11 @@ function enterApp(user,data){
     if(snap.exists){
       suppressSave=true;
       const d=snap.data();
-      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; dailyEval=d.dailyEval||{}; pageOpens=d.pageOpens||{};
+      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; dailyEval=d.dailyEval||{}; pageOpens=d.pageOpens||{}; homework=d.homework||{};
       renderAll();
       suppressSave=false;
     } else {
-      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};
+      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
       renderAll();
     }
   },e=>console.log('snap err',e));
@@ -1449,8 +1512,126 @@ function renderEvalTab(){
   }).join('');
 }
 
+// ════════════════════════════════════════
+//  HOMEWORK (الواجب البيتي)
+// ════════════════════════════════════════
+function fillHwSurahSelect(){
+  const sel=document.getElementById('hw-surah');
+  if(sel && !sel.options.length){
+    sel.innerHTML=SURAHS.map(s=>`<option value="${s.num}|${s.name}|${s.ayahs}">${s.num}. ${s.name}</option>`).join('');
+  }
+}
+
+function renderHomeworkStudentSelect(){
+  const sel=document.getElementById('hw-student-select');
+  const active=students.filter(s=>!s.archived);
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— اختر طالباً —</option>'+
+    active.map(s=>`<option value="${s.id}" ${cur===s.id?'selected':''}>${s.name}</option>`).join('');
+}
+
+function saveHomework(){
+  const studentId=(document.getElementById('hw-student-select')||{}).value;
+  if(!studentId){ toast('⚠️ اختر طالباً أولاً','error'); return; }
+  const sel=document.getElementById('hw-surah');
+  const [num,name]=sel.value.split('|');
+  const from=parseInt(document.getElementById('hw-from').value)||1;
+  const to=parseInt(document.getElementById('hw-to').value)||1;
+  const notes=(document.getElementById('hw-notes')||{}).value||'';
+  const date=TODAY();
+
+  if(!homework[date]) homework[date]={};
+  homework[date][studentId]={
+    surah:name, surahNum:num, from, to, notes,
+    dateLabel:getDateLabel(),
+    createdAt:new Date().toISOString(),
+    completion:null, completionAt:null
+  };
+
+  userDocRef.set({
+    homework:{ [date]:{ [studentId]: homework[date][studentId] } }
+  },{merge:true}).catch(e=>console.warn('homework save err',e));
+
+  document.getElementById('hw-notes').value='';
+  toast('✅ تم حفظ الواجب البيتي بنجاح');
+  renderHomeworkTab();
+}
+
+function setHomeworkCompletion(date,studentId,pct){
+  if(!homework[date]||!homework[date][studentId]) return;
+  homework[date][studentId].completion=pct;
+  homework[date][studentId].completionAt=new Date().toISOString();
+  userDocRef.set({
+    homework:{ [date]:{ [studentId]:{ completion:pct, completionAt:homework[date][studentId].completionAt } } }
+  },{merge:true}).catch(e=>console.warn('homework completion save err',e));
+  renderHomeworkTab();
+  toast(`✅ تم تسجيل نسبة الإنجاز: ${pct}%`);
+}
+
+function deleteHomework(date,studentId){
+  if(!homework[date]||!homework[date][studentId]) return;
+  if(!confirm('هل تريد حذف هذا الواجب؟')) return;
+  delete homework[date][studentId];
+  userDocRef.set({
+    homework:{ [date]:{ [studentId]: firebase.firestore.FieldValue.delete() } }
+  },{merge:true}).catch(e=>console.warn('homework delete err',e));
+  renderHomeworkTab();
+}
+
+function renderHomeworkTab(){
+  fillHwSurahSelect();
+  renderHomeworkStudentSelect();
+
+  const filterStudentId=(document.getElementById('hw-student-select')||{}).value||'';
+  const el=document.getElementById('hw-list');
+  if(!el) return;
+
+  // تجميع كل الواجبات من كل التواريخ في قائمة مسطّحة، الأحدث أولاً
+  let rows=[];
+  Object.keys(homework).forEach(date=>{
+    Object.keys(homework[date]||{}).forEach(studentId=>{
+      const hw=homework[date][studentId];
+      if(!hw) return;
+      if(filterStudentId && studentId!==filterStudentId) return;
+      const student=students.find(s=>s.id===studentId);
+      rows.push({date, studentId, studentName:student?student.name:'طالب محذوف', ...hw});
+    });
+  });
+  rows.sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||'').localeCompare(a.createdAt||''));
+  rows=rows.slice(0,40);
+
+  if(!rows.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا توجد واجبات مسجّلة بعد — استخدم النموذج أعلاه لتسجيل أول واجب بيتي</div></div>';
+    return;
+  }
+
+  const PCTS=[25,50,75,100];
+  el.innerHTML=rows.map(r=>{
+    const hasCompletion = r.completion!==null && r.completion!==undefined;
+    return `<div class="hw-card">
+      <div class="hw-card-top">
+        <div class="hw-avatar">${ini(r.studentName)}</div>
+        <div class="hw-info">
+          <div class="hw-name">${r.studentName}</div>
+          <div class="hw-meta">📅 ${r.dateLabel||r.date} — ${r.surah} (آية ${r.from}-${r.to})</div>
+        </div>
+        <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${r.date}','${r.studentId}')" title="حذف الواجب">×</button>
+      </div>
+      ${r.notes?`<div class="hw-notes">📝 ${r.notes}</div>`:''}
+      <div class="hw-completion-row">
+        <span class="hw-completion-lbl">نسبة إنجاز الطالب:</span>
+        <div class="hw-pct-pills">
+          ${PCTS.map(p=>`<button class="hw-pct-pill${hasCompletion&&r.completion===p?' sel':''}" onclick="setHomeworkCompletion('${r.date}','${r.studentId}',${p})">${p}%</button>`).join('')}
+        </div>
+        ${hasCompletion?`<span class="hw-completion-badge">${r.completion}%</span>`:`<span class="hw-completion-pending">بانتظار التقييم</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 
 function renderAttendance(){
+
   document.getElementById('att-date-label').textContent=getDateLabel();
   const active=students.filter(s=>!s.archived);
   const todayAtt=attendance[TODAY()]||{};
