@@ -293,6 +293,24 @@ select.form-input{cursor:pointer;}
   .nav-user-pill span{max-width:60px;}
   .nav-user-pill svg{display:none;}
 }
+.att-btn{width:34px;height:30px;border-radius:7px;border:1.5px solid #e0e8e4;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;transition:all .15s;font-family:inherit;}
+.att-btn:hover{transform:scale(1.08);}
+.att-btn.type-p{color:#16a34a;border-color:#bfe8cf;}
+.att-btn.type-a{color:#e63946;border-color:#f5c2c7;}
+.att-btn.type-e{color:#d97706;border-color:#f7debc;}
+.att-btn.type-l{color:#a16207;border-color:#fde68a;}
+.att-btn.sel-p{background:#e8f5ed;border-color:#16a34a;color:#16a34a;box-shadow:0 0 0 2px rgba(22,163,74,.15);}
+.att-btn.sel-a{background:#ffeaea;border-color:#e63946;color:#e63946;box-shadow:0 0 0 2px rgba(230,57,70,.15);}
+.att-btn.sel-l{background:#fef9c3;border-color:#eab308;color:#a16207;box-shadow:0 0 0 2px rgba(234,179,8,.18);}
+.att-btn.sel-e{background:#fffbeb;border-color:#d97706;color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.15);}
+.tatt-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.tatt-card{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--border,#e5e5dc);border-radius:14px;padding:12px 16px;margin-bottom:10px;flex-wrap:wrap;}
+.tatt-info{display:flex;align-items:center;gap:12px;}
+.tatt-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--em2),var(--em));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.tatt-name{font-weight:700;font-size:14px;color:var(--ink,#1a1a2e);}
+.tatt-sub{font-size:12px;color:#888;margin-top:2px;}
+.tatt-btns{display:flex;gap:6px;}
+.tatt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
 </style>
 </head>
 <body>
@@ -354,6 +372,10 @@ select.form-input{cursor:pointer;}
       <button class="nav-item" id="nav-students" onclick="showPage('students')">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         الطلاب
+      </button>
+      <button class="nav-item" id="nav-teacherAtt" onclick="showPage('teacherAtt')">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+        حضور المحفظين
       </button>
       <button class="nav-item" id="nav-quality" onclick="showPage('quality')" style="color:var(--gold3);">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
@@ -535,6 +557,36 @@ select.form-input{cursor:pointer;}
             <tbody id="studentsTable"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══ TEACHER ATTENDANCE ═══ -->
+    <div class="page-view" id="page-teacherAtt">
+      <div class="page-header">
+        <div><div class="page-title">حضور المحفظين</div><div class="page-subtitle">تسجيل حضور وغياب المحفظين، وتقارير يومية/أسبوعية/شهرية</div></div>
+      </div>
+
+      <div class="tatt-stats">
+        <div class="stat-card green"><div class="stat-num" id="taStatPresent">0</div><div class="stat-label">حاضر اليوم</div></div>
+        <div class="stat-card coral"><div class="stat-num" id="taStatAbsent">0</div><div class="stat-label">غائب اليوم</div></div>
+        <div class="stat-card gold"><div class="stat-num" id="taStatLate">0</div><div class="stat-label">متأخر اليوم</div></div>
+        <div class="stat-card blue"><div class="stat-num" id="taStatExcused">0</div><div class="stat-label">مستأذن اليوم</div></div>
+      </div>
+
+      <div class="tatt-toolbar">
+        <input type="date" class="form-input" id="taDate" style="max-width:200px;" onchange="renderTeacherAttendance()">
+        <button class="btn-primary" style="flex:none;" onclick="setTaDateOffset(-1)">‹ اليوم السابق</button>
+        <button class="btn-primary" style="flex:none;" onclick="document.getElementById('taDate').value=todayISO();renderTeacherAttendance();">اليوم</button>
+        <button class="btn-primary" style="flex:none;" onclick="setTaDateOffset(1)">اليوم التالي ›</button>
+        <input class="search-inp" id="taSearchInp" placeholder="بحث باسم المحفظ..." style="max-width:240px;" oninput="renderTeacherAttendance()">
+        <button class="btn-gold" style="flex:none;margin-right:auto;" onclick="openTeacherAttReportModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          تقرير الحضور (يومي/أسبوعي/شهري)
+        </button>
+      </div>
+
+      <div class="card">
+        <div id="teacherAttList" style="padding:14px;"></div>
       </div>
     </div>
 
@@ -830,6 +882,75 @@ select.form-input{cursor:pointer;}
         تنزيل PDF
       </button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-data-report')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Teacher Attendance Report -->
+<div class="modal-overlay" id="modal-teacher-att-report">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-head">
+      <span class="modal-head-title">📑 تقرير حضور المحفظين</span>
+      <button class="modal-close" onclick="closeModal('modal-teacher-att-report')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pdf-filter-row">
+        <div class="form-group">
+          <label class="form-label">نوعُ الفترةِ</label>
+          <select class="form-input" id="taRepPeriod" onchange="refreshTaReportPreview()">
+            <option value="day">يومي</option>
+            <option value="week">أسبوعي</option>
+            <option value="month">شهري</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">التاريخُ المرجعيُّ</label>
+          <input type="date" class="form-input" id="taRepDate" onchange="refreshTaReportPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">نطاقُ المحفّظينَ</label>
+          <select class="form-input" id="taRepScope" onchange="onTaRepScopeChange()">
+            <option value="all">جميعُ المحفّظينَ</option>
+            <option value="one">حلقةٌ واحدةٌ فقط</option>
+          </select>
+        </div>
+        <div class="form-group" id="taRepCircleGroup" style="display:none;">
+          <label class="form-label">اختر الحلقة</label>
+          <select class="form-input" id="taRepCircle" onchange="refreshTaReportPreview()"></select>
+        </div>
+        <div class="form-group" style="min-width:190px;">
+          <label class="form-label">اتجاه الصفحة</label>
+          <div class="orient-toggle" id="taRepOrientToggle">
+            <button type="button" class="orient-btn active" data-val="landscape" onclick="setTaRepOrientation('landscape')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+              أفقي
+            </button>
+            <button type="button" class="orient-btn" data-val="portrait" onclick="setTaRepOrientation('portrait')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+              عمودي
+            </button>
+          </div>
+        </div>
+        <div class="form-group" style="flex:0;">
+          <label class="form-label" style="opacity:0;">.</label>
+          <button class="btn-save" style="flex:none;padding:11px 16px;white-space:nowrap;" onclick="refreshTaReportPreview()">🔄 تحديث المعاينة</button>
+        </div>
+      </div>
+      <div class="pdf-preview-wrap">
+        <div class="pdf-preview-loading" id="taRepPreviewLoading">جارٍ تحضير المعاينة...</div>
+        <iframe id="taRepPreviewFrame" style="display:none;"></iframe>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="pdf-dl-btn" id="taRepDownloadBtn" onclick="downloadTaReportPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تنزيل PDF
+      </button>
+      <button class="pdf-dl-btn" style="background:linear-gradient(135deg,#1e7e45,#27ae60);" onclick="downloadTaReportExcel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        تنزيل إكسل
+      </button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-teacher-att-report')">إغلاق</button>
     </div>
   </div>
 </div>
@@ -1153,7 +1274,7 @@ function startListening(){
     },e=>console.log('examResults full err',e));
   }
   unsubUsers=db.collection('users').onSnapshot(snap=>{
-    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[]}));
+    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[],teacherAttendance:{}}));
     allUsers=users;
     unsubData.forEach(u=>u()); unsubData=[];
     users.filter(u=>u.status==='approved'&&u.role==='teacher').forEach(user=>{
@@ -1165,6 +1286,7 @@ function startListening(){
           allUsers[idx].sessions=d.sessions||[];
           allUsers[idx].attendance=d.attendance||{};
           allUsers[idx].deletionRequests=d.deletionRequests||[];
+          allUsers[idx].teacherAttendance=d.teacherAttendance||{};
         }
         renderEverything();
       },e=>console.log('userdata err',e));
@@ -1182,6 +1304,7 @@ function renderEverything(){
   renderTeacherFilterOptions();
   renderIndividualSelect();
   renderStats();
+  renderTeacherAttendance();
 }
 
 function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role==='teacher'); }
@@ -1201,6 +1324,275 @@ function getPendingDeleteRequests(){
     (t.deletionRequests||[]).filter(r=>r.status==='pending').forEach(r=>rows.push({...r,teacherId:t.id,teacherName:t.name}));
   });
   return rows.sort((a,b)=>new Date(b.requestedAt)-new Date(a.requestedAt));
+}
+
+// ════════════════════════════════════════
+//  TEACHER ATTENDANCE — حضور وغياب المحفظين أنفسهم
+// ════════════════════════════════════════
+const TA_LABELS={present:'حاضر',late:'متأخر',absent:'غائب',excused:'مستأذن'};
+
+function setTaDateOffset(n){
+  const el=document.getElementById('taDate');
+  const d=new Date(el.value||todayISO());
+  d.setDate(d.getDate()+n);
+  el.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  renderTeacherAttendance();
+}
+
+function renderTeacherAttendance(){
+  const dateEl=document.getElementById('taDate');
+  if(!dateEl) return; // الصفحة غير مُحمّلة بعد
+  if(!dateEl.value) dateEl.value=todayISO();
+  const date=dateEl.value;
+  const q=(document.getElementById('taSearchInp').value||'').trim().toLowerCase();
+  let teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  if(q) teachers=teachers.filter(t=>(t.name||'').toLowerCase().includes(q)||(t.circle||'').toLowerCase().includes(q));
+
+  let cP=0,cA=0,cL=0,cE=0;
+  getTeachers().forEach(t=>{
+    const st=(t.teacherAttendance||{})[date];
+    if(st==='present')cP++; else if(st==='absent')cA++; else if(st==='late')cL++; else if(st==='excused')cE++;
+  });
+  document.getElementById('taStatPresent').textContent=cP;
+  document.getElementById('taStatAbsent').textContent=cA;
+  document.getElementById('taStatLate').textContent=cL;
+  document.getElementById('taStatExcused').textContent=cE;
+
+  const el=document.getElementById('teacherAttList');
+  if(!teachers.length){ el.innerHTML='<div class="empty-note" style="padding:30px;text-align:center;color:#999;">لا يوجد محفّظون مطابقون</div>'; return; }
+
+  el.innerHTML=teachers.map(t=>{
+    const cur=(t.teacherAttendance||{})[date];
+    return `
+    <div class="tatt-card">
+      <div class="tatt-info">
+        <div class="tatt-avatar">${ini(t.name)}</div>
+        <div>
+          <div class="tatt-name">${t.name||'—'}</div>
+          <div class="tatt-sub">${t.circle||'حلقة القرآن'} ${t.phone?'· '+t.phone:''}</div>
+        </div>
+      </div>
+      <div class="tatt-btns">
+        <button class="att-btn type-p ${cur==='present'?'sel-p':''}" onclick="setTeacherAttendance('${t.id}','${date}','present')" title="حاضر">✓</button>
+        <button class="att-btn type-l ${cur==='late'?'sel-l':''}" onclick="setTeacherAttendance('${t.id}','${date}','late')" title="متأخر">⏰</button>
+        <button class="att-btn type-a ${cur==='absent'?'sel-a':''}" onclick="setTeacherAttendance('${t.id}','${date}','absent')" title="غائب">✕</button>
+        <button class="att-btn type-e ${cur==='excused'?'sel-e':''}" onclick="setTeacherAttendance('${t.id}','${date}','excused')" title="مستأذن">!</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setTeacherAttendance(teacherId,date,status){
+  const t=allUsers.find(x=>x.id===teacherId);
+  if(!t) return;
+  const att={...(t.teacherAttendance||{})};
+  if(att[date]===status) delete att[date];
+  else att[date]=status;
+  t.teacherAttendance=att; // تحديث فوري في الواجهة قبل وصول التحديث من الخادم
+  db.collection('userdata').doc(teacherId).set({teacherAttendance:att},{merge:true})
+    .catch(e=>toast('⚠️ خطأ: '+e.message));
+  renderTeacherAttendance();
+}
+
+// ── حساب الفترة الزمنية (يوم/أسبوع/شهر) المرجعية للتقرير ──
+function getTaPeriodRange(period,dateStr){
+  const ref=new Date(dateStr);
+  let from,to,label;
+  if(period==='day'){
+    from=new Date(ref); from.setHours(0,0,0,0);
+    to=new Date(ref); to.setHours(23,59,59,999);
+    label='تقريرٌ يوميٌّ — '+from.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  } else if(period==='week'){
+    // الأسبوع يبدأ السبت وينتهي الجمعة
+    const dow=ref.getDay(); // 0=أحد..6=سبت
+    const diffFromSat=(dow+1)%7;
+    from=new Date(ref); from.setDate(ref.getDate()-diffFromSat); from.setHours(0,0,0,0);
+    to=new Date(from); to.setDate(from.getDate()+6); to.setHours(23,59,59,999);
+    label='تقريرٌ أسبوعيٌّ — من '+from.toLocaleDateString('ar-EG')+' إلى '+to.toLocaleDateString('ar-EG');
+  } else {
+    from=new Date(ref.getFullYear(),ref.getMonth(),1);
+    to=new Date(ref.getFullYear(),ref.getMonth()+1,0,23,59,59,999);
+    label='تقريرٌ شهريٌّ — '+from.toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  }
+  return {from,to,label};
+}
+
+function dateRangeArray(from,to){
+  const days=[];
+  const d=new Date(from); d.setHours(0,0,0,0);
+  const end=new Date(to); end.setHours(0,0,0,0);
+  while(d<=end){
+    days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate()+1);
+  }
+  return days;
+}
+
+function openTeacherAttReportModal(){
+  document.getElementById('taRepPeriod').value='month';
+  document.getElementById('taRepDate').value=todayISO();
+  document.getElementById('taRepScope').value='all';
+  document.getElementById('taRepCircleGroup').style.display='none';
+  taRepOrientation='landscape';
+  document.querySelectorAll('#taRepOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val==='landscape'));
+  populateTaRepCircleOptions();
+  om('modal-teacher-att-report');
+  refreshTaReportPreview();
+}
+function onTaRepScopeChange(){
+  document.getElementById('taRepCircleGroup').style.display = document.getElementById('taRepScope').value==='one'?'':'none';
+  refreshTaReportPreview();
+}
+function populateTaRepCircleOptions(){
+  const sel=document.getElementById('taRepCircle');
+  const circles=[...new Set(getTeachers().map(t=>t.circle||'حلقة القرآن'))].sort();
+  sel.innerHTML = circles.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option value="">لا توجد حلقات بعد</option>';
+}
+let taRepOrientation='landscape';
+function setTaRepOrientation(val){
+  taRepOrientation=val;
+  document.querySelectorAll('#taRepOrientToggle .orient-btn').forEach(b=>b.classList.toggle('active', b.dataset.val===val));
+  refreshTaReportPreview();
+}
+
+// ── تجميع بيانات تقرير حضور المحفظين ──
+function computeTaReportData(){
+  const period=document.getElementById('taRepPeriod').value;
+  const dateVal=document.getElementById('taRepDate').value;
+  if(!dateVal){ toast('⚠️ اختر تاريخاً'); return null; }
+  const scope=document.getElementById('taRepScope').value;
+  const circleF=document.getElementById('taRepCircle').value;
+  const {from,to,label}=getTaPeriodRange(period,dateVal);
+  const days=dateRangeArray(from,to);
+
+  let teachers=[...getTeachers()];
+  let circleLabel='جميعُ الحلقاتِ';
+  if(scope==='one'){
+    if(!circleF){ toast('⚠️ اختر الحلقة'); return null; }
+    teachers=teachers.filter(t=>(t.circle||'حلقة القرآن')===circleF);
+    circleLabel=circleF;
+  }
+  teachers=teachers.sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+
+  const rows=teachers.map(t=>{
+    const att=t.teacherAttendance||{};
+    let present=0,late=0,absent=0,excused=0,recorded=0;
+    days.forEach(d=>{
+      const st=att[d];
+      if(st){ recorded++; if(st==='present')present++; else if(st==='late')late++; else if(st==='absent')absent++; else if(st==='excused')excused++; }
+    });
+    const totalDays=days.length;
+    const commitmentPct = recorded ? Math.round(((present+late)/recorded)*100) : 0;
+    return {name:t.name||'—',phone:t.phone||'—',circle:t.circle||'حلقة القرآن',present,late,absent,excused,recorded,totalDays,commitmentPct};
+  });
+
+  return {period,label,circleLabel,from,to,days,rows};
+}
+
+function buildTaReportPage(data,orientation){
+  const now=new Date();
+  const periodLabel={day:'يومي',week:'أسبوعي',month:'شهري'}[data.period];
+  const rows=data.rows.map((r,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
+      <td style="text-align:center;color:#888;font-size:12px;">${i+1}</td>
+      <td><b>${r.name}</b></td>
+      <td style="direction:ltr;text-align:center;font-size:12.5px;">${r.phone}</td>
+      <td style="text-align:center;">${r.circle}</td>
+      <td style="text-align:center;font-weight:800;color:#1b6b4a;">${r.present}</td>
+      <td style="text-align:center;font-weight:800;color:#c0392b;">${r.absent}</td>
+      <td style="text-align:center;font-weight:800;color:#a16207;">${r.late}</td>
+      <td style="text-align:center;font-weight:800;color:#1565c0;">${r.excused}</td>
+      <td style="text-align:center;font-weight:700;">${r.commitmentPct}%</td>
+    </tr>`).join('');
+  const emptyRow=data.rows.length?'':`<tr><td colspan="9" class="empty-note">لا يوجد محفّظونَ مطابقونَ</td></tr>`;
+
+  const totalPresent=data.rows.reduce((s,r)=>s+r.present,0);
+  const totalAbsent=data.rows.reduce((s,r)=>s+r.absent,0);
+  const totalLate=data.rows.reduce((s,r)=>s+r.late,0);
+  const totalExcused=data.rows.reduce((s,r)=>s+r.excused,0);
+
+  const metaHTML=`
+    المشرفُ: <b>${currentSupervisorName}</b><br>
+    نوعُ التقريرِ: <b>${periodLabel}</b><br>
+    عددُ أيامِ الفترةِ: <b>${data.days.length}</b><br>
+    تاريخُ الطباعةِ: <b>${now.toLocaleDateString('ar-EG')}</b>
+  `;
+
+  return wrapReportPage(`
+    ${dataReportHeaderHTML(metaHTML)}
+    <div class="report-title-bar"><span>${data.label}</span><span class="sub">${data.circleLabel}</span></div>
+    <div class="stats">
+      <div class="stat grn"><div class="n">${totalPresent}</div><div class="l">إجماليُّ الحضورِ</div></div>
+      <div class="stat red"><div class="n">${totalAbsent}</div><div class="l">إجماليُّ الغيابِ</div></div>
+      <div class="stat gld"><div class="n">${totalLate}</div><div class="l">إجماليُّ التأخيرِ</div></div>
+      <div class="stat blu"><div class="n">${totalExcused}</div><div class="l">إجماليُّ الاعتذارِ</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>#</th><th>اسمُ المحفّظِ</th><th>رقمُ الجوالِ</th><th>الحلقةُ</th><th>حضورٌ</th><th>غيابٌ</th><th>تأخيرٌ</th><th>اعتذارٌ</th><th>نسبةُ الالتزامِ</th>
+      </tr></thead>
+      <tbody>${rows||emptyRow}</tbody>
+    </table>
+    ${dataReportSignatureHTML()}
+    ${dataReportFooterHTML()}
+  `);
+}
+
+let _taRepHTML='', _taRepData=null;
+function refreshTaReportPreview(){
+  const data=computeTaReportData();
+  if(!data) return;
+  _taRepData=data;
+  _taRepHTML=buildDataReportDocument([buildTaReportPage(data,taRepOrientation)],taRepOrientation);
+  const frame=document.getElementById('taRepPreviewFrame');
+  const loading=document.getElementById('taRepPreviewLoading');
+  loading.style.display='none';
+  frame.style.display='block';
+  frame.srcdoc=_taRepHTML;
+}
+
+async function downloadTaReportPDF(){
+  const data=computeTaReportData();
+  if(!data) return;
+  _taRepData=data;
+  _taRepHTML=buildDataReportDocument([buildTaReportPage(data,taRepOrientation)],taRepOrientation);
+
+  const btn=document.getElementById('taRepDownloadBtn');
+  const originalHTML=btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='جارٍ التحضير...';
+  try{
+    await exportDataReportToPDF(_taRepHTML,'تقرير_حضور_المحفظين',taRepOrientation);
+    toast('✅ تم تنزيل ملف PDF بنجاح');
+  }catch(e){
+    toast('⚠️ خطأ في تحضير التقرير: '+e.message);
+    console.error(e);
+  }
+  btn.disabled=false;
+  btn.innerHTML=originalHTML;
+}
+
+function downloadTaReportExcel(){
+  const data=_taRepData||computeTaReportData();
+  if(!data) return;
+  const periodLabel={day:'يومي',week:'أسبوعي',month:'شهري'}[data.period];
+  const aoa=[
+    ['تقرير حضور المحفظين'],
+    ['نوع التقرير', periodLabel],
+    ['الفترة', data.label],
+    ['الحلقة', data.circleLabel],
+    [],
+    ['#','اسم المحفظ','رقم الجوال','الحلقة','حضور','غياب','تأخير','اعتذار','نسبة الالتزام']
+  ];
+  data.rows.forEach((r,i)=>{
+    aoa.push([i+1,r.name,r.phone,r.circle,r.present,r.absent,r.late,r.excused,r.commitmentPct+'%']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:4},{wch:24},{wch:14},{wch:18},{wch:8},{wch:8},{wch:8},{wch:8},{wch:12}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'حضور المحفظين');
+  XLSX.writeFile(wb,'تقرير_حضور_المحفظين.xlsx');
+  toast('✅ تم تنزيل ملف إكسل بنجاح');
 }
 
 // ════════════════════════════════════════
