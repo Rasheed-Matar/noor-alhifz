@@ -1698,7 +1698,7 @@ function sendTeacherCredentials(uid){
   if(!t.phone){ toast('⚠️ لا يوجد رقم هاتف لهذا المحفظ'); return; }
   if(!t.nationalId){ toast('⚠️ لا يوجد رقم هوية لهذا المحفظ'); return; }
 
-  const appUrl = window.location.origin + '/teacher.html';
+  const appUrl = new URL('teacher.html', window.location.href).href;
   const msg =
 `السلام عليكم ورحمة الله وبركاته 🌿
 
@@ -3511,7 +3511,7 @@ function renderImportedTeachersDoneList(createdTeachers){
 }
 
 function sendImportedTeacherWA(name,nationalId,phone,circle){
-  const appUrl = window.location.origin + '/teacher.html';
+  const appUrl = new URL('teacher.html', window.location.href).href;
   const msg =
 `السلام عليكم ورحمة الله وبركاته 🌿
 
