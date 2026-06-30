@@ -190,13 +190,46 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-att-pill.none{background:var(--crd);color:var(--txm);}
 .eval-att-pts{font-size:10px;color:var(--txm);}
 
-/* صناديق النقر الدائرية للحفظ والمراجعة */
-.eval-tapbox{display:flex;flex-direction:column;align-items:center;justify-content:center;width:50px;height:50px;border-radius:13px;background:var(--go);border:1.5px solid transparent;cursor:pointer;transition:all .15s;user-select:none;flex-shrink:0;}
-.eval-tapbox:hover{border-color:var(--gl);box-shadow:0 2px 8px rgba(15,92,64,.18);}
-.eval-tapbox:active{transform:scale(.93);}
-.eval-tapbox-ico{font-size:11px;line-height:1;margin-bottom:1px;}
+/* صناديق النقر الدائرية للحفظ والمراجعة — تصميم إسلامي دائري بحلقة تقدّم */
+.eval-tapbox{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:56px;height:56px;border-radius:50%;flex-shrink:0;
+  cursor:pointer;user-select:none;
+  background:conic-gradient(var(--ring,var(--gl)) calc(var(--pct,0)*1%), var(--go) 0);
+  transition:transform .18s, filter .18s, box-shadow .18s;
+  isolation:isolate;
+}
+.eval-tapbox::before{
+  /* الحلقة الداخلية البيضاء — تُبقي شكل "دونات" يكشف التقدّم الدائري الخارجي */
+  content:'';position:absolute;inset:5px;border-radius:50%;
+  background:var(--wh);
+  box-shadow:inset 0 1px 4px rgba(10,61,43,.10);
+  z-index:0;
+}
+.eval-tapbox::after{
+  /* زخرفة نجمة ثمانية إسلامية خفيفة جداً في الخلفية لإضفاء طابع ديني دون إزعاج بصري */
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 60%, var(--ring,var(--gl)) 60.5%, transparent 61.2%);
+  opacity:.10;pointer-events:none;z-index:0;
+}
+.eval-tapbox-ico,.eval-tapbox-val,.eval-tapbox-max{position:relative;z-index:1;}
+.eval-tapbox-ico{font-size:13px;line-height:1;margin-bottom:1px;}
 .eval-tapbox-val{font-size:15px;font-weight:800;color:var(--gd);line-height:1;}
-.eval-tapbox-max{font-size:8px;color:var(--txm);margin-top:1px;}
+.eval-tapbox-max{font-size:7px;color:var(--txm);margin-top:1px;letter-spacing:.2px;}
+.eval-tapbox.t-hifz{--ring:var(--gl);}
+.eval-tapbox.t-murajaa{--ring:var(--blu);}
+.eval-tapbox:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(15,92,64,.20);}
+.eval-tapbox:active{transform:scale(.92);}
+/* عند اكتمال النقاط (30/30) — توهّج ذهبي احتفالي بطابع إسلامي */
+.eval-tapbox.full{--ring:var(--gold);}
+.eval-tapbox.full::before{box-shadow:inset 0 0 0 1.5px var(--gld), inset 0 1px 4px rgba(10,61,43,.10);}
+.eval-tapbox.full{animation:tapboxGlow 2.4s ease-in-out infinite;}
+@keyframes tapboxGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,.0);}
+  50%{box-shadow:0 0 0 5px rgba(201,162,39,.14);}
+}
 
 .eval-opened{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex:1 1 130px;justify-content:flex-end;white-space:nowrap;}
 .eval-opened.yes{color:var(--grn);}
@@ -580,7 +613,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
             كل الطلاب
           </div>
-          <input type="text" id="student-search" placeholder="بحث..." oninput="renderStudentsList()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit;width:160px;">
+          <input type="text" id="student-search" placeholder="بحث..." oninput="debouncedRenderStudentsList()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit;width:160px;">
         </div>
         <div class="panel-body" id="students-full-list"></div>
       </div>
@@ -1361,24 +1394,28 @@ function renderEvalTab(){
     return;
   }
 
-  const ranked=active.map(s=>({id:s.id,name:s.name,...computeStudentDailyScore(s.id,date)}))
-    .sort((a,b)=>b.total-a.total);
+  // قائمة العرض بترتيب ثابت دائماً (ترتيب الطلاب الأصلي) — لا تتغير مع كل نقرة تقييم
+  const baseList=active.map(s=>({id:s.id,name:s.name,...computeStudentDailyScore(s.id,date)}));
+  // ترتيب تنافسي منفصل (للميداليات ولأعلى تقييم فقط) لا يؤثر على ترتيب عرض القائمة
+  const rankOrder=[...baseList].sort((a,b)=>b.total-a.total);
+  const rankOf=new Map(rankOrder.map((r,i)=>[r.id,i+1]));
 
-  const avg=Math.round(ranked.reduce((sum,r)=>sum+r.total,0)/ranked.length);
-  const openedCount=ranked.filter(r=>r.opened).length;
-  const pendingCount=ranked.filter(r=>r.hifzScore===0&&r.murajaaScore===0).length;
+  const avg=Math.round(baseList.reduce((sum,r)=>sum+r.total,0)/baseList.length);
+  const openedCount=baseList.filter(r=>r.opened).length;
+  const pendingCount=baseList.filter(r=>r.hifzScore===0&&r.murajaaScore===0).length;
   document.getElementById('ev-avg').textContent=avg;
-  document.getElementById('ev-top').textContent=ranked[0]?ranked[0].name:'—';
-  document.getElementById('ev-opened').textContent=`${openedCount}/${ranked.length}`;
+  document.getElementById('ev-top').textContent=rankOrder[0]?rankOrder[0].name:'—';
+  document.getElementById('ev-opened').textContent=`${openedCount}/${baseList.length}`;
   document.getElementById('ev-pending').textContent=pendingCount;
 
-  el.innerHTML=ranked.map((r,i)=>{
-    const rankCls=i===0?'top1':i===1?'top2':i===2?'top3':'';
+  el.innerHTML=baseList.map(r=>{
+    const rank=rankOf.get(r.id);
+    const rankCls=rank===1?'top1':rank===2?'top2':rank===3?'top3':'';
     const attLbl=ATT_LABEL_MAP[r.attStatus]||'لم يُسجَّل';
     const attCls=r.attStatus||'none';
     const openTime=formatOpenTime(r.openedAt);
     return `<div class="eval-card">
-      <div class="eval-rank ${rankCls}">${i+1}</div>
+      <div class="eval-rank ${rankCls}">${rank}</div>
       <div class="eval-avatar">${ini(r.name)}</div>
       <div class="eval-info">
         <div class="eval-name">${r.name}</div>
@@ -1388,12 +1425,12 @@ function renderEvalTab(){
         </div>
       </div>
 
-      <div class="eval-tapbox" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+      <div class="eval-tapbox t-murajaa${r.murajaaScore>=30?' full':''}" style="--pct:${Math.round(r.murajaaScore/30*100)}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
         <div class="eval-tapbox-ico">🔄</div>
         <div class="eval-tapbox-val">${r.murajaaScore}</div>
         <div class="eval-tapbox-max">/30</div>
       </div>
-      <div class="eval-tapbox" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+      <div class="eval-tapbox t-hifz${r.hifzScore>=30?' full':''}" style="--pct:${Math.round(r.hifzScore/30*100)}" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
         <div class="eval-tapbox-ico">📖</div>
         <div class="eval-tapbox-val">${r.hifzScore}</div>
         <div class="eval-tapbox-max">/30</div>
@@ -1879,6 +1916,13 @@ function sendSessionReport(record){
 // ════════════════════════════════════════
 //  STUDENTS
 // ════════════════════════════════════════
+// تأخير بسيط (debounce) لمنع إعادة رسم القائمة مع كل حرف، وهو ما كان يسبب "قفز" أسماء الطلاب أثناء الكتابة في البحث
+let _searchDebounceTimer=null;
+function debouncedRenderStudentsList(){
+  clearTimeout(_searchDebounceTimer);
+  _searchDebounceTimer=setTimeout(renderStudentsList, 220);
+}
+
 function renderStudentsList(){
   const q=(document.getElementById('student-search').value||'').toLowerCase();
   const list=students.filter(s=>!q||s.name.toLowerCase().includes(q));
@@ -1888,6 +1932,8 @@ function renderStudentsList(){
     return;
   }
   const todayAtt=attendance[TODAY()]||{};
+  // الحفاظ على ترتيب الطلاب الأصلي الثابت دائماً (وليس ترتيب الفلترة) — يمنع "قفز" الأسماء أثناء الكتابة
+  list.sort((a,b)=>students.indexOf(a)-students.indexOf(b));
   el.innerHTML=list.map(s=>{
     const stdSess=sessions.filter(x=>x.studentId===s.id);
     const att=todayAtt[s.id];
@@ -2743,7 +2789,7 @@ function sendActivationWhatsapp(studentId){
 
   const teacherName  = window._teacherName  || document.getElementById('hdr-teacher-name').textContent || 'المحفّظ';
   const teacherCircle= window._teacherCircle || document.getElementById('sb-circle').textContent || 'حلقة القرآن';
-  const appUrl       = window.location.origin + '/student.html';
+  const appUrl       = new URL('student.html', window.location.href).href;
 
   const msg =
 `السلام عليكم ورحمة الله وبركاته 🌿
