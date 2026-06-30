@@ -1463,6 +1463,7 @@ function selectSessStudent(studentId){
   currentSessStudentId=studentId;
   hifzEntries=[]; murajaaEntries=[];
   editingSessionId=null;
+  editingHifzIdx=null; editingMurajaaIdx=null;
   const infoEl=document.getElementById('sess-student-info');
   const formEl=document.getElementById('sess-form-area');
   if(!studentId){
@@ -1520,7 +1521,7 @@ function buildSessForm(){
           <div class="score-pill" data-v="ضعيف" onclick="selectScore(this)"><div class="score-pill-num">D</div><div class="score-pill-lbl">ضعيف</div></div>
         </div>
       </div>
-      <button class="qbtn qbtn-outline" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addHifzEntry()">
+      <button class="qbtn qbtn-outline" id="hifz-add-btn" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addHifzEntry()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         إضافة للحفظ
       </button>
@@ -1544,7 +1545,7 @@ function buildSessForm(){
           <div class="score-pill" data-v="ضعيف" onclick="selectScore(this)"><div class="score-pill-num">D</div><div class="score-pill-lbl">ضعيف</div></div>
         </div>
       </div>
-      <button class="qbtn qbtn-outline" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addMurajaaEntry()">
+      <button class="qbtn qbtn-outline" id="muraj-add-btn" style="width:100%;justify-content:center;margin-bottom:.8rem;" onclick="addMurajaaEntry()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         إضافة للمراجعة
       </button>
@@ -1576,7 +1577,10 @@ function addHifzEntry(){
   const from=parseInt(document.getElementById('hifz-from').value)||1;
   const to=parseInt(document.getElementById('hifz-to').value)||1;
   const scoreEl=document.querySelector('#sess-hifz-pane .score-pill.sel');
-  hifzEntries.push({surah:name,surahNum:num,from,to,score:scoreEl?scoreEl.dataset.v:'جيد'});
+  const entry={surah:name,surahNum:num,from,to,score:scoreEl?scoreEl.dataset.v:'جيد'};
+  if(editingHifzIdx!==null&&hifzEntries[editingHifzIdx]){ hifzEntries[editingHifzIdx]=entry; }
+  else{ hifzEntries.push(entry); }
+  cancelHifzEdit();
   renderHifzEntries();
 }
 function addMurajaaEntry(){
@@ -1585,21 +1589,70 @@ function addMurajaaEntry(){
   const from=parseInt(document.getElementById('muraj-from').value)||1;
   const to=parseInt(document.getElementById('muraj-to').value)||1;
   const scoreEl=document.querySelector('#sess-murajaa-pane .score-pill.sel');
-  murajaaEntries.push({surah:name,surahNum:num,from,to,score:scoreEl?scoreEl.dataset.v:'جيد'});
+  const entry={surah:name,surahNum:num,from,to,score:scoreEl?scoreEl.dataset.v:'جيد'};
+  if(editingMurajaaIdx!==null&&murajaaEntries[editingMurajaaIdx]){ murajaaEntries[editingMurajaaIdx]=entry; }
+  else{ murajaaEntries.push(entry); }
+  cancelMurajaaEdit();
   renderMurajaaEntries();
 }
+
+// تعديل إدخال حفظ موجود — يُحضر بياناته إلى النموذج لتسهيل تغييرها (مثال: من 1-20 إلى 1-30)
+let editingHifzIdx=null, editingMurajaaIdx=null;
+function editHifzEntry(i){
+  const e=hifzEntries[i]; if(!e) return;
+  editingHifzIdx=i;
+  const sel=document.getElementById('hifz-surah');
+  const opt=[...sel.options].find(o=>o.value.split('|')[0]===String(e.surahNum));
+  if(opt) sel.value=opt.value;
+  document.getElementById('hifz-from').value=e.from;
+  document.getElementById('hifz-to').value=e.to;
+  document.querySelectorAll('#sess-hifz-pane .score-pill').forEach(p=>p.classList.toggle('sel',p.dataset.v===e.score));
+  const btn=document.getElementById('hifz-add-btn');
+  if(btn) btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> تحديث هذا الإدخال';
+  renderHifzEntries();
+}
+function cancelHifzEdit(){
+  editingHifzIdx=null;
+  const btn=document.getElementById('hifz-add-btn');
+  if(btn) btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> إضافة للحفظ';
+}
+function editMurajaaEntry(i){
+  const e=murajaaEntries[i]; if(!e) return;
+  editingMurajaaIdx=i;
+  const sel=document.getElementById('muraj-surah');
+  const opt=[...sel.options].find(o=>o.value.split('|')[0]===String(e.surahNum));
+  if(opt) sel.value=opt.value;
+  document.getElementById('muraj-from').value=e.from;
+  document.getElementById('muraj-to').value=e.to;
+  document.querySelectorAll('#sess-murajaa-pane .score-pill').forEach(p=>p.classList.toggle('sel',p.dataset.v===e.score));
+  const btn=document.getElementById('muraj-add-btn');
+  if(btn) btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> تحديث هذا الإدخال';
+  renderMurajaaEntries();
+}
+function cancelMurajaaEdit(){
+  editingMurajaaIdx=null;
+  const btn=document.getElementById('muraj-add-btn');
+  if(btn) btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> إضافة للمراجعة';
+}
+
 function renderHifzEntries(){
   const el=document.getElementById('hifz-entries-list'); if(!el) return;
-  el.innerHTML=hifzEntries.map((e,i)=>`<div class="student-row">
-    <div class="st-info"><div class="st-name">${e.surah} (${e.from}-${e.to})</div><div class="st-meta">${e.score}</div></div>
-    <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="hifzEntries.splice(${i},1);renderHifzEntries();">×</button>
+  el.innerHTML=hifzEntries.map((e,i)=>`<div class="student-row" style="${editingHifzIdx===i?'background:var(--ambb);':''}">
+    <div class="st-info" style="cursor:pointer;" title="اضغط للتعديل" onclick="editHifzEntry(${i})">
+      <div class="st-name">${e.surah} (${e.from}-${e.to}) <span style="font-size:10px;color:var(--gd);font-weight:400;">✏️ اضغط للتعديل</span></div>
+      <div class="st-meta">${e.score}</div>
+    </div>
+    <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="hifzEntries.splice(${i},1);if(editingHifzIdx===${i})cancelHifzEdit();renderHifzEntries();">×</button>
   </div>`).join('');
 }
 function renderMurajaaEntries(){
   const el=document.getElementById('murajaa-entries-list'); if(!el) return;
-  el.innerHTML=murajaaEntries.map((e,i)=>`<div class="student-row">
-    <div class="st-info"><div class="st-name">${e.surah} (${e.from}-${e.to})</div><div class="st-meta">${e.score||''}</div></div>
-    <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="murajaaEntries.splice(${i},1);renderMurajaaEntries();">×</button>
+  el.innerHTML=murajaaEntries.map((e,i)=>`<div class="student-row" style="${editingMurajaaIdx===i?'background:var(--ambb);':''}">
+    <div class="st-info" style="cursor:pointer;" title="اضغط للتعديل" onclick="editMurajaaEntry(${i})">
+      <div class="st-name">${e.surah} (${e.from}-${e.to}) <span style="font-size:10px;color:var(--gd);font-weight:400;">✏️ اضغط للتعديل</span></div>
+      <div class="st-meta">${e.score||''}</div>
+    </div>
+    <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="murajaaEntries.splice(${i},1);if(editingMurajaaIdx===${i})cancelMurajaaEdit();renderMurajaaEntries();">×</button>
   </div>`).join('');
 }
 
