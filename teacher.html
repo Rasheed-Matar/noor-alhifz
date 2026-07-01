@@ -190,45 +190,64 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-att-pill.none{background:var(--crd);color:var(--txm);}
 .eval-att-pts{font-size:10px;color:var(--txm);}
 
-/* صناديق النقر الدائرية للحفظ والمراجعة — تصميم إسلامي دائري بحلقة تقدّم */
+/* صناديق النقر الدائرية للحفظ والمراجعة — تصميم إسلامي دائري بحلقة تقدّم ذهبية/زمردية تحفيزية */
+.eval-tapbox-wrap{position:relative;flex-shrink:0;}
 .eval-tapbox{
   position:relative;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  width:56px;height:56px;border-radius:50%;flex-shrink:0;
+  width:60px;height:60px;border-radius:50%;flex-shrink:0;
   cursor:pointer;user-select:none;
-  background:conic-gradient(var(--ring,var(--gl)) calc(var(--pct,0)*1%), var(--go) 0);
+  background:conic-gradient(from -90deg, var(--ring,var(--gl)) calc(var(--pct,0)*1%), rgba(10,61,43,.08) 0);
+  padding:4px;
+  box-shadow:0 2px 8px rgba(10,61,43,.10);
   transition:transform .18s, filter .18s, box-shadow .18s;
   isolation:isolate;
 }
-.eval-tapbox::before{
-  /* الحلقة الداخلية البيضاء — تُبقي شكل "دونات" يكشف التقدّم الدائري الخارجي */
-  content:'';position:absolute;inset:5px;border-radius:50%;
-  background:var(--wh);
-  box-shadow:inset 0 1px 4px rgba(10,61,43,.10);
-  z-index:0;
+.eval-tapbox-inner{
+  position:relative;z-index:1;
+  width:100%;height:100%;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%, var(--wh) 55%, var(--go) 130%);
+  box-shadow:inset 0 1px 5px rgba(10,61,43,.12), inset 0 0 0 1px rgba(201,162,39,.18);
 }
 .eval-tapbox::after{
-  /* زخرفة نجمة ثمانية إسلامية خفيفة جداً في الخلفية لإضفاء طابع ديني دون إزعاج بصري */
+  /* زخرفة نجمة ثمانية إسلامية خفيفة في الخلفية لإضفاء طابع ديني دون إزعاج بصري */
   content:'';position:absolute;inset:0;border-radius:50%;
   background-image:
-    radial-gradient(circle at 50% 50%, transparent 60%, var(--ring,var(--gl)) 60.5%, transparent 61.2%);
-  opacity:.10;pointer-events:none;z-index:0;
+    radial-gradient(circle at 50% 50%, transparent 62%, var(--ring,var(--gl)) 62.5%, transparent 63.2%);
+  opacity:.12;pointer-events:none;z-index:0;
 }
-.eval-tapbox-ico,.eval-tapbox-val,.eval-tapbox-max{position:relative;z-index:1;}
-.eval-tapbox-ico{font-size:13px;line-height:1;margin-bottom:1px;}
-.eval-tapbox-val{font-size:15px;font-weight:800;color:var(--gd);line-height:1;}
+.eval-tapbox-ico{font-size:14px;line-height:1;margin-bottom:1px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.08));}
+.eval-tapbox-val{font-size:16px;font-weight:800;color:var(--gd);line-height:1;}
 .eval-tapbox-max{font-size:7px;color:var(--txm);margin-top:1px;letter-spacing:.2px;}
 .eval-tapbox.t-hifz{--ring:var(--gl);}
 .eval-tapbox.t-murajaa{--ring:var(--blu);}
-.eval-tapbox:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(15,92,64,.20);}
+.eval-tapbox:hover{transform:scale(1.1);box-shadow:0 5px 16px rgba(15,92,64,.24);}
 .eval-tapbox:active{transform:scale(.92);}
-/* عند اكتمال النقاط (30/30) — توهّج ذهبي احتفالي بطابع إسلامي */
+/* زر التعديل اليدوي الصغير — يظهر في زاوية الصندوق */
+.eval-tapbox-edit{
+  position:absolute;top:-3px;left:-3px;width:20px;height:20px;border-radius:50%;
+  background:var(--wh);border:1.5px solid var(--gd);color:var(--gd);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 1px 4px rgba(10,61,43,.22);z-index:2;transition:all .15s;padding:0;
+}
+.eval-tapbox-edit:hover{background:var(--gd);color:var(--gld);transform:scale(1.12);}
+/* عند اكتمال النقاط (30/30) — توهّج ذهبي احتفالي بطابع إسلامي + نجمة تحفيزية */
 .eval-tapbox.full{--ring:var(--gold);}
-.eval-tapbox.full::before{box-shadow:inset 0 0 0 1.5px var(--gld), inset 0 1px 4px rgba(10,61,43,.10);}
+.eval-tapbox.full .eval-tapbox-inner{background:radial-gradient(circle at 35% 30%, #fffdf5 45%, var(--gold) 160%);}
 .eval-tapbox.full{animation:tapboxGlow 2.4s ease-in-out infinite;}
+.eval-tapbox-star{
+  position:absolute;bottom:-4px;right:-2px;font-size:13px;line-height:1;z-index:2;
+  filter:drop-shadow(0 1px 2px rgba(201,162,39,.6));
+  animation:starTwinkle 1.8s ease-in-out infinite;
+}
+@keyframes starTwinkle{
+  0%,100%{transform:scale(1) rotate(0deg);opacity:1;}
+  50%{transform:scale(1.2) rotate(8deg);opacity:.85;}
+}
 @keyframes tapboxGlow{
-  0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,.0);}
-  50%{box-shadow:0 0 0 5px rgba(201,162,39,.14);}
+  0%,100%{box-shadow:0 2px 8px rgba(10,61,43,.10), 0 0 0 0 rgba(201,162,39,.0);}
+  50%{box-shadow:0 2px 8px rgba(10,61,43,.10), 0 0 0 6px rgba(201,162,39,.16);}
 }
 
 .eval-opened{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex:1 1 130px;justify-content:flex-end;white-space:nowrap;}
@@ -717,6 +736,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <div class="panel-body" style="font-size:12.5px;color:var(--txm);line-height:1.9;">
           🟢 الحضور: حاضر = 30 · متأخر = 15 · عذر = 5 · غائب = 0<br>
           📖🔄 الحفظ والمراجعة اليومية: اضغط على الصندوق فتزيد قيمته 5 نقاط في كل مرة، وإذا تجاوز 30 يعود من جديد للصفر (من 30 لكل منهما)<br>
+          ✎ لضبط القيمة يدوياً بدقة (مثلاً لتعديلها لاحقاً): اضغط على زر القلم الصغير أعلى الصندوق واكتب القيمة مباشرة.<br>
           ⭐ فتح الطالب لصفحته الخاصة اليوم (مرة واحدة تكفي): +10 تلقائياً<br>
           <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط على صندوق "الحفظ" 3 مرات ليصل إلى 15/30.</b>
         </div>
@@ -1087,6 +1107,44 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   </div>
 </div>
 
+<!-- MODAL: MANUAL EVAL SCORE EDIT — ضبط نقاط الحفظ/المراجعة يدوياً -->
+<div class="modal-bg" id="mManualEval">
+  <div class="modal" style="max-width:380px;">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+        ضبط النقاط يدوياً
+      </div>
+      <button class="modal-close" onclick="cm('mManualEval')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:14px;">
+        <div id="me-badge" style="width:52px;height:52px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--go);">📖</div>
+        <div id="me-student-name" style="font-weight:800;font-size:14.5px;color:var(--tx);"></div>
+        <div id="me-field-label" style="font-size:12px;color:var(--txm);margin-top:2px;"></div>
+      </div>
+      <div class="mf">
+        <label>القيمة (من 0 إلى 30)</label>
+        <input type="number" id="me-value" min="0" max="30" step="1" style="text-align:center;font-size:20px;font-weight:800;">
+      </div>
+      <div style="display:flex;gap:8px;margin:2px 0 4px;">
+        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=0">0</button>
+        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=10">10</button>
+        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=20">20</button>
+        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=30">30</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--txl);line-height:1.7;background:var(--bg2,#f1f1f1);padding:7px 10px;border-radius:8px;margin:8px 0 12px;">
+        ℹ️ يمكنك هنا كتابة أي قيمة مباشرة وحفظها، بدلاً من الضغط المتكرر على الصندوق. هذه القيمة قابلة للتعديل في أي وقت لاحقاً بنفس الطريقة.
+      </div>
+      <button class="btn-submit-modal" onclick="saveManualEval()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        حفظ القيمة
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -1126,7 +1184,6 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
-let activatedStudentNids = new Set(); // رقم هويات الطلاب المفعّلين
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 let bulkMode=false, bulkSelectedIds=new Set();
@@ -1264,7 +1321,6 @@ function enterApp(user,data){
   window._teacherName = data.name||'';
   window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
-  loadActivatedNids(user.uid);
   loadStudentOpenStatus(user.uid);
 
   if(data.firstLogin){
@@ -1387,10 +1443,12 @@ function renderDash(){
   document.getElementById('st-absent').textContent=absent;
   document.getElementById('sb-att-pct').innerHTML=(active.length?Math.round(present/active.length*100):0)+'%<span>نسبة الحضور اليوم</span>';
 
-  // sessions this week
+  // جلسات الحلقة هذا الأسبوع — الجلسة الواحدة تضم كل الطلاب في نفس اليوم،
+  // فالعدد الصحيح هو عدد الأيام المختلفة التي عُقدت فيها الحلقة، وليس مجموع تسجيلات الطلاب
   const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   const weekSessions=sessions.filter(s=>new Date(s.createdAt)>=weekAgo);
-  document.getElementById('st-sessions').textContent=weekSessions.length;
+  const weekSessionDays=new Set(weekSessions.map(s=>s.date));
+  document.getElementById('st-sessions').textContent=weekSessionDays.size;
 
   // top students by sessions in last 7 days
   const scoreMap={};
@@ -1459,6 +1517,7 @@ function editSessionRecord(sessionId){
 // ════════════════════════════════════════
 const ATT_SCORE_MAP={present:30,late:15,excused:5,absent:0};
 const ATT_LABEL_MAP={present:'حاضر',late:'متأخر',absent:'غائب',excused:'عذر'};
+let _manualEvalTarget=null; // {studentId, field, studentName}
 
 function computeStudentDailyScore(studentId, date){
   const attStatus=(attendance[date]||{})[studentId];
@@ -1510,6 +1569,47 @@ function cycleEval(studentId, field){
   renderEvalTab();
 }
 
+// فتح نافذة الضبط اليدوي لنقاط الحفظ أو المراجعة — لتصحيح القيمة مستقبلاً دون الحاجة للنقر المتكرر
+function openManualEvalEdit(studentId, field){
+  const s=students.find(x=>x.id===studentId); if(!s) return;
+  const date=evalCurrentDate();
+  const ev=((dailyEval[date]||{})[studentId])||{};
+  const curVal = field==='hifz' ? Math.max(0,Math.min(30,Number(ev.hifzScore)||0)) : Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
+  _manualEvalTarget={studentId, field, studentName:s.name};
+  document.getElementById('me-student-name').textContent=s.name;
+  document.getElementById('me-field-label').textContent = field==='hifz' ? 'نقاط الحفظ اليومي' : 'نقاط المراجعة اليومية';
+  const badge=document.getElementById('me-badge');
+  badge.textContent = field==='hifz' ? '📖' : '🔄';
+  badge.style.background = field==='hifz' ? 'linear-gradient(135deg,var(--gl),var(--gm))' : 'linear-gradient(135deg,#3b82c4,#1e5f91)';
+  badge.style.color='#fff';
+  document.getElementById('me-value').value=curVal;
+  om('mManualEval');
+}
+
+// حفظ القيمة المُدخَلة يدوياً لنقاط الحفظ أو المراجعة
+function saveManualEval(){
+  if(!_manualEvalTarget) return;
+  const {studentId, field}=_manualEvalTarget;
+  const date=evalCurrentDate();
+  let val=Number(document.getElementById('me-value').value);
+  if(isNaN(val)) val=0;
+  val=Math.max(0,Math.min(30,Math.round(val)));
+
+  if(!dailyEval[date]) dailyEval[date]={};
+  if(!dailyEval[date][studentId]) dailyEval[date][studentId]={hifzScore:0,murajaaScore:0};
+  const key = field==='hifz' ? 'hifzScore' : 'murajaaScore';
+  dailyEval[date][studentId][key]=val;
+
+  userDocRef.set({
+    dailyEval: { [date]: { [studentId]: { [key]: val } } }
+  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+
+  cm('mManualEval');
+  _manualEvalTarget=null;
+  renderEvalTab();
+  toast('✅ تم حفظ القيمة بنجاح');
+}
+
 function renderEvalTab(){
   const date=evalCurrentDate();
 
@@ -1555,15 +1655,31 @@ function renderEvalTab(){
         </div>
       </div>
 
-      <div class="eval-tapbox t-murajaa${r.murajaaScore>=30?' full':''}" style="--pct:${Math.round(r.murajaaScore/30*100)}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
-        <div class="eval-tapbox-ico">🔄</div>
-        <div class="eval-tapbox-val">${r.murajaaScore}</div>
-        <div class="eval-tapbox-max">/30</div>
+      <div class="eval-tapbox-wrap">
+        <div class="eval-tapbox t-murajaa${r.murajaaScore>=30?' full':''}" style="--pct:${Math.round(r.murajaaScore/30*100)}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+          <div class="eval-tapbox-inner">
+            <div class="eval-tapbox-ico">🔄</div>
+            <div class="eval-tapbox-val">${r.murajaaScore}</div>
+            <div class="eval-tapbox-max">/30</div>
+          </div>
+          ${r.murajaaScore>=30?'<div class="eval-tapbox-star">⭐</div>':''}
+        </div>
+        <button class="eval-tapbox-edit" onclick="event.stopPropagation();openManualEvalEdit('${r.id}','murajaa')" title="ضبط القيمة يدوياً">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
       </div>
-      <div class="eval-tapbox t-hifz${r.hifzScore>=30?' full':''}" style="--pct:${Math.round(r.hifzScore/30*100)}" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
-        <div class="eval-tapbox-ico">📖</div>
-        <div class="eval-tapbox-val">${r.hifzScore}</div>
-        <div class="eval-tapbox-max">/30</div>
+      <div class="eval-tapbox-wrap">
+        <div class="eval-tapbox t-hifz${r.hifzScore>=30?' full':''}" style="--pct:${Math.round(r.hifzScore/30*100)}" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+          <div class="eval-tapbox-inner">
+            <div class="eval-tapbox-ico">📖</div>
+            <div class="eval-tapbox-val">${r.hifzScore}</div>
+            <div class="eval-tapbox-max">/30</div>
+          </div>
+          ${r.hifzScore>=30?'<div class="eval-tapbox-star">⭐</div>':''}
+        </div>
+        <button class="eval-tapbox-edit" onclick="event.stopPropagation();openManualEvalEdit('${r.id}','hifz')" title="ضبط القيمة يدوياً">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
       </div>
 
       <div class="eval-opened ${r.opened?'yes':'no'}">
@@ -2294,9 +2410,6 @@ function renderStudentsList(){
       ${s.parentPhone?`<button class="att-wa-btn" onclick='event.stopPropagation();sendQuickReport("${s.id}")' title="إرسال تقرير اليوم عبر واتساب">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
       </button>`:''}
-      ${s.parentPhone ? (()=>{ const _act=s.nationalId&&activatedStudentNids.has((s.nationalId||'').trim()); return `<button class="att-wa-btn" onclick='event.stopPropagation();sendActivationWhatsapp("${s.id}")' title="${_act?'إرسال رسالة تفعيل الحساب':'الحساب غير مفعّل بعد'}" style="opacity:${_act?'1':'0.25'};cursor:${_act?'pointer':'not-allowed'};${_act?'':'pointer-events:none;'}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6b4a" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.87 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012.78 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.16 6.16l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/><path d="M14.05 3a9 9 0 018 7.94M14.05 7A5 5 0 0119 12"/></svg>
-      </button>`; })() : ''}
       <span class="month-badge ${s.pendingDeletion?'badge-warn':s.archived?'badge-bad':'badge-ok'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span>
     </div>`;
   }).join('');
@@ -2371,11 +2484,6 @@ function openStudentDetail(studentId){
     <div style="font-size:12px;background:var(--bg2,#f1f1f1);color:var(--txm);padding:8px 10px;border-radius:8px;margin:6px 0 10px;line-height:1.6;">
       ℹ️ تعديل بيانات الطالب أصبح متاحاً فقط من صفحة المشرف.
     </div>
-    ${s.parentPhone && s.nationalId ? `
-    <button class="btn-submit-modal" onclick="sendActivationWhatsapp('${s.id}')" style="background:linear-gradient(135deg,#075e54,#25d366);margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
-      إرسال رسالة تفعيل الحساب لولي الأمر
-    </button>` : ''}
     <div class="modal-divider"></div>
     ${s.pendingDeletion?`
     <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:10px;line-height:1.6;">
@@ -2901,6 +3009,21 @@ function reportFooter(){
   return `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e0e8e4;font-size:11px;color:#9ab0a6;text-align:center;">تم إنشاء هذا التقرير تلقائياً</div></div>`;
 }
 
+// دمج إدخالات الحفظ/المراجعة المتصلة لنفس السورة ضمن مدى التقرير — إن استمر الطالب في نفس السورة
+// تُجمع كل الإدخالات في مدى واحد (من أقل بداية إلى أكبر نهاية)، وعند فتح سورة جديدة تُضاف كسجل مستقل
+function mergeProgressEntries(sessionsList, field){
+  const sorted=[...sessionsList].sort((a,b)=> new Date(a.createdAt||a.date) - new Date(b.createdAt||b.date));
+  const order=[]; const map={};
+  sorted.forEach(sess=>{
+    (sess[field]||[]).forEach(e=>{
+      const key=(e.surahNum!=null?e.surahNum:e.surah)+'';
+      if(!map[key]){ map[key]={surah:e.surah, from:e.from, to:e.to}; order.push(key); }
+      else { map[key].from=Math.min(map[key].from,e.from); map[key].to=Math.max(map[key].to,e.to); }
+    });
+  });
+  return order.map(k=>map[k]);
+}
+
 function buildUnifiedTable(studentsList,from,to,content){
   const dates=getRangeDates(from,to);
   const showProgress=(content==='progress'||content==='both');
@@ -2913,7 +3036,11 @@ function buildUnifiedTable(studentsList,from,to,content){
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">المراجعة</th>`;
   }
   if(showAttendance){
-    cols+=`<th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الحضور</th>`;
+    cols+=`<th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الحضور</th>
+      <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الغياب</th>
+      <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">التأخير</th>
+      <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الاعتذار</th>
+      <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">نسبة الحضور</th>`;
   }
 
   let html=`<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:14px;">
@@ -2927,26 +3054,31 @@ function buildUnifiedTable(studentsList,from,to,content){
 
     if(showProgress){
       const stdSess=sessions.filter(x=>x.studentId===s.id&&new Date(x.createdAt)>=from&&new Date(x.createdAt)<=to);
-      const hifzList=stdSess.flatMap(x=>x.hifz||[]).map(h=>`${h.surah} (${h.from}-${h.to})${h.score?` — ${h.score}`:''}`);
-      const murajaaList=stdSess.flatMap(x=>x.murajaa||[]).map(m=>`${m.surah} (${m.from}-${m.to})${m.score?` — ${m.score}`:''}`);
+      const hifzMerged=mergeProgressEntries(stdSess,'hifz');
+      const murajaaMerged=mergeProgressEntries(stdSess,'murajaa');
+      const hifzList=hifzMerged.map(h=>`${h.surah} من ${h.from} إلى ${h.to}`);
+      const murajaaList=murajaaMerged.map(m=>`${m.surah} من ${m.from} إلى ${m.to}`);
       row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${hifzList.length?hifzList.join('، '):'—'}</td>
         <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${murajaaList.length?murajaaList.join('، '):'—'}</td>`;
     }
 
     if(showAttendance){
-      let presentCount=0,totalCount=0;
-      const attCells=dates.map(d=>{
+      let presentCount=0,absentCount=0,lateCount=0,excusedCount=0,totalCount=0;
+      dates.forEach(d=>{
         const att=(attendance[d]||{})[s.id];
-        if(att){ totalCount++; if(att==='present'||att==='late') presentCount++; }
-        const sym=att==='present'?'✓':att==='late'?'⏰':att==='absent'?'✕':att==='excused'?'!':'—';
-        const color=att==='present'?'#16a34a':att==='late'?'#eab308':att==='absent'?'#e63946':att==='excused'?'#d97706':'#ccc';
-        return `<span style="display:inline-block;width:18px;text-align:center;color:${color};font-weight:700;" title="${d}">${sym}</span>`;
-      }).join('');
+        if(!att) return;
+        totalCount++;
+        if(att==='present') presentCount++;
+        else if(att==='absent') absentCount++;
+        else if(att==='late') lateCount++;
+        else if(att==='excused') excusedCount++;
+      });
       const pct=totalCount?Math.round(presentCount/totalCount*100):0;
-      row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">
-        <div style="margin-bottom:3px;">${attCells}</div>
-        <div style="font-size:10.5px;color:#0a3d2b;font-weight:700;">نسبة الحضور: ${pct}%</div>
-      </td>`;
+      row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#16a34a;font-weight:700;">${presentCount}</td>
+        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#e63946;font-weight:700;">${absentCount}</td>
+        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#b7791f;font-weight:700;">${lateCount}</td>
+        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#d97706;font-weight:700;">${excusedCount}</td>
+        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;font-weight:700;color:#0a3d2b;">${pct}%</td>`;
     }
 
     row+=`</tr>`;
@@ -2955,7 +3087,7 @@ function buildUnifiedTable(studentsList,from,to,content){
 
   html+=`</tbody></table>`;
   if(showAttendance){
-    html+=`<div style="font-size:11px;color:#5a7a6a;margin-bottom:16px;">✓ حاضر &nbsp;&nbsp; ✕ غائب &nbsp;&nbsp; ! مستأذن &nbsp;&nbsp; — لم يُسجَّل &nbsp;&nbsp;|&nbsp;&nbsp; الأيام: ${dates.map(d=>d.slice(5)).join('، ')}</div>`;
+    html+=`<div style="font-size:11px;color:#5a7a6a;margin-bottom:16px;">عدد أيام الحلقة ضمن هذا التقرير: ${dates.length} يوماً (${dates[0]?.slice(5)||''} إلى ${dates[dates.length-1]?.slice(5)||''})</div>`;
   }
   return html;
 }
@@ -3120,68 +3252,6 @@ const _origOnAuthDone=window._afterAuthReady;
 setTimeout(()=>{
   if(currentUser) listenForExamNotifications();
 },3000);
-
-// ════════════════════════════════════════
-//  SEND ACTIVATION WHATSAPP
-// ════════════════════════════════════════
-function sendActivationWhatsapp(studentId){
-  const s = students.find(x=>x.id===studentId);
-  if(!s){ toast('⚠️ لم يُعثر على الطالب','error'); return; }
-  if(!s.parentPhone){ toast('⚠️ لا يوجد رقم هاتف لولي الأمر','error'); return; }
-  if(!s.nationalId){ toast('⚠️ لا يوجد رقم هوية للطالب','error'); return; }
-
-  const teacherName  = window._teacherName  || document.getElementById('hdr-teacher-name').textContent || 'المحفّظ';
-  const teacherCircle= window._teacherCircle || document.getElementById('sb-circle').textContent || 'حلقة القرآن';
-  const appUrl       = new URL('student.html', window.location.href).href;
-
-  const msg =
-`السلام عليكم ورحمة الله وبركاته 🌿
-
-نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* ✅
-
-━━━━━━━━━━━━━━
-📚 *الحلقة:* ${teacherCircle}
-👨‍🏫 *المحفّظ:* ${teacherName}
-━━━━━━━━━━━━━━
-
-🔐 *بيانات الدخول:*
-• اسم المستخدم: *${s.nationalId}*
-• كلمة المرور: *${s.nationalId}*
-  _(يُرجى تغييرها عند أول دخول)_
-
-🔗 *رابط البوابة:*
-${appUrl}
-
-يُمكن للطالب من خلال البوابة متابعة:
-✔️ سجل الحضور والغياب
-✔️ جلسات الحفظ والمراجعة
-✔️ الاختبارات والنتائج
-✔️ ترتيبه في الحلقة
-
-بارك الله في الطالب ووفّقه لحفظ كتاب الله 🤲
-
-مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
-
-  openWhatsApp(s.parentPhone, msg);
-  toast('✅ تم فتح واتساب بالرسالة');
-}
-
-
-// ════════════════════════════════════════
-//  LOAD ACTIVATED NIDS — تحميل الطلاب المفعّلين
-// ════════════════════════════════════════
-function loadActivatedNids(teacherUid){
-  db.collection('users')
-    .where('teacherId','==',teacherUid)
-    .where('role','==','student')
-    .where('status','==','approved')
-    .onSnapshot(snap=>{
-      activatedStudentNids = new Set(
-        snap.docs.map(d=>(d.data().nationalId||'').trim()).filter(Boolean)
-      );
-      renderStudentsList(); // تحديث القائمة فور تغيّر الحالة
-    }, e=>console.warn('activatedNids err',e));
-}
 
 // ════════════════════════════════════════
 //  رصد فتح الطلاب لصفحاتهم (مسار مضمون — يقرأ مباشرة من مستند كل طالب)
