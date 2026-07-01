@@ -575,9 +575,6 @@ select.form-input{cursor:pointer;}
 
       <div class="tatt-toolbar">
         <input type="date" class="form-input" id="taDate" style="max-width:200px;" onchange="renderTeacherAttendance()">
-        <button class="btn-primary" style="flex:none;" onclick="setTaDateOffset(-1)">‹ اليوم السابق</button>
-        <button class="btn-primary" style="flex:none;" onclick="document.getElementById('taDate').value=todayISO();renderTeacherAttendance();">اليوم</button>
-        <button class="btn-primary" style="flex:none;" onclick="setTaDateOffset(1)">اليوم التالي ›</button>
         <input class="search-inp" id="taSearchInp" placeholder="بحث باسم المحفظ..." style="max-width:240px;" oninput="renderTeacherAttendance()">
         <button class="btn-gold" style="flex:none;margin-right:auto;" onclick="openTeacherAttReportModal()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -813,6 +810,10 @@ select.form-input{cursor:pointer;}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تنزيل PDF
       </button>
+      <button class="pdf-dl-btn" style="background:linear-gradient(135deg,#1e7e45,#27ae60);" onclick="downloadExamReportExcel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        تنزيل إكسل
+      </button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-exam-report')">إغلاق</button>
     </div>
   </div>
@@ -881,6 +882,10 @@ select.form-input{cursor:pointer;}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تنزيل PDF
       </button>
+      <button class="pdf-dl-btn" style="background:linear-gradient(135deg,#1e7e45,#27ae60);" onclick="downloadDataReportExcel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        تنزيل إكسل
+      </button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-data-report')">إغلاق</button>
     </div>
   </div>
@@ -945,10 +950,6 @@ select.form-input{cursor:pointer;}
       <button class="pdf-dl-btn" id="taRepDownloadBtn" onclick="downloadTaReportPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         تنزيل PDF
-      </button>
-      <button class="pdf-dl-btn" style="background:linear-gradient(135deg,#1e7e45,#27ae60);" onclick="downloadTaReportExcel()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        تنزيل إكسل
       </button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-teacher-att-report')">إغلاق</button>
     </div>
@@ -3413,6 +3414,267 @@ async function downloadDataReport(){
 
   btn.disabled=false;
   btn.innerHTML=originalHTML;
+}
+
+// ════════════════════════════════════════
+//  EXCEL EXPORT — تقرير نتائج الاختبارات
+// ════════════════════════════════════════
+function downloadExamReportExcel(){
+  const data=getSupervisorReportFiltered();
+  if(!data){return;}
+  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+  if(!results.length){toast('⚠️ لا توجد نتائج في هذه الفترة');return;}
+
+  const now=new Date();
+  const pass=results.filter(r=>r.passed).length;
+  const fail=results.filter(r=>!r.passed).length;
+  const avg=results.length?Math.round(results.reduce((s,r)=>s+r.totalScore,0)/results.length):0;
+  const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
+
+  const xl=buildXlsx({
+    title:'تقرير نتائج الاختبارات',
+    subtitle:label,
+    meta:[
+      ['المشرف',currentSupervisorName,'نوع الاختبار',typeFilterLabel],
+      ['الحلقة',circleFilterLabel,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
+    ],
+    stats:[
+      {lbl:'إجمالي الاختبارات',val:results.length,fg:'1B6B4A',bg:'E8F5ED'},
+      {lbl:'الناجحون',val:pass,fg:'1565C0',bg:'EFF4FF'},
+      {lbl:'لم ينجحوا',val:fail,fg:'C0392B',bg:'FFF5F5'},
+      {lbl:'متوسط العلامات',val:avg+'%',fg:'A07828',bg:'FFF8E7'},
+    ],
+    headers:['#','اسم الطالب','رقم الهوية','تاريخ الميلاد','مكان الميلاد','نوع الاختبار','الجزء','العلامة','المحفّظ','تاريخ الاختبار'],
+    colWidths:[4,24,14,14,14,10,8,9,22,14],
+    rows:results.map((r,i)=>[
+      i+1,r.studentName,r._nid,r._dob,r._pob,
+      typeLabel[r.type]||r.type,
+      'الجزء '+r.juzNum,
+      {v:r.totalScore+'%', clr:r.passed?'1B6B4A':'C0392B', bg:r.passed?'E8F5ED':'FFF5F5'},
+      r.teacherName,
+      new Date(r.examDate).toLocaleDateString('ar-EG')
+    ]),
+    totRow:[{v:'الإجمالي',span:7},'—',pass+' ناجح / '+fail+' راسب','—','متوسط: '+avg+'%'],
+    filename:'تقرير_نتائج_الاختبارات'
+  });
+  XLSX.writeFile(xl,'تقرير_نتائج_الاختبارات.xlsx');
+  toast('✅ تم تنزيل ملف إكسل بنجاح');
+}
+
+// ════════════════════════════════════════
+//  EXCEL EXPORT — تقرير بيانات المحفظين والطلاب
+// ════════════════════════════════════════
+function downloadDataReportExcel(){
+  const type=document.getElementById('dataRepType').value;
+  const now=new Date();
+
+  if(type==='teachers'){
+    const teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+    const totalStudents=teachers.reduce((s,t)=>s+(t.students||[]).length,0);
+    const circles=new Set(teachers.map(t=>t.circle||'حلقة القرآن')).size;
+    const xl=buildXlsx({
+      title:'تقرير بيانات المحفّظين',subtitle:'جميع المحفّظين المسجّلين',
+      meta:[
+        ['المشرف',currentSupervisorName,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
+        ['عدد المحفّظين',teachers.length,'عدد الحلقات',circles],
+      ],
+      stats:[
+        {lbl:'إجمالي المحفّظين',val:teachers.length,fg:'1B6B4A',bg:'E8F5ED'},
+        {lbl:'عدد الحلقات',val:circles,fg:'1565C0',bg:'EFF4FF'},
+        {lbl:'إجمالي الطلاب',val:totalStudents,fg:'A07828',bg:'FFF8E7'},
+        {lbl:'متوسط الطلاب/حلقة',val:circles?Math.round(totalStudents/circles):0,fg:'0F4A33',bg:'F0FBF4'},
+      ],
+      headers:['#','اسم المحفّظ','رقم الهوية','تاريخ الميلاد','مكان الميلاد','الجوال','الحلقة','عدد الطلاب','أفراد الأسرة','تاريخ الانضمام'],
+      colWidths:[4,26,14,14,14,14,22,10,12,14],
+      rows:teachers.map((t,i)=>{
+        const joined=t.createdAt?(t.createdAt.toDate?t.createdAt.toDate():t.createdAt):null;
+        return [i+1,t.name||'—',t.nationalId||'—',fmtDate(t.dob),t.placeOfBirth||'—',t.phone||'—',t.circle||'حلقة القرآن',(t.students||[]).length,t.familyMembersCount??'—',joined?fmtDate(joined):'—'];
+      }),
+      totRow:[{v:'الإجمالي',span:7},{v:totalStudents,clr:'1B6B4A',bg:'E8F5ED'},'—','—'],
+      filename:'تقرير_بيانات_المحفظين'
+    });
+    XLSX.writeFile(xl,'تقرير_بيانات_المحفظين.xlsx');
+    toast('✅ تم تنزيل ملف إكسل للمحفّظين بنجاح');
+    return;
+  }
+
+  // ── بيانات الطلاب ──
+  const statusF=document.getElementById('dataRepStudentStatus').value;
+  const statusLabel={all:'الكل',active:'نشط فقط',archived:'مؤرشف فقط'}[statusF];
+  const data=getStudentsReportData();
+  if(!data){return;}
+
+  // جمع جميع الطلاب مع اسم الحلقة
+  let allStudents=[];
+  data.groups.forEach(g=>{
+    const sts=g.students||[];
+    const filtered=statusF==='active'?sts.filter(s=>!s.archived):statusF==='archived'?sts.filter(s=>s.archived):sts;
+    filtered.forEach(s=>allStudents.push({...s,_circle:g.circleLabel,_teacher:g.teacherNames}));
+  });
+  allStudents.sort((a,b)=>(a._circle||'').localeCompare(b._circle||'','ar')||(a.name||'').localeCompare(b.name||'','ar'));
+
+  const active=allStudents.filter(s=>!s.archived).length;
+  const archived=allStudents.filter(s=>s.archived).length;
+
+  const xl=buildXlsx({
+    title:'تقرير بيانات الطلاب',
+    subtitle:data.circleLabel+' — تصفية الحالة: '+statusLabel,
+    meta:[
+      ['المشرف',currentSupervisorName,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
+      ['النطاق',data.circleLabel,'حالة التصفية',statusLabel],
+    ],
+    stats:[
+      {lbl:'إجمالي المعروضين',val:allStudents.length,fg:'1B6B4A',bg:'E8F5ED'},
+      {lbl:'الطلاب النشطون',val:active,fg:'1565C0',bg:'EFF4FF'},
+      {lbl:'الطلاب المؤرشفون',val:archived,fg:'C0392B',bg:'FFF5F5'},
+      {lbl:'عدد الحلقات',val:data.groups.length,fg:'A07828',bg:'FFF8E7'},
+    ],
+    headers:['#','اسم الطالب','رقم الهوية','تاريخ الميلاد','مكان الميلاد','الجنس','الجزء','جوال ولي الأمر','الحلقة','المحفّظ','الحالة'],
+    colWidths:[4,26,14,14,14,8,8,14,22,22,10],
+    rows:allStudents.map((s,i)=>[
+      i+1,s.name||'—',s.nationalId||'—',fmtDate(s.dob),s.placeOfBirth||'—',
+      s.gender||'—','الجزء '+(s.juz??0),s.parentPhone||'—',s._circle,s._teacher||'—',
+      {v:s.archived?'مؤرشف':'نشط',clr:s.archived?'A07828':'1B6B4A',bg:s.archived?'FFF8E7':'E8F5ED'}
+    ]),
+    totRow:[{v:'الإجمالي',span:9},'—',{v:'نشط: '+active+'  مؤرشف: '+archived,clr:'1B6B4A',bg:'E8F5ED'}],
+    filename:'تقرير_بيانات_الطلاب'
+  });
+  XLSX.writeFile(xl,'تقرير_بيانات_الطلاب.xlsx');
+  toast('✅ تم تنزيل ملف إكسل للطلاب بنجاح');
+}
+
+// ════════════════════════════════════════
+//  مولّد إكسل موحّد — buildXlsx({...})
+// ════════════════════════════════════════
+function buildXlsx({title,subtitle,meta,stats,headers,colWidths,rows,totRow,filename}){
+  const DG='0A3D2B',MG='1B6B4A',GOLD='C9A84C',GDB='A07828',
+        CREAM='FDFAF3',INK='1A1A2E',GRY='F5F0E8',BRDR='D4C89A',
+        ROWALT='F5FBF7',WHITE='FFFFFF';
+
+  const f=(bold,sz,clr,italic)=>({bold:!!bold,sz:sz||11,color:{rgb:clr||INK},name:'Calibri',italic:!!italic});
+  const fl=c=>({patternType:'solid',fgColor:{rgb:c}});
+  const bdr=(s,c)=>({style:s||'thin',color:{rgb:c||BRDR}});
+  const bd=()=>({top:bdr(),bottom:bdr(),left:bdr(),right:bdr()});
+  const bdM=(c)=>({top:bdr('medium',c||MG),bottom:bdr('medium',c||MG),left:bdr('medium',c||MG),right:bdr('medium',c||MG)});
+  const bdT=(c)=>({top:bdr('thick',c||DG),bottom:bdr('thick',c||DG),left:bdr('thick',c||DG),right:bdr('thick',c||DG)});
+  const al=(h,v)=>({horizontal:h||'center',vertical:v||'center',wrapText:true,readingOrder:2});
+  const ce=(v,s)=>({v,s,t:typeof v==='number'?'n':'s'});
+
+  const COLS='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const nc=headers.length;
+  const ws={'!ref':'A1','!merges':[],'!rows':[],'!cols':colWidths.map(w=>({wch:w}))};
+  function mg(r1,c1,r2,c2){ws['!merges'].push({s:{r:r1,c:c1},e:{r:r2,c:c2}});}
+  function fillRow(R,bg,bo){for(let c=0;c<nc;c++){const k=COLS[c]+R;if(!ws[k])ws[k]=ce('',{fill:fl(bg),border:bo||bd()});}}
+
+  let R=1;
+
+  // ── صف 1: بسملة ──
+  ws['!rows'][0]={hpx:26};
+  ws['A1']=ce('بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ',{font:{bold:true,sz:13,color:{rgb:GOLD},name:'Calibri'},fill:fl(DG),alignment:al('center'),border:bdT()});
+  mg(0,0,0,nc-1); fillRow(1,DG,bdT()); R=2;
+
+  // ── صف 2: العنوان الرئيسي ──
+  ws['!rows'][1]={hpx:30};
+  ws['A2']=ce(title,{font:f(true,14,GOLD),fill:fl(DG),alignment:al('center'),border:bdT()});
+  mg(1,0,1,nc-1); fillRow(2,DG,bdT()); R=3;
+
+  // ── صف 3: العنوان الفرعي / اسم المركز ──
+  ws['!rows'][2]={hpx:22};
+  ws['A3']=ce('مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ — '+subtitle,{font:f(true,11,GDB),fill:fl('FDF3DC'),alignment:al('center'),border:bdM(GOLD)});
+  mg(2,0,2,nc-1); fillRow(3,'FDF3DC',bdM(GOLD)); R=4;
+
+  // ── شريط ذهبي ──
+  ws['!rows'][3]={hpx:5};
+  ws['A4']=ce('',{fill:fl(GOLD),border:{}});
+  mg(3,0,3,nc-1); fillRow(4,GOLD,{}); R=5;
+
+  // ── صفوف البيانات الوصفية ──
+  meta.forEach(row=>{
+    ws['!rows'][R-1]={hpx:20};
+    const half=Math.floor(nc/2);
+    ws['A'+R]=ce(row[0],{font:f(true,11,WHITE),fill:fl(MG),alignment:al('right'),border:bd()});
+    ws['B'+R]=ce(row[1],{font:f(false,11,INK),fill:fl(CREAM),alignment:al('right'),border:bd()});
+    mg(R-1,1,R-1,half-1); for(let c=2;c<half;c++) ws[COLS[c]+R]=ce('',{fill:fl(CREAM),border:bd()});
+    ws[COLS[half]+R]=ce(row[2],{font:f(true,11,WHITE),fill:fl(MG),alignment:al('right'),border:bd()});
+    ws[COLS[half+1]+R]=ce(row[3],{font:f(false,11,INK),fill:fl(CREAM),alignment:al('right'),border:bd()});
+    mg(R-1,half+1,R-1,nc-1); for(let c=half+2;c<nc;c++) ws[COLS[c]+R]=ce('',{fill:fl(CREAM),border:bd()});
+    R++;
+  });
+
+  // ── شريط ذهبي ──
+  ws['!rows'][R-1]={hpx:5};
+  ws['A'+R]=ce('',{fill:fl(GOLD),border:{}}); mg(R-1,0,R-1,nc-1); fillRow(R,GOLD,{}); R++;
+
+  // ── بطاقات الإحصاء ──
+  const sw=Math.floor(nc/stats.length);
+  ws['!rows'][R-1]={hpx:20}; ws['!rows'][R]={hpx:40};
+  stats.forEach((st,i)=>{
+    const cs=i*sw, ce2=i===stats.length-1?nc-1:(i+1)*sw-1;
+    const bT={top:bdr('medium',st.fg),bottom:bdr('thin',st.fg),left:bdr('medium',st.fg),right:bdr('medium',st.fg)};
+    const bB={top:bdr('thin',st.fg),bottom:bdr('medium',st.fg),left:bdr('medium',st.fg),right:bdr('medium',st.fg)};
+    ws[COLS[cs]+R]=ce(st.lbl,{font:f(true,10,st.fg),fill:fl(st.bg),alignment:al('center'),border:bT});
+    if(cs<ce2){mg(R-1,cs,R-1,ce2);for(let c=cs+1;c<=ce2;c++) ws[COLS[c]+R]=ce('',{fill:fl(st.bg),border:bT});}
+    ws[COLS[cs]+(R+1)]=ce(st.val,{font:f(true,20,st.fg),fill:fl(st.bg),alignment:al('center'),border:bB});
+    if(cs<ce2){mg(R,cs,R,ce2);for(let c=cs+1;c<=ce2;c++) ws[COLS[c]+(R+1)]=ce('',{fill:fl(st.bg),border:bB});}
+  });
+  R+=2;
+
+  // ── شريط ذهبي ──
+  ws['!rows'][R-1]={hpx:5};
+  ws['A'+R]=ce('',{fill:fl(GOLD),border:{}}); mg(R-1,0,R-1,nc-1); fillRow(R,GOLD,{}); R++;
+
+  // ── رأس الجدول ──
+  ws['!rows'][R-1]={hpx:28};
+  headers.forEach((h,i)=>{
+    ws[COLS[i]+R]=ce(h,{font:f(true,11,GOLD),fill:fl(DG),alignment:al('center'),border:{top:bdr('thick',GOLD),bottom:bdr('medium',GOLD),left:bdr('medium',GOLD),right:bdr('medium',GOLD)}});
+  });
+  R++;
+
+  // ── صفوف البيانات ──
+  rows.forEach((row,ri)=>{
+    ws['!rows'][R-1]={hpx:22};
+    const alt=ri%2===1;
+    row.forEach((v,ci)=>{
+      const isObj=typeof v==='object'&&v!==null&&!Array.isArray(v);
+      const bg=isObj&&v.bg?v.bg:(alt?ROWALT:WHITE);
+      const clr=isObj&&v.clr?v.clr:INK;
+      const val=isObj?v.v:v;
+      const isBold=ci===1||isObj&&v.clr;
+      const bStyle=alt?bdr('thin',MG):bdr();
+      ws[COLS[ci]+R]=ce(val,{font:f(isBold,ci===1?11:11,clr),fill:fl(bg),alignment:ci===1?al('right'):al('center'),border:{top:bStyle,bottom:bStyle,left:bStyle,right:bStyle}});
+    });
+    R++;
+  });
+
+  // ── صف الإجماليات ──
+  ws['!rows'][R-1]={hpx:26};
+  let col=0;
+  totRow.forEach((v,i)=>{
+    const isObj=typeof v==='object'&&v!==null;
+    const val=isObj?v.v:v;
+    const span=isObj&&v.span?v.span:1;
+    const bg=isObj&&v.bg?v.bg:DG;
+    const clr=isObj&&v.clr?v.clr:(bg===DG?GOLD:INK);
+    const tBrd={top:bdr('thick',GOLD),bottom:bdr('thick',GOLD),left:bdr('medium',GOLD),right:bdr('medium',GOLD)};
+    ws[COLS[col]+R]=ce(val,{font:f(true,12,clr),fill:fl(bg),alignment:al('center'),border:tBrd});
+    if(span>1){mg(R-1,col,R-1,col+span-1);for(let c=col+1;c<col+span;c++) ws[COLS[c]+R]=ce('',{fill:fl(bg),border:tBrd});}
+    col+=span;
+  });
+  R++;
+
+  // ── شريط ختامي ──
+  ws['!rows'][R-1]={hpx:5};
+  ws['A'+R]=ce('',{fill:fl(DG),border:{}}); mg(R-1,0,R-1,nc-1); fillRow(R,DG,{}); R++;
+
+  // ── تذييل ──
+  ws['!rows'][R-1]={hpx:20};
+  ws['A'+R]=ce('✦  وَثِيقَةٌ رَسْمِيَّةٌ — مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ  ✦',{font:f(false,10,GDB),fill:fl(GRY),alignment:al('center'),border:bdM(GOLD)});
+  mg(R-1,0,R-1,nc-1); fillRow(R,GRY,bdM(GOLD));
+
+  ws['!ref']=`A1:${COLS[nc-1]}${R}`;
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,title.slice(0,31));
+  return wb;
 }
 
 // يصدّر تقرير البيانات إلى PDF، مع دعم عدّة "صفحات تقرير" مستقلة (.report-page)
