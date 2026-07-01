@@ -482,6 +482,24 @@ let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, j
 const SCATTERED_JUZ=[{num:'30',name:'جزء عم'},{num:'29',name:'جزء تبارك'},{num:'28',name:'جزء قد سمع'},{num:'27',name:'جزء قال فما خطبكم'},{num:'26',name:'جزء حم'},{num:'25',name:'جزء إليه يرد'},{num:'24',name:'جزء فمن أظلم'},{num:'23',name:'جزء ومالي'},{num:'22',name:'جزء ومن يقنت'},{num:'21',name:'جزء اتل ما أوحي'},{num:'20',name:'جزء أمن خلق'},{num:'19',name:'جزء وقال الذين'},{num:'18',name:'جزء قد أفلح'},{num:'17',name:'جزء اقترب'},{num:'16',name:'جزء قال ألم'},{num:'15',name:'جزء سبحان'},{num:'14',name:'جزء ربما'},{num:'13',name:'جزء وما أبرئ'},{num:'12',name:'جزء وما من دابة'},{num:'11',name:'جزء يعتذرون'},{num:'10',name:'جزء واعلموا'},{num:'9',name:'جزء قال الملأ'},{num:'8',name:'جزء ولو أننا'},{num:'7',name:'جزء وإذا سمعوا'},{num:'6',name:'جزء لا يحب الله'},{num:'5',name:'جزء والمحصنات'},{num:'4',name:'جزء لن تنالوا'},{num:'3',name:'جزء تلك الرسل'},{num:'2',name:'جزء سيقول'},{num:'1',name:'جزء الم'}];
 const COMBINED_JUZ=[{num:'30-28',name:'المجادلة - الناس'},{num:'30-26',name:'الأحقاف - الناس'},{num:'25-23',name:'ياسين - الجاثية'},{num:'25-21',name:'العنكبوت - الجاثية'},{num:'30-21',name:'العنكبوت - الناس'},{num:'20-18',name:'المؤمنون - القصص'},{num:'20-16',name:'مريم - القصص'},{num:'15-13',name:'يوسف - الكهف'},{num:'15-11',name:'يونس - الكهف'},{num:'20-11',name:'يونس - القصص'},{num:'10-8',name:'الأعراف - التوبة'},{num:'10-6',name:'المائدة - التوبة'},{num:'5-3',name:'آل عمران - النساء'},{num:'5-1',name:'البقرة - النساء'},{num:'10-1',name:'البقرة - التوبة'}];
 
+// ── حساب "الجزء الحالي" الجديد للطالب بعد اجتياز الاختبار بنجاح ──
+// متفرّق: اختبار الجزء 30 => الجزء الحالي يصبح 29
+// مجتمع: اختبار من (30-28) => الجزء الحالي يصبح 27 (أي: أصغر رقم في المدى - 1)
+function computeNewJuzAfterPass(type, juzNum){
+  if(type==='scattered'){
+    const n=parseInt(juzNum);
+    if(isNaN(n)) return null;
+    return Math.max(0, n-1);
+  }
+  if(type==='combined'){
+    const parts=String(juzNum).split('-').map(x=>parseInt(x));
+    if(parts.length!==2 || parts.some(isNaN)) return null;
+    const lower=Math.min(parts[0],parts[1]);
+    return Math.max(0, lower-1);
+  }
+  return null;
+}
+
 // ════════════════════════════════════════
 //  UTILS
 // ════════════════════════════════════════
@@ -913,14 +931,20 @@ async function syncOfflineQueue(){
   for(const item of queue){
     try{
       await db.collection('examResults').doc(item.resultRecord.id).set(item.resultRecord);
+      const syncFields={};
       if(item.nominationId){
         const td=allTeacherData[item.teacherId]||{};
-        const exams=(td.exams||[]).map(e=>{
+        syncFields.exams=(td.exams||[]).map(e=>{
           if(e.id===item.nominationId)
             return {...e,status:item.resultRecord.passed?'passed':'failed',score:item.resultRecord.totalScore+'%',gradedAt:item.resultRecord.examDate,examinerId:currentUser.uid};
           return e;
         });
-        await db.collection('userdata').doc(item.teacherId).set({exams},{merge:true});
+      }
+      if(item.studentsUpdate){
+        syncFields.students=item.studentsUpdate;
+      }
+      if(Object.keys(syncFields).length){
+        await db.collection('userdata').doc(item.teacherId).set(syncFields,{merge:true});
       }
       await sendNotification(item.resultRecord).catch(()=>{});
       await idbDelete(item.id);
@@ -940,6 +964,24 @@ async function submitExam(){
   const passed=totalScore>=passingGrade;
   const notes=document.getElementById('ebNotes').value.trim();
 
+  // ── حساب تحديث "الجزء الحالي" للطالب عند النجاح ──
+  const td=allTeacherData[pendingExam.teacherId]||(allTeacherData[pendingExam.teacherId]={});
+  td.students = td.students||[];
+  const studentIdx = td.students.findIndex(s=>s.id===pendingExam.studentId);
+  const currentStudent = studentIdx>-1 ? td.students[studentIdx] : null;
+  const juzBefore = currentStudent ? (currentStudent.juz||0) : null;
+  let juzAfter = juzBefore;
+  let juzUpdated = false;
+  if(passed && currentStudent){
+    const computedJuz = computeNewJuzAfterPass(pendingExam.type, pendingExam.juzNum);
+    // لا نُحدّث إلا إذا كان هذا تقدّماً حقيقياً (رقم أصغر) أو أن الجزء الحالي غير محدّد بعد
+    if(computedJuz!==null && (currentStudent.juz===undefined || currentStudent.juz===null || computedJuz<currentStudent.juz)){
+      juzAfter = computedJuz;
+      juzUpdated = true;
+      td.students[studentIdx] = {...currentStudent, juz:computedJuz};
+    }
+  }
+
   const resultRecord={
     id:uid(),
     nominationId:pendingExam.nominationId,
@@ -957,7 +999,10 @@ async function submitExam(){
     examinerId:currentUser.uid,
     examinerName:currentExaminerDoc.name||'المختبر',
     examDate:new Date().toISOString(),
-    passingGradeUsed:passingGrade
+    passingGradeUsed:passingGrade,
+    juzBefore,
+    juzAfter,
+    juzUpdated
   };
 
   // ── تحديث فوري للواجهة (بغض النظر عن الإنترنت) ──
@@ -973,30 +1018,37 @@ async function submitExam(){
           : e
       );
   }
+  // (تحديث الجزء الحالي في td.students تم أعلاه ضمن allTeacherData مباشرةً)
 
   // 3. حدّث الواجهة فوراً
   renderAll();
   closeModal('modal-exam-builder');
   toast(`✅ ${passed?'ناجح 🎉':'لم ينجح'} — العلامة ${totalScore}%`);
+  if(juzUpdated){
+    toast(`📗 تم تحديث الجزء الحالي للطالب إلى: الجزء ${juzAfter}`);
+  }
   showResultDetailFromData(resultRecord);
 
   // ── حفظ في Firestore أو في الطابور إذا لا يوجد إنترنت ──
+  const studentsUpdate = juzUpdated ? td.students : null;
   if(navigator.onLine){
     try{
       await db.collection('examResults').doc(resultRecord.id).set(resultRecord);
-      if(pendingExam.nominationId){
-        const td=allTeacherData[pendingExam.teacherId]||{};
-        await db.collection('userdata').doc(pendingExam.teacherId).set({exams:td.exams||[]},{merge:true});
+      const tdSaveFields={};
+      if(pendingExam.nominationId) tdSaveFields.exams = td.exams||[];
+      if(studentsUpdate) tdSaveFields.students = studentsUpdate;
+      if(Object.keys(tdSaveFields).length){
+        await db.collection('userdata').doc(pendingExam.teacherId).set(tdSaveFields,{merge:true});
       }
       await sendNotification(resultRecord).catch(()=>{});
     }catch(e){
       // فشل الحفظ رغم وجود إنترنت — احفظ للطابور
-      await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId});
+      await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId, studentsUpdate});
       toast('⚠️ تعذّر الحفظ — سيُزامن تلقائياً عند الاتصال','error');
     }
   } else {
     // لا يوجد إنترنت — احفظ للطابور
-    await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId});
+    await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId, studentsUpdate});
     toast('📴 لا يوجد إنترنت — سيُحفظ تلقائياً عند الاتصال','error');
   }
 }
@@ -1063,6 +1115,7 @@ function showResultDetailFromData(r){
       <div>🔬 المختبر: <b>${r.examinerName}</b></div>
       <div>📅 تاريخ الاختبار: <b>${new Date(r.examDate).toLocaleDateString('ar-EG')}</b></div>
       <div>🏆 علامة النجاح المطلوبة: <b>${r.passingGradeUsed}%</b></div>
+      ${r.juzUpdated?`<div>📗 تم تحديث الجزء الحالي للطالب: <b>${r.juzBefore ?? '—'}</b> ← <b>${r.juzAfter}</b></div>`:''}
       ${r.notes?`<div>📝 ملاحظات: <b>${r.notes}</b></div>`:''}
     </div>
   `;
