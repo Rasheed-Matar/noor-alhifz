@@ -2328,9 +2328,20 @@ function offerToastSend(labelHtml,onClick){
 }
 
 function openWhatsApp(phoneRaw,msg){
-  let phone=(phoneRaw||'').replace(/\D/g,'');
-  if(phone.startsWith('0')) phone='972'+phone.slice(1);
-  window.open(`https://api.whatsapp.com/send/?phone=${phone}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
+  let digits=(phoneRaw||'').replace(/\D/g,'');
+  if(!digits){ toast('⚠️ لا يوجد رقم هاتف','error'); return; }
+  // فلسطين لديها مقدمتان دوليتان مستخدمتان فعلياً على واتساب: 972 و970 — نحاول بالمقدمة الأشيع أولاً
+  let local=digits;
+  if(local.startsWith('972')) local=local.slice(3);
+  else if(local.startsWith('970')) local=local.slice(3);
+  else if(local.startsWith('0')) local=local.slice(1);
+  const primary='972'+local, alt='970'+local;
+
+  window.open(`https://api.whatsapp.com/send/?phone=${primary}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
+  // إن لم تُفتح المحادثة فعلياً (الرقم غير مسجَّل على واتساب بهذه المقدمة) — إتاحة محاولة فورية بالمقدمة الأخرى
+  offerToastSend('لم تُفتح محادثة واتساب؟ جرّب المقدمة 970+ بدلاً من 972+',()=>{
+    window.open(`https://api.whatsapp.com/send/?phone=${alt}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
+  });
 }
 
 function offerSendReport(record){
