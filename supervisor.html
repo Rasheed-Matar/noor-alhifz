@@ -2402,8 +2402,68 @@ function openStudentDetailAdmin(teacherId, localId){
       ` : `
       <div class="pw-warn">⚠️ لم يُفعَّل حساب دخول لهذا الطالب بعد، لذا لا يمكن تعيين كلمة مرور حالياً.</div>`}
     </div>
+
+    <div class="edit-card">
+      <div class="edit-card-hd">
+        <div class="edit-card-ic" style="background:#e7f7ee;color:#1a6b4a;">📲</div>
+        <div><div class="edit-card-tt">رسالة تفعيل الحساب</div><div class="edit-card-sub">إرسال بيانات الدخول لولي الأمر عبر واتساب</div></div>
+      </div>
+      ${(authDoc && authDoc.status==='approved' && s.parentPhone && s.nationalId) ? `
+      <button class="btn-save" style="width:100%;background:linear-gradient(135deg,#075e54,#25d366);display:flex;align-items:center;justify-content:center;gap:8px;" onclick="sendActivationWhatsappAdmin('${teacherId}','${localId}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
+        إرسال رسالة تفعيل الحساب لولي الأمر
+      </button>` : `
+      <div class="pw-warn">⚠️ ${!s.parentPhone?'لا يوجد رقم جوال لولي الأمر':!s.nationalId?'لا يوجد رقم هوية للطالب':'لم يُفعَّل حساب دخول الطالب بعد، لذا لا يمكن إرسال رسالة التفعيل.'}</div>`}
+    </div>
   `;
   om('modal-detail');
+}
+
+// ════════════════════════════════════════
+//  SEND ACTIVATION WHATSAPP (ADMIN/SUPERVISOR)
+// ════════════════════════════════════════
+function sendActivationWhatsappAdmin(teacherId, localId){
+  const teacherObj=allUsers.find(x=>x.id===teacherId); if(!teacherObj){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  const s=(teacherObj.students||[]).find(x=>x.id===localId); if(!s){ toast('⚠️ تعذّر العثور على الطالب'); return; }
+  if(!s.parentPhone){ toast('⚠️ لا يوجد رقم هاتف لولي الأمر'); return; }
+  if(!s.nationalId){ toast('⚠️ لا يوجد رقم هوية للطالب'); return; }
+  const authDoc=findStudentAuthDoc(teacherId, localId);
+  if(!authDoc || authDoc.status!=='approved'){ toast('⚠️ الحساب غير مفعّل بعد'); return; }
+
+  const teacherName  = teacherObj.name || 'المحفّظ';
+  const teacherCircle= teacherObj.circle || 'حلقة القرآن';
+  const appUrl       = new URL('student.html', window.location.href).href;
+
+  const msg =
+`السلام عليكم ورحمة الله وبركاته 🌿
+
+نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* ✅
+
+━━━━━━━━━━━━━━
+📚 *الحلقة:* ${teacherCircle}
+👨‍🏫 *المحفّظ:* ${teacherName}
+━━━━━━━━━━━━━━
+
+🔐 *بيانات الدخول:*
+• اسم المستخدم: *${s.nationalId}*
+• كلمة المرور: *${s.nationalId}*
+  _(يُرجى تغييرها عند أول دخول)_
+
+🔗 *رابط البوابة:*
+${appUrl}
+
+يُمكن للطالب من خلال البوابة متابعة:
+✔️ سجل الحضور والغياب
+✔️ جلسات الحفظ والمراجعة
+✔️ الاختبارات والنتائج
+✔️ ترتيبه في الحلقة
+
+بارك الله في الطالب ووفّقه لحفظ كتاب الله 🤲
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+
+  openWA(s.parentPhone, msg);
+  toast('✅ تم فتح واتساب بالرسالة');
 }
 
 function saveStudentEdits(teacherId, localId){
