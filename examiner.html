@@ -974,8 +974,8 @@ async function submitExam(){
   let juzUpdated = false;
   if(passed && currentStudent){
     const computedJuz = computeNewJuzAfterPass(pendingExam.type, pendingExam.juzNum);
-    // لا نُحدّث إلا إذا كان هذا تقدّماً حقيقياً (رقم أصغر) أو أن الجزء الحالي غير محدّد بعد
-    if(computedJuz!==null && (currentStudent.juz===undefined || currentStudent.juz===null || computedJuz<currentStudent.juz)){
+    // أي اختبار ناجح يُحدّث الجزء الحالي مباشرة بالقيمة المحسوبة (بدون شرط مقارنة)
+    if(computedJuz!==null && computedJuz!==currentStudent.juz){
       juzAfter = computedJuz;
       juzUpdated = true;
       td.students[studentIdx] = {...currentStudent, juz:computedJuz};
