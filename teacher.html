@@ -855,6 +855,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             إعداد الرسالة
           </div></div>
           <div class="panel-body">
+            <div style="font-size:11.5px;color:var(--txm);background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:.9rem;">
+              📲 يمكنك إرسال أي رسالة عبر واتساب أو عبر رسالة نصية SMS مباشرة — اختر القناة المناسبة أدناه.
+            </div>
             <div class="mf"><label>نوع الرسالة</label>
               <select id="msg-type" onchange="msgTypeChanged()">
                 <option value="daily">إنجاز اليوم والحضور</option>
@@ -862,6 +865,12 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
                 <option value="examResult">نتيجة اختبار</option>
                 <option value="thanks">شكر وتقدير</option>
                 <option value="broadcast">تعميم / إعلان عام</option>
+              </select>
+            </div>
+            <div class="mf"><label>قناة الإرسال</label>
+              <select id="msg-channel" onchange="renderMessageQueue()">
+                <option value="whatsapp">📱 واتساب</option>
+                <option value="sms">✉️ رسالة نصية SMS</option>
               </select>
             </div>
             <div class="mf"><label>المرسل إليهم</label>
@@ -2317,31 +2326,54 @@ function saveSession(){
 // ════════════════════════════════════════
 //  WHATSAPP — تقرير شامل بعد حفظ الجلسة
 // ════════════════════════════════════════
-function offerToastSend(labelHtml,onClick){
+function offerToastSend(labelHtml,onClick,duration=8000){
   const el=document.createElement('div');
   el.className='toast success';
   el.style.cursor='pointer';
   el.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="#25D366"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg><span>'+labelHtml+'</span>';
   el.onclick=()=>{ onClick(); el.remove(); };
   document.getElementById('toastWrap').appendChild(el);
-  setTimeout(()=>{ if(el.parentNode){ el.style.opacity='0'; setTimeout(()=>el.remove(),400); } },8000);
+  setTimeout(()=>{ if(el.parentNode){ el.style.opacity='0'; setTimeout(()=>el.remove(),400); } },duration);
 }
 
+// فتح واتساب مع دعم مقدمتي فلسطين الدوليتين (972 و970) — عند فتح واتساب يغادر المستخدم الصفحة فعلياً
+// (يُفتح تطبيق واتساب أو تبويب جديد)، لذا لا يكفي تنبيه سريع يختفي أثناء غيابه؛ الحل هو إظهار
+// خيار "جرّب المقدمة الأخرى" فور رجوعه لصفحة التطبيق (visibilitychange) ولمدة كافية ليراه
 function openWhatsApp(phoneRaw,msg){
   let digits=(phoneRaw||'').replace(/\D/g,'');
   if(!digits){ toast('⚠️ لا يوجد رقم هاتف','error'); return; }
-  // فلسطين لديها مقدمتان دوليتان مستخدمتان فعلياً على واتساب: 972 و970 — نحاول بالمقدمة الأشيع أولاً
   let local=digits;
   if(local.startsWith('972')) local=local.slice(3);
   else if(local.startsWith('970')) local=local.slice(3);
   else if(local.startsWith('0')) local=local.slice(1);
-  const primary='972'+local, alt='970'+local;
 
-  window.open(`https://api.whatsapp.com/send/?phone=${primary}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
-  // إن لم تُفتح المحادثة فعلياً (الرقم غير مسجَّل على واتساب بهذه المقدمة) — إتاحة محاولة فورية بالمقدمة الأخرى
-  offerToastSend('لم تُفتح محادثة واتساب؟ جرّب المقدمة 970+ بدلاً من 972+',()=>{
-    window.open(`https://api.whatsapp.com/send/?phone=${alt}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
-  });
+  // إن كنا قد اكتشفنا سابقاً المقدمة الصحيحة لهذا الرقم بالتحديد، نبدأ بها مباشرة
+  let pref=null; try{ pref=localStorage.getItem('waPrefix_'+local); }catch(e){}
+  const primaryCode = pref==='970' ? '970' : '972';
+  const altCode = pref==='970' ? '972' : '970';
+  const primary=primaryCode+local, alt=altCode+local;
+  const openUrl=(num)=>window.open(`https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
+
+  openUrl(primary);
+
+  let offered=false;
+  const offerAlt=()=>{
+    if(offered) return; offered=true;
+    offerToastSend(`لم تُفتح محادثة واتساب على ${primaryCode}+؟ اضغط هنا للمحاولة بمقدمة ${altCode}+`,()=>{
+      openUrl(alt);
+      try{ localStorage.setItem('waPrefix_'+local, altCode); }catch(e){} // نتذكرها لهذا الرقم مستقبلاً
+    },20000);
+  };
+  // يظهر الخيار فور عودة المستخدم من واتساب إلى صفحة التطبيق (أوثق طريقة على الجوال)
+  const onVisible=()=>{
+    if(document.visibilityState==='visible'){
+      offerAlt();
+      document.removeEventListener('visibilitychange',onVisible);
+    }
+  };
+  document.addEventListener('visibilitychange',onVisible);
+  // احتياطياً (لمن لا يغادر التبويب، كواتساب ويب على سطح المكتب) يظهر الخيار أيضاً بعد ثوانٍ قليلة
+  setTimeout(offerAlt,2500);
 }
 
 function offerSendReport(record){
@@ -2888,6 +2920,8 @@ function renderMessageQueue(skippedNoPhone=0,skippedNoData=0){
 
   wrap.innerHTML=messageQueue.map((m,i)=>{
     const preview=m.message.split('\n').filter(Boolean).slice(0,2).join('  ·  ');
+    const channel=document.getElementById('msg-channel')?.value||'whatsapp';
+    const isSms=channel==='sms';
     return `<div class="student-row">
       <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(m.name)}</div>
       <div class="st-info">
@@ -2895,9 +2929,11 @@ function renderMessageQueue(skippedNoPhone=0,skippedNoData=0){
         <div class="st-meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px;">${preview}</div>
       </div>
       ${m.sent?'<span class="month-badge badge-ok">تم الإرسال</span>':''}
-      <button class="att-wa-btn" style="width:auto;padding:0 10px;gap:5px;" onclick="sendQueueItem(${i})" title="إرسال عبر واتساب">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
-        <span style="font-size:12px;color:#16a34a;font-weight:600;">إرسال</span>
+      <button class="att-wa-btn" style="width:auto;padding:0 10px;gap:5px;${isSms?'border-color:#2563eb;':''}" onclick="sendQueueItem(${i})" title="${isSms?'إرسال عبر SMS':'إرسال عبر واتساب'}">
+        ${isSms
+          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.3"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+          : '<svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>'}
+        <span style="font-size:12px;${isSms?'color:#2563eb;':'color:#16a34a;'}font-weight:600;">إرسال</span>
       </button>
     </div>`;
   }).join('');
@@ -2905,9 +2941,25 @@ function renderMessageQueue(skippedNoPhone=0,skippedNoData=0){
 
 function resetMessageQueue(){ messageQueue=[]; renderMessageQueue(); }
 
+// إرسال رسالة SMS — يفتح تطبيق الرسائل النصية على الجهاز مباشرة مع تعبئة الرقم والنص تلقائياً
+function openSms(phoneRaw,msg){
+  let digits=(phoneRaw||'').replace(/\D/g,'');
+  if(!digits){ toast('⚠️ لا يوجد رقم هاتف','error'); return; }
+  let local=digits;
+  if(local.startsWith('972')) local=local.slice(3);
+  else if(local.startsWith('970')) local=local.slice(3);
+  else if(local.startsWith('0')) local=local.slice(1);
+  const num='0'+local;
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const sep=isIOS?'&':'?';
+  window.location.href=`sms:${num}${sep}body=${encodeURIComponent(msg)}`;
+}
+
 function sendQueueItem(i){
   const m=messageQueue[i]; if(!m) return;
-  openWhatsApp(m.phone,m.message);
+  const channel=document.getElementById('msg-channel')?.value||'whatsapp';
+  if(channel==='sms') openSms(m.phone,m.message);
+  else openWhatsApp(m.phone,m.message);
   m.sent=true;
   renderMessageQueue();
 }
@@ -2915,7 +2967,10 @@ function sendQueueItem(i){
 function sendAllQueue(){
   const pending=messageQueue.map((m,i)=>({m,i})).filter(x=>!x.m.sent);
   if(!pending.length){ toast('✅ تم إرسال جميع الرسائل بالفعل'); return; }
-  toast('⏳ يتم فتح نافذة واتساب لكل طالب — سمح بالنوافذ المنبثقة لهذا الموقع إن طُلب منك ذلك');
+  const channel=document.getElementById('msg-channel')?.value||'whatsapp';
+  toast(channel==='sms'
+    ? '⏳ يتم فتح تطبيق الرسائل النصية لكل طالب تباعاً'
+    : '⏳ يتم فتح نافذة واتساب لكل طالب — سمح بالنوافذ المنبثقة لهذا الموقع إن طُلب منك ذلك');
   pending.forEach(({m,i},idx)=>{
     setTimeout(()=>{ sendQueueItem(i); },idx*700);
   });
