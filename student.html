@@ -268,6 +268,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .eval-row-bar .prog-bar-bg{height:7px;}
 .eval-row-score{flex-shrink:0;font-size:12.5px;font-weight:800;color:var(--em);min-width:46px;text-align:left;}
 .eval-bonus .eval-row-ico{background:var(--ambb);}
+.eval-discipline .eval-row-ico{background:rgba(139,92,246,.14);}
 .eval-bonus .eval-row-score{color:var(--gd);}
 .eval-bonus.done .eval-row-score{color:var(--grn);}
 .eval-total-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:12px;border-top:2px solid var(--border);font-size:14px;font-weight:700;color:var(--ink);}
@@ -332,6 +333,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .hw-dash-item{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:linear-gradient(135deg,#fff,var(--cream));}
 .hw-dash-item:last-child{margin-bottom:0;}
 .hw-dash-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.hw-dash-top>span:first-child{font-size:12.5px;font-weight:800;color:var(--em);}
 .hw-dash-date{font-size:11px;color:var(--txl);font-weight:600;}
 .hw-dash-notes{font-size:11.5px;color:var(--ink2);background:var(--go);border-radius:8px;padding:6px 9px;margin-top:7px;line-height:1.6;}
 .hw-dash-bar-wrap{height:7px;border-radius:5px;background:var(--border);overflow:hidden;margin-top:9px;}
@@ -503,7 +505,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
     <div class="card" id="hw-card-wrap" style="display:none;">
       <div class="card-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        <span id="hw-card-title">📔 واجب اليوم</span>
+        <span id="hw-card-title">📔 الواجب البيتي</span>
       </div>
       <div id="hw-card-body"></div>
     </div>
@@ -688,6 +690,16 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="eval-row-score" id="evalMurajaaScore">0/30</div>
       </div>
 
+      <div class="eval-row eval-discipline">
+        <div class="eval-row-ico">🕊️</div>
+        <div class="eval-row-info">
+          <div class="eval-row-lbl">الانضباط داخل الحلقة</div>
+          <div class="eval-row-status" id="evalDisciplineStatus">0%</div>
+        </div>
+        <div class="eval-row-bar"><div class="prog-bar-bg"><div class="prog-bar-fill" id="evalDisciplineBar" style="width:0%;background:linear-gradient(90deg,#9d7cf7,#6d43d6);"></div></div></div>
+        <div class="eval-row-score" id="evalDisciplineScore">0/10</div>
+      </div>
+
       <div class="eval-row eval-bonus" id="evalBonusRow">
         <div class="eval-row-ico">⭐</div>
         <div class="eval-row-info">
@@ -699,7 +711,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       </div>
 
       <div class="eval-total-row">المجموع الكلي <span id="evalTotalRow">0 / 100</span></div>
-      <div class="eval-formula-note">الحضور (٣٠) + الحفظ اليومي (٣٠) + المراجعة اليومية (٣٠) = ٩٠ نقطة، و١٠ نقاط إضافية عند فتح صفحتك للتأكد من متابعة تقييمك يومياً.</div>
+      <div class="eval-formula-note" id="evalFormulaNote">الحضور (٢٠) + الحفظ اليومي (٣٠) + المراجعة اليومية (٣٠) + الانضباط داخل الحلقة (١٠) = ٩٠ نقطة، و١٠ نقاط إضافية عند فتح صفحتك للتأكد من متابعة تقييمك يومياً.</div>
     </div>
 
     <div class="card">
@@ -718,7 +730,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
         <div class="rank-total" id="rank-total"></div>
         <div class="rank-badge-row" id="rank-badge-row"></div>
       </div>
-      <div class="section-lbl" style="text-align:center;">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
+      <div class="section-lbl" style="text-align:center;" id="rankCriteriaLbl">معيار الترتيب: التقييم اليومي الكلي (من 100)</div>
     </div>
 
     <div class="card">
@@ -872,34 +884,44 @@ function arabicMonth(y,m){
 function monthKey(iso){return iso?iso.slice(0,7):'';}
 
 // ════════════════════════════════════════
-//  معادلة التقييم اليومي (حضور + حفظ + مراجعة = 90، + فتح الصفحة = 10)
+//  معادلة التقييم اليومي (حضور + حفظ + مراجعة + انضباط = 90، + فتح الصفحة = 10)
+//  المعايير قابلة للتعديل من المحفّظ (evalConfig) وتُقرأ هنا مباشرة من مستند المحفّظ
 // ════════════════════════════════════════
-const ATT_SCORE_MAP = {present:30, late:15, excused:5, absent:0};
+const DEFAULT_EVAL_CONFIG={attPresent:20, attLate:10, attExcused:5, attAbsent:0, hifzMax:30, murajaaMax:30, disciplineMax:10};
+const OPEN_BONUS=10;
+let evalConfig={...DEFAULT_EVAL_CONFIG};
 const ATT_LABELS = {
   present:{lbl:'حاضر',cls:'p',ico:'✅',dua:'بارك الله في التزامك 🌿'},
   late:{lbl:'متأخر',cls:'l',ico:'⏰',dua:'الحمد لله على حضورك رغم التأخير'},
   absent:{lbl:'غائب',cls:'a',ico:'❌',dua:'نفتقدك، نسأل الله ييسر حضورك القادم 🤍'},
   excused:{lbl:'عذر',cls:'e',ico:'📩',dua:'نسأل الله لك العافية والتيسير'}
 };
+function evalTotalMax(){
+  return evalConfig.attPresent + evalConfig.hifzMax + evalConfig.murajaaMax + evalConfig.disciplineMax + OPEN_BONUS;
+}
 function computeDailyScore(studentId, date){
   const attStatus = (teacherData.attendance[date]||{})[studentId];
-  const attScore = ATT_SCORE_MAP[attStatus] ?? 0;
+  const attMap={present:evalConfig.attPresent, late:evalConfig.attLate, excused:evalConfig.attExcused, absent:evalConfig.attAbsent};
+  const attScore = attMap[attStatus] ?? 0;
   const ev = ((teacherData.dailyEval||{})[date]||{})[studentId] || {};
-  const hifzScore = Math.max(0, Math.min(30, Number(ev.hifzScore)||0));
-  const murajaaScore = Math.max(0, Math.min(30, Number(ev.murajaaScore)||0));
+  const hifzScore = Math.max(0, Math.min(evalConfig.hifzMax, Number(ev.hifzScore)||0));
+  const murajaaScore = Math.max(0, Math.min(evalConfig.murajaaMax, Number(ev.murajaaScore)||0));
+  const disciplineScore = Math.max(0, Math.min(evalConfig.disciplineMax, Number(ev.disciplineScore)||0));
   // المصدر الموثوق لفتح الصفحة: مستند الطالب نفسه (myLastOpenDate) — وليس فقط الكتابة في مستند المحفّظ التي قد تُرفض بصلاحيات Firestore
   const opened = (studentId===myStudentId && myLastOpenDate===date) || !!(((teacherData.pageOpens||{})[date]||{})[studentId]);
-  const bonus = opened ? 10 : 0;
-  const total = Math.min(100, attScore+hifzScore+murajaaScore+bonus);
-  return {attStatus, attScore, hifzScore, murajaaScore, opened, bonus, total};
+  const bonus = opened ? OPEN_BONUS : 0;
+  const total = Math.min(evalTotalMax(), attScore+hifzScore+murajaaScore+disciplineScore+bonus);
+  return {attStatus, attScore, hifzScore, murajaaScore, disciplineScore, opened, bonus, total};
 }
-function scoreLabel(score){
-  if(score>=30) return 'ممتاز ✨';
-  if(score>=25) return 'ممتاز';
-  if(score>=20) return 'جيد جداً';
-  if(score>=15) return 'جيد';
-  if(score>=10) return 'متوسط';
-  if(score>=5)  return 'ضعيف';
+function scoreLabel(score, max){
+  max = max||30;
+  const pct = max>0 ? (score/max) : 0;
+  if(pct>=1)    return 'ممتاز ✨';
+  if(pct>=0.83) return 'ممتاز';
+  if(pct>=0.67) return 'جيد جداً';
+  if(pct>=0.5)  return 'جيد';
+  if(pct>=0.33) return 'متوسط';
+  if(pct>=0.17) return 'ضعيف';
   return 'لم يُسجَّل بعد';
 }
 
@@ -1089,6 +1111,7 @@ function loadTeacherData(){
         pageOpens: d.pageOpens||{},
         homework: d.homework||{}
       };
+      evalConfig = {...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
       myStudentData = teacherData.students.find(s=>s.id===myStudentId)||null;
       renderAll();
     }
@@ -1286,14 +1309,17 @@ function renderDash(){
   // ━━━ تقييم اليوم (الحلقة العلوية) ━━━
   const today = TODAY();
   const sc = computeDailyScore(myStudentId, today);
+  const totalMax = evalTotalMax();
+  const totalPct = totalMax>0 ? Math.round(sc.total/totalMax*100) : 0;
   document.getElementById('dashTodayScore').textContent = sc.total;
-  setRing(sc.total, 'dashRingFg');
+  document.querySelector('#dashRingFg').closest('.today-ring-wrap').querySelector('.today-ring-sub').textContent = `من ${totalMax}`;
+  setRing(totalPct, 'dashRingFg');
 
   const levelEl = document.getElementById('dashTodayLevel');
   let levelTxt, levelCls;
-  if(sc.total>=85){ levelTxt='ممتاز ✨'; levelCls='exc'; }
-  else if(sc.total>=70){ levelTxt='جيد جداً'; levelCls='good'; }
-  else if(sc.total>=50){ levelTxt='جيد'; levelCls='mid'; }
+  if(totalPct>=85){ levelTxt='ممتاز ✨'; levelCls='exc'; }
+  else if(totalPct>=70){ levelTxt='جيد جداً'; levelCls='good'; }
+  else if(totalPct>=50){ levelTxt='جيد'; levelCls='mid'; }
   else { levelTxt='بحاجة لتحسين'; levelCls='low'; }
   levelEl.textContent = levelTxt;
   levelEl.className = 'today-hero-level '+levelCls;
@@ -1391,30 +1417,50 @@ function renderHomeworkCard(){
   wrap.style.display='block';
   rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||'').localeCompare(a.createdAt||''));
 
-  // واجب اليوم أولاً، وإن لم يكن → آخر واجب
-  const todayHw=rows.find(r=>r.date===todayStr);
-  const displayRow=todayHw||rows[0];
-  const isToday=displayRow.date===todayStr;
+  if(titleEl) titleEl.textContent = '📔 الواجب البيتي';
 
-  if(titleEl) titleEl.textContent = isToday ? '📔 واجب اليوم' : `📔 آخر واجب — ${displayRow.dateLabel||displayRow.date}`;
+  const todayHw = rows.find(r=>r.date===todayStr) || null;
+  // آخر واجب سابق (قبل اليوم) — يُعرض تقييمه (نسبة إنجازه) بجانب واجب اليوم الجديد
+  const prevHw = rows.find(r=>r.date!==todayStr) || null;
 
-  const r=displayRow;
-  const hasCompletion=r.completion!==null&&r.completion!==undefined;
-  const pct=hasCompletion?r.completion:0;
-  const barCls=!hasCompletion?'pending':pct>=75?'great':pct>=40?'mid':'low';
-  const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-dash-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
-  const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-dash-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
+  function hwItemHTML(r, dateBadge){
+    const hasCompletion=r.completion!==null&&r.completion!==undefined;
+    const pct=hasCompletion?r.completion:0;
+    const barCls=!hasCompletion?'pending':pct>=75?'great':pct>=40?'mid':'low';
+    const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-dash-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
+    const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-dash-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
+    return `<div class="hw-dash-item">
+      <div class="hw-dash-top">
+        <span>${dateBadge}</span>
+        <span class="hw-dash-date">📅 ${r.dateLabel||r.date}</span>
+      </div>
+      ${(hifzPills||muraPills)?`<div class="hw-dash-pills">${hifzPills}${muraPills}</div>`:''}
+      ${r.notes?`<div class="hw-dash-notes">📝 ${r.notes}</div>`:''}
+      <div class="hw-dash-bar-wrap">
+        <div class="hw-dash-bar ${barCls}" style="width:${hasCompletion?pct:100}%;"></div>
+      </div>
+      <div class="hw-dash-status">
+        ${hasCompletion?`<span class="hw-dash-pct">${pct}%</span> من الواجب تم إنجازه`:'⏳ بانتظار تسجيل المحفّظ لنسبة الإنجاز'}
+      </div>
+    </div>`;
+  }
 
-  body.innerHTML=`<div class="hw-dash-item">
-    ${(hifzPills||muraPills)?`<div class="hw-dash-pills">${hifzPills}${muraPills}</div>`:''}
-    ${r.notes?`<div class="hw-dash-notes">📝 ${r.notes}</div>`:''}
-    <div class="hw-dash-bar-wrap">
-      <div class="hw-dash-bar ${barCls}" style="width:${hasCompletion?pct:100}%;"></div>
-    </div>
-    <div class="hw-dash-status">
-      ${hasCompletion?`<span class="hw-dash-pct">${pct}%</span> من الواجب تم إنجازه`:'⏳ بانتظار تسجيل المحفّظ لنسبة الإنجاز'}
-    </div>
-  </div>`;
+  let html='';
+  // ١) واجب اليوم — إن لم يُعيَّن بعد نعرض تنبيهاً لطيفاً بدل إخفاء البطاقة بالكامل
+  if(todayHw){
+    html += hwItemHTML(todayHw, '📔 واجب اليوم الجديد');
+  } else {
+    html += `<div class="hw-dash-item">
+      <div class="hw-dash-top"><span>📔 واجب اليوم الجديد</span></div>
+      <div class="hw-dash-status">⏳ لم يُسجَّل واجب لهذا اليوم بعد — تابع مع محفّظك</div>
+    </div>`;
+  }
+  // ٢) تقييم الواجب السابق — نسبة إنجاز آخر واجب قبل اليوم (إن وُجد)
+  if(prevHw){
+    html += hwItemHTML(prevHw, '📊 تقييم الواجب السابق');
+  }
+
+  body.innerHTML = html;
 }
 
 const HIFZ_DUAS=['بارك الله في حفظك وثبّتك على كتابه ✨','اللهم اجعل القرآن ربيع قلبك 🌿','زادك الله من فضله علماً وحفظاً'];
@@ -1712,36 +1758,46 @@ function setRing(pct, elId){
 function renderEvalCard(){
   const today = TODAY();
   const sc = computeDailyScore(myStudentId, today);
+  const totalMax = evalTotalMax();
 
   document.getElementById('todayDateLbl').textContent = fmtDate(today);
   document.getElementById('todayTotalScore').textContent = sc.total;
-  setRing(sc.total);
+  document.querySelector('#scr-rank .score-ring-sub').textContent = `من ${totalMax}`;
+  setRing(totalMax>0 ? Math.round(sc.total/totalMax*100) : 0);
 
   // الحضور
   const attInfo = ATT_LABELS[sc.attStatus];
   document.getElementById('evalAttIco').textContent = attInfo?attInfo.ico:'⬜';
   document.getElementById('evalAttStatus').textContent = attInfo?attInfo.lbl:'لم يُسجَّل بعد';
-  document.getElementById('evalAttBar').style.width = Math.round(sc.attScore/30*100)+'%';
-  document.getElementById('evalAttScore').textContent = `${sc.attScore}/30`;
+  document.getElementById('evalAttBar').style.width = (evalConfig.attPresent?Math.round(sc.attScore/evalConfig.attPresent*100):0)+'%';
+  document.getElementById('evalAttScore').textContent = `${sc.attScore}/${evalConfig.attPresent}`;
 
   // الحفظ
-  document.getElementById('evalHifzStatus').textContent = scoreLabel(sc.hifzScore);
-  document.getElementById('evalHifzBar').style.width = Math.round(sc.hifzScore/30*100)+'%';
-  document.getElementById('evalHifzScore').textContent = `${sc.hifzScore}/30`;
+  document.getElementById('evalHifzStatus').textContent = scoreLabel(sc.hifzScore, evalConfig.hifzMax);
+  document.getElementById('evalHifzBar').style.width = (evalConfig.hifzMax?Math.round(sc.hifzScore/evalConfig.hifzMax*100):0)+'%';
+  document.getElementById('evalHifzScore').textContent = `${sc.hifzScore}/${evalConfig.hifzMax}`;
 
   // المراجعة
-  document.getElementById('evalMurajaaStatus').textContent = scoreLabel(sc.murajaaScore);
-  document.getElementById('evalMurajaaBar').style.width = Math.round(sc.murajaaScore/30*100)+'%';
-  document.getElementById('evalMurajaaScore').textContent = `${sc.murajaaScore}/30`;
+  document.getElementById('evalMurajaaStatus').textContent = scoreLabel(sc.murajaaScore, evalConfig.murajaaMax);
+  document.getElementById('evalMurajaaBar').style.width = (evalConfig.murajaaMax?Math.round(sc.murajaaScore/evalConfig.murajaaMax*100):0)+'%';
+  document.getElementById('evalMurajaaScore').textContent = `${sc.murajaaScore}/${evalConfig.murajaaMax}`;
+
+  // الانضباط داخل الحلقة
+  document.getElementById('evalDisciplineStatus').textContent = scoreLabel(sc.disciplineScore, evalConfig.disciplineMax);
+  document.getElementById('evalDisciplineBar').style.width = (evalConfig.disciplineMax?Math.round(sc.disciplineScore/evalConfig.disciplineMax*100):0)+'%';
+  document.getElementById('evalDisciplineScore').textContent = `${sc.disciplineScore}/${evalConfig.disciplineMax}`;
 
   // فتح الصفحة
   const bonusRow=document.getElementById('evalBonusRow');
   bonusRow.classList.toggle('done', sc.opened);
   document.getElementById('evalBonusStatus').textContent = sc.opened ? 'تم فتح الصفحة اليوم ✓' : 'لم تُفتح بعد';
   document.getElementById('evalBonusBar').style.width = (sc.opened?100:0)+'%';
-  document.getElementById('evalBonusScore').textContent = `${sc.bonus}/10`;
+  document.getElementById('evalBonusScore').textContent = `${sc.bonus}/${OPEN_BONUS}`;
 
-  document.getElementById('evalTotalRow').textContent = `${sc.total} / 100`;
+  document.getElementById('evalTotalRow').textContent = `${sc.total} / ${totalMax}`;
+  document.getElementById('evalFormulaNote').textContent = `الحضور (${evalConfig.attPresent}) + الحفظ اليومي (${evalConfig.hifzMax}) + المراجعة اليومية (${evalConfig.murajaaMax}) + الانضباط داخل الحلقة (${evalConfig.disciplineMax}) = ${evalConfig.attPresent+evalConfig.hifzMax+evalConfig.murajaaMax+evalConfig.disciplineMax} نقطة، و${OPEN_BONUS} نقاط إضافية عند فتح صفحتك للتأكد من متابعة تقييمك يومياً.`;
+  const rankLbl=document.getElementById('rankCriteriaLbl');
+  if(rankLbl) rankLbl.textContent = `معيار الترتيب: التقييم اليومي الكلي (من ${totalMax})`;
 }
 
 function renderRank(){
