@@ -51,6 +51,8 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .nav-btn{flex-shrink:0;padding:12px 16px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:500;color:var(--txm);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px;}
 .nav-btn.active{color:var(--em);border-bottom-color:var(--em);font-weight:700;}
 .nav-btn svg{width:16px;height:16px;}
+.nav-btn{position:relative;}
+.nav-badge{position:absolute;top:4px;left:8px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:15px;text-align:center;line-height:1.4;}
 
 /* MAIN */
 .main{padding:16px;max-width:700px;margin:0 auto;}
@@ -391,6 +393,28 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .btn-save-pw{width:100%;padding:14px;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;}
 .btn-save-pw:disabled{opacity:.6;cursor:not-allowed;}
 .pw-hint{font-size:12px;color:var(--txm);background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7;}
+
+/* MESSAGES */
+.msg-recip-tabs{display:flex;gap:8px;margin-bottom:14px;}
+.msg-recip-tab{flex:1;padding:10px 6px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:700;color:var(--txm);cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.msg-recip-tab svg{width:18px;height:18px;}
+.msg-recip-tab.active{border-color:var(--em);background:var(--go);color:var(--em);}
+.msg-textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:14px;outline:none;resize:vertical;min-height:90px;line-height:1.7;transition:border-color .2s;}
+.msg-textarea:focus{border-color:var(--em);}
+.msg-send-btn{width:100%;margin-top:10px;padding:13px;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .2s;}
+.msg-send-btn:disabled{opacity:.55;cursor:not-allowed;}
+.msg-tabhead{display:flex;gap:6px;margin-bottom:10px;}
+.msg-tabhead button{flex:1;padding:8px 4px;border:none;background:var(--cream);border-radius:10px;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:700;color:var(--txm);cursor:pointer;transition:all .2s;position:relative;}
+.msg-tabhead button.active{background:var(--em);color:#fff;}
+.msg-tabhead .mth-badge{position:absolute;top:-5px;left:-2px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;}
+.msg-row{display:flex;align-items:flex-start;gap:10px;padding:12px 4px;border-bottom:1px solid #f0ead8;cursor:pointer;transition:background .15s;}
+.msg-row:last-child{border-bottom:none;}
+.msg-row.unread{background:rgba(230,57,70,.05);border-radius:10px;}
+.msg-row-ico{width:34px;height:34px;border-radius:50%;background:var(--go);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.msg-row-body{flex:1;min-width:0;}
+.msg-row-from{font-size:12.5px;font-weight:700;color:var(--ink);}
+.msg-row-text{font-size:12.5px;color:var(--txm);margin-top:2px;white-space:pre-wrap;line-height:1.6;}
+.msg-row-time{font-size:10.5px;color:var(--txl);flex-shrink:0;white-space:nowrap;margin-top:2px;}
 </style>
 </head>
 <body>
@@ -435,6 +459,11 @@ body.page-exit{animation:pageExit .25s ease forwards;}
   <button class="nav-btn" onclick="sw('rank')" id="nb-rank">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     تقييمي
+  </button>
+  <button class="nav-btn" onclick="sw('messages')" id="nb-messages">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    الرسائل
+    <span class="nav-badge" id="msgNavBadge" style="display:none;">0</span>
   </button>
 </div>
 
@@ -701,6 +730,45 @@ body.page-exit{animation:pageExit .25s ease forwards;}
     </div>
   </div>
 
+  <!-- ══════════════════════════════ MESSAGES ══════════════════════════════ -->
+  <div class="scr" id="scr-messages">
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        إرسال رسالة
+      </div>
+      <div class="msg-recip-tabs" id="msgRecipTabs">
+        <button type="button" class="msg-recip-tab active" data-val="teacher" onclick="setMsgRecipient('teacher')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="msgRecipTeacherLbl">المحفّظ</span>
+        </button>
+        <button type="button" class="msg-recip-tab" data-val="admin" onclick="setMsgRecipient('admin')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>المشرف</span>
+        </button>
+      </div>
+      <textarea class="msg-textarea" id="msgComposeText" placeholder="اكتب رسالتك هنا..." oninput="updateMsgSendBtn()"></textarea>
+      <button class="msg-send-btn" id="msgSendBtn" onclick="sendStudentMessage()" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        إرسال
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="msg-tabhead">
+        <button type="button" class="active" id="msgTabInboxBtn" onclick="setMsgListTab('inbox')">
+          صندوق الوارد
+          <span class="mth-badge" id="msgInboxBadge" style="display:none;">0</span>
+        </button>
+        <button type="button" id="msgTabSentBtn" onclick="setMsgListTab('sent')">الرسائل المرسلة</button>
+      </div>
+      <div id="msgInboxList"><div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">لا توجد رسائل واردة بعد</div></div></div>
+      <div id="msgSentList" style="display:none;"><div class="empty"><div class="empty-ico">📤</div><div class="empty-txt">لم ترسل أي رسائل بعد</div></div></div>
+    </div>
+
+  </div>
+
 </div><!-- /main -->
 
 <!-- CHANGE PASSWORD MODAL -->
@@ -776,6 +844,11 @@ let fsUnsub = null;
 let resultsUnsub = null;
 let pendingFirstLogin = false; // يُعرض بعد إغلاق نافذة الصلاة على النبي ﷺ
 let myLastOpenDate = null;     // آخر تاريخ فتح الطالب لصفحته (من مستنده الخاص — مصدر موثوق)
+let myTeacherName = '';        // اسم المحفّظ الخاص بي (لعرضه في مركز الرسائل)
+let msgRecipient = 'teacher';  // المستلم المختار حالياً في مركز الرسائل: teacher أو admin
+let msgListTab = 'inbox';      // التبويب المعروض حالياً: inbox أو sent
+let unsubMsgInbox = null, incomingStudentMessages = [];
+let unsubMsgSent = null, sentStudentMessages = [];
 
 // ════════════════════════════════════════
 //  HELPERS
@@ -850,6 +923,7 @@ function sw(tab){
   if(tab==='hifz') renderHifz();
   if(tab==='exams') renderExams();
   if(tab==='rank') renderRank();
+  if(tab==='messages') renderMsgLists();
 }
 
 // ════════════════════════════════════════
@@ -895,6 +969,8 @@ function enterApp(user, userData){
 
   loadTeacherData();
   loadExamResults();
+  loadTeacherName();
+  listenStudentMessages();
 
   pendingFirstLogin = !!userData.firstLogin;
   myLastOpenDate = userData.lastOpenDate || null;
@@ -1035,6 +1111,154 @@ function loadExamResults(){
 }
 
 // ════════════════════════════════════════
+//  MESSAGES — مركز الرسائل (إرسال واستقبال بين الطالب والمحفّظ/المشرف)
+// ════════════════════════════════════════
+function loadTeacherName(){
+  if(!myTeacherId) return;
+  db.collection('users').doc(myTeacherId).get().then(doc=>{
+    if(doc.exists){
+      myTeacherName = doc.data().name || '';
+      const lbl=document.getElementById('msgRecipTeacherLbl');
+      if(lbl) lbl.textContent = myTeacherName ? `المحفّظ (${myTeacherName})` : 'المحفّظ';
+    }
+  }).catch(e=>console.warn('loadTeacherName err',e));
+}
+
+function setMsgRecipient(val){
+  msgRecipient = val;
+  document.querySelectorAll('.msg-recip-tab').forEach(b=>b.classList.toggle('active', b.dataset.val===val));
+}
+
+function updateMsgSendBtn(){
+  const txt = document.getElementById('msgComposeText').value.trim();
+  document.getElementById('msgSendBtn').disabled = !txt;
+}
+
+function sendStudentMessage(){
+  const textEl = document.getElementById('msgComposeText');
+  const text = textEl.value.trim();
+  if(!text){ toast('⚠️ اكتب نص الرسالة أولاً'); return; }
+  if(!currentUser||!myTeacherId){ toast('⚠️ تعذّر تحديد الحساب، أعد تحميل الصفحة'); return; }
+
+  const btn = document.getElementById('msgSendBtn');
+  btn.disabled = true;
+
+  const toRole = msgRecipient==='admin' ? 'admin' : 'teacher';
+  const toId = msgRecipient==='admin' ? null : myTeacherId;
+  const fromName = (myStudentData&&myStudentData.name) || document.getElementById('hdrName').textContent || 'طالب';
+
+  db.collection('appMessages').add({
+    fromRole:'student', fromId:currentUser.uid, fromName,
+    toRole, toId,
+    text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    read:false
+  }).then(()=>{
+    textEl.value='';
+    updateMsgSendBtn();
+    toast('✅ تم إرسال الرسالة بنجاح');
+  }).catch(e=>{
+    console.warn('sendStudentMessage err',e);
+    toast('⚠️ تعذّر إرسال الرسالة');
+    btn.disabled=false;
+  });
+}
+
+// الاستماع للرسائل الواردة إلى هذا الطالب تحديداً (من المحفّظ أو المشرف عبر «داخل الموقع»)
+function listenStudentMessages(){
+  if(!currentUser) return;
+  if(unsubMsgInbox) unsubMsgInbox();
+  unsubMsgInbox = db.collection('appMessages')
+    .where('toRole','==','student').where('toId','==',currentUser.uid)
+    .onSnapshot(snap=>{
+      incomingStudentMessages = snap.docs.map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>(b.createdAt?.toMillis?b.createdAt.toMillis():0)-(a.createdAt?.toMillis?a.createdAt.toMillis():0));
+      renderMsgLists();
+    }, e=>console.warn('msgInbox err',e));
+
+  if(unsubMsgSent) unsubMsgSent();
+  unsubMsgSent = db.collection('appMessages')
+    .where('fromId','==',currentUser.uid)
+    .onSnapshot(snap=>{
+      sentStudentMessages = snap.docs.map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>(b.createdAt?.toMillis?b.createdAt.toMillis():0)-(a.createdAt?.toMillis?a.createdAt.toMillis():0));
+      renderMsgLists();
+    }, e=>console.warn('msgSent err',e));
+}
+
+function setMsgListTab(tab){
+  msgListTab = tab;
+  document.getElementById('msgTabInboxBtn').classList.toggle('active', tab==='inbox');
+  document.getElementById('msgTabSentBtn').classList.toggle('active', tab==='sent');
+  document.getElementById('msgInboxList').style.display = tab==='inbox' ? 'block' : 'none';
+  document.getElementById('msgSentList').style.display = tab==='sent' ? 'block' : 'none';
+}
+
+function msgTimeStr(m){
+  return m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString('ar',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}) : '';
+}
+function msgSenderLabel(m){
+  if(m.fromRole==='teacher') return m.fromName||'المحفّظ';
+  if(m.fromRole==='admin') return m.fromName||'المشرف';
+  return m.fromName||'—';
+}
+function msgRecipientLabel(m){
+  if(m.toRole==='teacher') return myTeacherName?`المحفّظ (${myTeacherName})`:'المحفّظ';
+  if(m.toRole==='admin') return 'المشرف';
+  return '—';
+}
+
+function renderMsgLists(){
+  // صندوق الوارد
+  const inboxEl = document.getElementById('msgInboxList');
+  const unreadCount = incomingStudentMessages.filter(m=>!m.read).length;
+  const navBadge = document.getElementById('msgNavBadge');
+  const inboxBadge = document.getElementById('msgInboxBadge');
+  if(navBadge){ if(unreadCount){ navBadge.style.display='inline-block'; navBadge.textContent=unreadCount; } else navBadge.style.display='none'; }
+  if(inboxBadge){ if(unreadCount){ inboxBadge.style.display='inline-block'; inboxBadge.textContent=unreadCount; } else inboxBadge.style.display='none'; }
+
+  if(inboxEl){
+    if(!incomingStudentMessages.length){
+      inboxEl.innerHTML='<div class="empty"><div class="empty-ico">📭</div><div class="empty-txt">لا توجد رسائل واردة بعد</div></div>';
+    } else {
+      inboxEl.innerHTML = incomingStudentMessages.map(m=>`
+        <div class="msg-row ${m.read?'':'unread'}" onclick="markMsgRead('${m.id}')">
+          <div class="msg-row-ico">${m.fromRole==='admin'?'🛡️':'👨‍🏫'}</div>
+          <div class="msg-row-body">
+            <div class="msg-row-from">${msgSenderLabel(m)}</div>
+            <div class="msg-row-text">${(m.text||'').replace(/</g,'&lt;')}</div>
+          </div>
+          <div class="msg-row-time">${msgTimeStr(m)}</div>
+        </div>`).join('');
+    }
+  }
+
+  // الرسائل المرسلة
+  const sentEl = document.getElementById('msgSentList');
+  if(sentEl){
+    if(!sentStudentMessages.length){
+      sentEl.innerHTML='<div class="empty"><div class="empty-ico">📤</div><div class="empty-txt">لم ترسل أي رسائل بعد</div></div>';
+    } else {
+      sentEl.innerHTML = sentStudentMessages.map(m=>`
+        <div class="msg-row">
+          <div class="msg-row-ico">${m.toRole==='admin'?'🛡️':'👨‍🏫'}</div>
+          <div class="msg-row-body">
+            <div class="msg-row-from">إلى: ${msgRecipientLabel(m)}</div>
+            <div class="msg-row-text">${(m.text||'').replace(/</g,'&lt;')}</div>
+          </div>
+          <div class="msg-row-time">${msgTimeStr(m)}</div>
+        </div>`).join('');
+    }
+  }
+}
+
+function markMsgRead(id){
+  const m = incomingStudentMessages.find(x=>x.id===id);
+  if(!m||m.read) return;
+  db.collection('appMessages').doc(id).update({read:true}).catch(e=>console.warn('markMsgRead err',e));
+}
+
+// ════════════════════════════════════════
 //  RENDER ALL
 // ════════════════════════════════════════
 function renderAll(){
@@ -1044,6 +1268,7 @@ function renderAll(){
   if(activeTab==='hifz') renderHifz();
   if(activeTab==='exams') renderExams();
   if(activeTab==='rank') renderRank();
+  if(activeTab==='messages') renderMsgLists();
 }
 
 // ════════════════════════════════════════
