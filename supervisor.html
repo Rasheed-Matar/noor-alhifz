@@ -747,6 +747,7 @@ select.form-input{cursor:pointer;}
           </div>
           <div class="form-group-s"><label class="form-label-s">الاسم</label><input class="form-inp-s" id="setName"></div>
           <div class="form-group-s"><label class="form-label-s">البريد الإلكتروني</label><input class="form-inp-s" id="setEmail" readonly style="background:#f5f0e8;color:#999;"></div>
+          <div class="form-group-s"><label class="form-label-s">رقم الجوال (واتساب / SMS) <span style="color:#7a8a7a;font-weight:400;">— ليتمكّن المحفّظون من مراسلتك</span></label><input class="form-inp-s" id="setPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
           <button class="btn-save" style="width:100%;" onclick="saveAdminSettings()">حفظ التغييرات</button>
         </div>
       </div>
@@ -1277,6 +1278,7 @@ auth.onAuthStateChanged(user=>{
         document.getElementById('navUserName').textContent=d.name||'المشرف';
         document.getElementById('setName').value=d.name||'';
         document.getElementById('setEmail').value=user.email||'';
+        document.getElementById('setPhone').value=d.phone||'';
         const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
         startListening();
         return;
@@ -1293,6 +1295,7 @@ auth.onAuthStateChanged(user=>{
     document.getElementById('navUserName').textContent=d.name||'المشرف';
     document.getElementById('setName').value=d.name||'';
     document.getElementById('setEmail').value=user.email||'';
+    document.getElementById('setPhone').value=d.phone||'';
     const ls2=document.getElementById('loadingScreen'); ls2.classList.add('hide'); setTimeout(()=>ls2.classList.add('gone'),300);
     startListening();
   }).catch(()=>{ window.location.href='login.html'; });
@@ -1301,7 +1304,8 @@ auth.onAuthStateChanged(user=>{
 function saveAdminSettings(){
   const name=document.getElementById('setName').value.trim();
   if(!name){toast('⚠️ أدخل الاسم');return;}
-  db.collection('users').doc(currentUser.uid).update({name}).then(()=>{
+  const phone=document.getElementById('setPhone').value.trim();
+  db.collection('users').doc(currentUser.uid).update({name,phone}).then(()=>{
     currentSupervisorName=name;
     document.getElementById('navAvatar').textContent=ini(name);
     document.getElementById('navUserName').textContent=name;
