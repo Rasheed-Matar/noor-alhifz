@@ -606,12 +606,18 @@ select.form-input{cursor:pointer;}
           <div id="individualSelector" style="display:none;">
             <select class="form-input" id="individualSelect" style="width:100%;"></select>
           </div>
+          <div class="mf" style="margin:0;"><label style="font-size:12px;color:#7a8a7a;margin-bottom:5px;display:block;">قناة الإرسال</label>
+            <select class="form-input" id="msgChannel" style="width:100%;" onchange="updateMsgSendLabel()">
+              <option value="whatsapp">📱 واتساب</option>
+              <option value="sms">✉️ رسالة نصية SMS</option>
+            </select>
+          </div>
           <textarea class="form-input" id="msgBody" rows="5" placeholder="اكتب نص الرسالة هنا..." oninput="updateCharCount()" style="resize:vertical;line-height:1.7;"></textarea>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:11.5px;color:#9a9a8a;" id="charCount">0 حرف</span>
             <button class="btn-primary" onclick="sendBulkMessage()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              إرسال عبر واتساب
+              <span id="msgSendBtnLabel">إرسال عبر واتساب</span>
             </button>
           </div>
         </div>
@@ -2515,26 +2521,46 @@ function quickMsgParent(phone,name){
 function openWA(phone,msg){
   let digits=(phone||'').replace(/\D/g,'');
   if(!digits){toast('⚠️ لا يوجد رقم هاتف');return;}
-  // فلسطين لديها مقدمتان دوليتان مستخدمتان فعلياً على واتساب: 972 و970 — نحاول بالمقدمة الأشيع أولاً
   let local=digits;
   if(local.startsWith('972')) local=local.slice(3);
   else if(local.startsWith('970')) local=local.slice(3);
   else if(local.startsWith('0')) local=local.slice(1);
-  const primary='972'+local, alt='970'+local;
 
-  window.open(`https://wa.me/${primary}?text=${encodeURIComponent(msg)}`,'_blank');
-  // إن لم تُفتح المحادثة فعلياً (الرقم غير مسجَّل على واتساب بهذه المقدمة) — إتاحة محاولة فورية بالمقدمة الأخرى
-  offerToastAction('لم تُفتح محادثة واتساب؟ جرّب المقدمة 970+ بدلاً من 972+',()=>{
-    window.open(`https://wa.me/${alt}?text=${encodeURIComponent(msg)}`,'_blank');
-  });
+  // إن كنا قد اكتشفنا سابقاً المقدمة الصحيحة لهذا الرقم بالتحديد، نبدأ بها مباشرة
+  let pref=null; try{ pref=localStorage.getItem('waPrefix_'+local); }catch(e){}
+  const primaryCode = pref==='970' ? '970' : '972';
+  const altCode = pref==='970' ? '972' : '970';
+  const primary=primaryCode+local, alt=altCode+local;
+  const openUrl=(num)=>window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`,'_blank');
+
+  openUrl(primary);
+
+  let offered=false;
+  const offerAlt=()=>{
+    if(offered) return; offered=true;
+    offerToastAction(`لم تُفتح محادثة واتساب على ${primaryCode}+؟ اضغط هنا للمحاولة بمقدمة ${altCode}+`,()=>{
+      openUrl(alt);
+      try{ localStorage.setItem('waPrefix_'+local, altCode); }catch(e){} // نتذكرها لهذا الرقم مستقبلاً
+    },20000);
+  };
+  // يظهر الخيار فور عودة المستخدم من واتساب إلى صفحة التطبيق (أوثق طريقة على الجوال)
+  const onVisible=()=>{
+    if(document.visibilityState==='visible'){
+      offerAlt();
+      document.removeEventListener('visibilitychange',onVisible);
+    }
+  };
+  document.addEventListener('visibilitychange',onVisible);
+  // احتياطياً (لمن لا يغادر التبويب، كواتساب ويب على سطح المكتب) يظهر الخيار أيضاً بعد ثوانٍ قليلة
+  setTimeout(offerAlt,2500);
 }
-function offerToastAction(msg,onClick){
+function offerToastAction(msg,onClick,duration=8000){
   const wrap=document.getElementById('toastWrap'); if(!wrap) return;
   const el=document.createElement('div');
   el.className='toast'; el.style.cursor='pointer'; el.textContent=msg;
   el.onclick=()=>{ onClick(); el.remove(); };
   wrap.appendChild(el);
-  setTimeout(()=>{ if(el.parentNode){ el.style.opacity='0'; setTimeout(()=>el.remove(),400); } },8000);
+  setTimeout(()=>{ if(el.parentNode){ el.style.opacity='0'; setTimeout(()=>el.remove(),400); } },duration);
 }
 
 // ════════════════════════════════════════
@@ -2570,9 +2596,30 @@ function updateCharCount(){
   document.getElementById('charCount').textContent=document.getElementById('msgBody').value.length+' حرف';
 }
 
+function updateMsgSendLabel(){
+  const ch=document.getElementById('msgChannel')?.value||'whatsapp';
+  const lbl=document.getElementById('msgSendBtnLabel');
+  if(lbl) lbl.textContent = ch==='sms' ? 'إرسال SMS' : 'إرسال عبر واتساب';
+}
+
+// إرسال رسالة SMS — يفتح تطبيق الرسائل النصية على الجهاز مباشرة مع تعبئة الرقم والنص تلقائياً
+function openSms(phone,msg){
+  let digits=(phone||'').replace(/\D/g,'');
+  if(!digits){toast('⚠️ لا يوجد رقم هاتف');return;}
+  let local=digits;
+  if(local.startsWith('972')) local=local.slice(3);
+  else if(local.startsWith('970')) local=local.slice(3);
+  else if(local.startsWith('0')) local=local.slice(1);
+  const num='0'+local;
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const sep=isIOS?'&':'?';
+  window.location.href=`sms:${num}${sep}body=${encodeURIComponent(msg)}`;
+}
+
 function sendBulkMessage(){
   const body=document.getElementById('msgBody').value.trim();
   if(!body){toast('⚠️ يرجى كتابة نص الرسالة أولاً');return;}
+  const channel=document.getElementById('msgChannel')?.value||'whatsapp';
 
   const teachers=getTeachers();
   let recipients=[];
@@ -2594,15 +2641,18 @@ function sendBulkMessage(){
 
   if(!recipients.length){toast('⚠️ لا توجد أرقام هاتف متاحة لهذه المجموعة');return;}
 
-  // wa.me يفتح محادثة واحدة فقط في كل مرة — نفتح أول مستلم، ونعرض الباقي في السجل
-  openWA(recipients[0].phone,body);
+  // نفتح محادثة واحدة فقط في كل مرة (سواء واتساب أو SMS) — ونعرض الباقي في السجل
+  if(channel==='sms') openSms(recipients[0].phone,body);
+  else openWA(recipients[0].phone,body);
 
   const time=new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'});
-  sentMessages.unshift({to:document.getElementById('recipientTitle').textContent,preview:body,time,count:recipients.length});
+  sentMessages.unshift({to:document.getElementById('recipientTitle').textContent,preview:body,time,count:recipients.length,channel});
   renderSentHistory();
   document.getElementById('msgBody').value='';
   updateCharCount();
-  toast(recipients.length>1?`✅ تم فتح واتساب لأول مستلم — كرر العملية للباقي (${recipients.length})`:'✅ تم فتح واتساب');
+  toast(recipients.length>1
+    ? `✅ تم فتح ${channel==='sms'?'الرسائل النصية':'واتساب'} لأول مستلم — كرر العملية للباقي (${recipients.length})`
+    : `✅ تم فتح ${channel==='sms'?'الرسائل النصية':'واتساب'}`);
 }
 
 function renderSentHistory(){
@@ -2610,9 +2660,9 @@ function renderSentHistory(){
   if(!sentMessages.length){el.innerHTML='<div class="empty-state">لا توجد رسائل مرسلة بعد</div>';return;}
   el.innerHTML=sentMessages.map(m=>`
     <div class="sent-item">
-      <div class="sent-icon">📤</div>
+      <div class="sent-icon">${m.channel==='sms'?'✉️':'📤'}</div>
       <div class="sent-info">
-        <div class="sent-to">${m.to} (${m.count})</div>
+        <div class="sent-to">${m.to} (${m.count}) ${m.channel==='sms'?'· SMS':'· واتساب'}</div>
         <div class="sent-preview">${m.preview}</div>
       </div>
       <div class="sent-time">${m.time}</div>
