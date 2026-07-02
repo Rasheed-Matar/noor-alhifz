@@ -928,6 +928,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
               <textarea id="msg-broadcast-text" rows="3" placeholder="مثال: نعلمكم بأن يوم غدٍ عطلة بمناسبة..." onchange="resetMessageQueue()"></textarea>
             </div>
             <div id="msg-auto-note" style="display:none;font-size:12px;color:var(--txm);background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:.8rem;"></div>
+            <div id="msg-sup-phone-hint" style="display:none;font-size:11.5px;color:var(--amd,#8a6d1f);background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:.8rem;line-height:1.6;">ℹ️ المشرف لم يسجّل رقم جوال في إعداداته بعد، لذا واتساب وSMS غير متاحين له حالياً — استخدم «داخل الموقع».</div>
             <button class="btn-submit-modal" onclick="buildMessageQueue()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
               تجهيز الرسائل
@@ -1323,7 +1324,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
-  if(unsubSupervisorMsgs){unsubSupervisorMsgs();unsubSupervisorMsgs=null;}
+  if(unsubSupervisorMsgs){unsubSupervisorMsgs.forEach(u=>u());unsubSupervisorMsgs=null;}
   userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
@@ -1375,6 +1376,7 @@ function enterApp(user,data){
   userDocRef=db.collection('userdata').doc(user.uid);
   loadStudentOpenStatus(user.uid);
   loadStudentAuthMap(user.uid);
+  loadSupervisorPhone();
   listenSupervisorMessages(user.uid);
 
   if(data.firstLogin){
@@ -1573,6 +1575,7 @@ const ATT_SCORE_MAP={present:30,late:15,excused:5,absent:0};
 const ATT_LABEL_MAP={present:'حاضر',late:'متأخر',absent:'غائب',excused:'عذر'};
 let _manualEvalTarget=null; // {studentId, field, studentName}
 let studentAuthMap={}; // localStudentId -> {uid, status} — لإرسال الإشعارات داخل الموقع للطلاب
+let supervisorPhone=''; // رقم جوال المشرف (إن سجّله) — لإتاحة إرسال واتساب/SMS له من المحفّظ
 
 function computeStudentDailyScore(studentId, date){
   const attStatus=(attendance[date]||{})[studentId];
@@ -2851,11 +2854,14 @@ function applyMsgFieldVisibility(){
   }
   document.getElementById('msg-student-wrap').style.display=(!isSup&&scope==='one')?'block':'none';
 
-  // المشرف ليس له رقم جوال مسجَّل في النظام، لذا القناة الوحيدة المتاحة للتواصل معه هي الإشعار داخل الموقع
+  // قناتا واتساب/SMS للمشرف متاحتان فقط إذا سجّل المشرف رقم جواله في إعدادات حسابه — وإلا فالقناة الوحيدة هي الإشعار داخل الموقع
   const waBtn=document.querySelector('.channel-btn[data-val="whatsapp"]');
   const smsBtn=document.querySelector('.channel-btn[data-val="sms"]');
-  waBtn.disabled=isSup; smsBtn.disabled=isSup;
-  if(isSup) setMsgChannel('app');
+  const supNoPhone=isSup&&!supervisorPhone;
+  waBtn.disabled=supNoPhone; smsBtn.disabled=supNoPhone;
+  if(supNoPhone&&document.getElementById('msg-channel').value!=='app') setMsgChannel('app');
+  const hintEl=document.getElementById('msg-sup-phone-hint');
+  if(hintEl) hintEl.style.display=supNoPhone?'block':'none';
 }
 
 // اختيار قناة الإرسال عبر الأزرار (واتساب / SMS / إشعار داخل الموقع)
@@ -2901,7 +2907,7 @@ function buildMessageQueue(){
     const text=document.getElementById('msg-broadcast-text').value.trim();
     if(!text){ toast('⚠️ اكتب نص الرسالة إلى المشرف أولاً','error'); return; }
     const msg=`📨 رسالة من المحفّظ *${window._teacherName||'—'}*${window._teacherCircle?` (${window._teacherCircle})`:''}:\n\n${text}`;
-    messageQueue=[{toSupervisor:true,name:'المشرف',message:msg,sent:false}];
+    messageQueue=[{toSupervisor:true,name:'المشرف',phone:supervisorPhone,message:msg,sent:false}];
     renderMessageQueue();
     return;
   }
@@ -3000,7 +3006,7 @@ function renderMessageQueue(skippedNoPhone=0,skippedNoData=0){
 
   wrap.innerHTML=messageQueue.map((m,i)=>{
     const preview=m.message.split('\n').filter(Boolean).slice(0,2).join('  ·  ');
-    const channel=m.toSupervisor?'app':(document.getElementById('msg-channel')?.value||'whatsapp');
+    const channel=document.getElementById('msg-channel')?.value||'whatsapp';
     const isSms=channel==='sms', isApp=channel==='app';
     const color=isApp?'#c9a227':isSms?'#2563eb':'#16a34a';
     const icon=isApp
@@ -3051,25 +3057,62 @@ function loadStudentAuthMap(teacherUid){
     }, e=>console.warn('studentAuthMap err',e));
 }
 
+// تحميل رقم جوال المشرف (إن كان مسجَّلاً في إعدادات حسابه) لإتاحة إرسال واتساب/SMS له مباشرة
+function loadSupervisorPhone(){
+  db.collection('users').where('role','==','admin').onSnapshot(snap=>{
+    const withPhone=snap.docs.map(d=>d.data()).find(d=>d.phone);
+    supervisorPhone=withPhone?withPhone.phone:'';
+    if(document.getElementById('msg-scope')?.value==='supervisor') applyMsgFieldVisibility();
+  }, e=>console.warn('supervisorPhone err',e));
+}
+
 // الاستماع للرسائل القادمة من المشرف عبر "داخل الموقع" (موجّهة لهذا المحفّظ تحديداً أو تعميم لكل المحفظين)
 function listenSupervisorMessages(teacherUid){
-  if(unsubSupervisorMsgs) unsubSupervisorMsgs();
-  let firstLoad=true;
-  unsubSupervisorMsgs=db.collection('appMessages').where('toRole','==','teacher').onSnapshot(snap=>{
-    incomingSupervisorMessages=snap.docs.map(d=>({id:d.id,...d.data()}))
-      .filter(m=>!m.toId||m.toId===teacherUid)
+  if(unsubSupervisorMsgs) unsubSupervisorMsgs.forEach(u=>u());
+  let personal=[], broadcast=[];
+  let firstLoad1=true, firstLoad2=true;
+
+  const mergeAndRender=(isFirst)=>{
+    incomingSupervisorMessages=[...personal,...broadcast]
       .sort((a,b)=>(b.createdAt?.toMillis?b.createdAt.toMillis():0)-(a.createdAt?.toMillis?a.createdAt.toMillis():0));
-    if(!firstLoad){
-      snap.docChanges().forEach(ch=>{
-        if(ch.type==='added'){
-          const n=ch.doc.data();
-          if((!n.toId||n.toId===teacherUid)&&!n.read) toast(`📨 رسالة جديدة من ${n.fromName||'المشرف'}`);
-        }
-      });
-    }
-    firstLoad=false;
     renderSupervisorMessages();
-  },e=>console.warn('supervisorMsgs err',e));
+  };
+
+  // رسائل موجّهة لهذا المحفّظ تحديداً (toId == uid) — يطابق قاعدة الأمان تماماً حتى ينجح الاستعلام
+  const unsub1=db.collection('appMessages')
+    .where('toRole','==','teacher').where('toId','==',teacherUid)
+    .onSnapshot(snap=>{
+      personal=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(!firstLoad1){
+        snap.docChanges().forEach(ch=>{
+          if(ch.type==='added'){
+            const n=ch.doc.data();
+            if(!n.read) toast(`📨 رسالة جديدة من ${n.fromName||'المشرف'}`);
+          }
+        });
+      }
+      firstLoad1=false;
+      mergeAndRender();
+    },e=>console.warn('supervisorMsgs personal err',e));
+
+  // رسائل معمَّمة على كل المحفّظين (toId == null) — استعلام منفصل لنفس السبب
+  const unsub2=db.collection('appMessages')
+    .where('toRole','==','teacher').where('toId','==',null)
+    .onSnapshot(snap=>{
+      broadcast=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(!firstLoad2){
+        snap.docChanges().forEach(ch=>{
+          if(ch.type==='added'){
+            const n=ch.doc.data();
+            if(!n.read) toast(`📨 رسالة جديدة من ${n.fromName||'المشرف'}`);
+          }
+        });
+      }
+      firstLoad2=false;
+      mergeAndRender();
+    },e=>console.warn('supervisorMsgs broadcast err',e));
+
+  unsubSupervisorMsgs=[unsub1,unsub2];
 }
 
 function renderSupervisorMessages(){
@@ -3120,15 +3163,23 @@ function sendAppNotification({toRole,toId,text},onDone){
 
 function sendQueueItem(i){
   const m=messageQueue[i]; if(!m) return;
+  const channel=document.getElementById('msg-channel')?.value||'whatsapp';
 
   if(m.toSupervisor){
-    sendAppNotification({toRole:'admin',toId:null,text:m.message},ok=>{
-      if(ok){ m.sent=true; renderMessageQueue(); toast('✅ تم إرسال الرسالة إلى المشرف'); }
-    });
+    if(channel==='app'){
+      sendAppNotification({toRole:'admin',toId:null,text:m.message},ok=>{
+        if(ok){ m.sent=true; renderMessageQueue(); toast('✅ تم إرسال الرسالة إلى المشرف داخل الموقع'); }
+      });
+      return;
+    }
+    if(!m.phone){ toast('⚠️ المشرف لم يسجّل رقم جوال — استخدم قناة «داخل الموقع» بدلاً من ذلك','error'); return; }
+    if(channel==='sms') openSms(m.phone,m.message);
+    else openWhatsApp(m.phone,m.message);
+    m.sent=true;
+    renderMessageQueue();
     return;
   }
 
-  const channel=document.getElementById('msg-channel')?.value||'whatsapp';
   if(channel==='app'){
     const auth=studentAuthMap[m.studentId];
     if(!auth||!auth.uid){ toast('⚠️ حساب الطالب "'+m.name+'" غير مفعّل، لا يمكن إرسال إشعار داخل الموقع له','error'); return; }
