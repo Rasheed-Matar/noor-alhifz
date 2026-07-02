@@ -300,6 +300,21 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .gold-top{height:3px;background:linear-gradient(90deg,var(--gold),var(--gld),var(--gold));border-radius:0}
 
 .mf{display:flex;flex-direction:column;gap:5px;margin-bottom:1rem}
+/* أزرار اختيار قناة الإرسال — بديل جميل لقائمة select */
+.channel-btns{display:flex;gap:8px;}
+.channel-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:12px 6px;border-radius:12px;border:1.5px solid var(--bdr);
+  background:var(--wh);cursor:pointer;transition:all .18s;
+  font-family:inherit;font-size:12px;font-weight:700;color:var(--txm);
+}
+.channel-btn span{line-height:1;}
+.channel-btn:hover:not(.active):not(:disabled){border-color:var(--gl);background:var(--go);transform:translateY(-1px);}
+.channel-btn.active{
+  border-color:var(--gl);background:linear-gradient(135deg,var(--go),var(--wh));
+  color:var(--gd);box-shadow:0 3px 10px rgba(15,92,64,.14);
+}
+.channel-btn:disabled{opacity:.35;cursor:not-allowed;}
 .mf label{font-size:13px;font-weight:600;color:#333;display:flex;align-items:center;gap:6px}
 .mf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .name-grid4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
@@ -858,7 +873,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             <div style="font-size:11.5px;color:var(--txm);background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:7px 10px;margin-bottom:.9rem;">
               📲 يمكنك إرسال أي رسالة عبر واتساب أو عبر رسالة نصية SMS مباشرة — اختر القناة المناسبة أدناه.
             </div>
-            <div class="mf"><label>نوع الرسالة</label>
+            <div class="mf" id="msg-type-wrap"><label>نوع الرسالة</label>
               <select id="msg-type" onchange="msgTypeChanged()">
                 <option value="daily">إنجاز اليوم والحضور</option>
                 <option value="examNom">ترشيح اختبار</option>
@@ -868,15 +883,31 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
               </select>
             </div>
             <div class="mf"><label>قناة الإرسال</label>
-              <select id="msg-channel" onchange="renderMessageQueue()">
+              <div class="channel-btns" id="msg-channel-btns">
+                <button type="button" class="channel-btn active" data-val="whatsapp" onclick="setMsgChannel('whatsapp')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
+                  <span>واتساب</span>
+                </button>
+                <button type="button" class="channel-btn" data-val="sms" onclick="setMsgChannel('sms')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  <span>SMS</span>
+                </button>
+                <button type="button" class="channel-btn" data-val="app" onclick="setMsgChannel('app')">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                  <span>داخل الموقع</span>
+                </button>
+              </div>
+              <select id="msg-channel" style="display:none;">
                 <option value="whatsapp">📱 واتساب</option>
                 <option value="sms">✉️ رسالة نصية SMS</option>
+                <option value="app">🔔 إشعار داخل الموقع</option>
               </select>
             </div>
             <div class="mf"><label>المرسل إليهم</label>
               <select id="msg-scope" onchange="msgScopeChanged()">
                 <option value="one">طالب واحد محدد</option>
                 <option value="all">جميع الطلاب النشطين</option>
+                <option value="supervisor">📨 المشرف</option>
               </select>
             </div>
             <div class="mf" id="msg-student-wrap">
@@ -892,7 +923,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
               <textarea id="msg-thanks-text" rows="3" onchange="resetMessageQueue()"></textarea>
             </div>
             <div class="mf" id="msg-broadcast-wrap" style="display:none;">
-              <label>نص التعميم / الإعلان *</label>
+              <label id="msg-broadcast-label">نص التعميم / الإعلان *</label>
               <textarea id="msg-broadcast-text" rows="3" placeholder="مثال: نعلمكم بأن يوم غدٍ عطلة بمناسبة..." onchange="resetMessageQueue()"></textarea>
             </div>
             <div id="msg-auto-note" style="display:none;font-size:12px;color:var(--txm);background:var(--go);border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:.8rem;"></div>
@@ -1331,6 +1362,7 @@ function enterApp(user,data){
   window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
   loadStudentOpenStatus(user.uid);
+  loadStudentAuthMap(user.uid);
 
   if(data.firstLogin){
     setTimeout(()=>om('mFirstPassword'), 600);
@@ -1527,6 +1559,7 @@ function editSessionRecord(sessionId){
 const ATT_SCORE_MAP={present:30,late:15,excused:5,absent:0};
 const ATT_LABEL_MAP={present:'حاضر',late:'متأخر',absent:'غائب',excused:'عذر'};
 let _manualEvalTarget=null; // {studentId, field, studentName}
+let studentAuthMap={}; // localStudentId -> {uid, status} — لإرسال الإشعارات داخل الموقع للطلاب
 
 function computeStudentDailyScore(studentId, date){
   const attStatus=(attendance[date]||{})[studentId];
@@ -2786,11 +2819,15 @@ function renderMsgStudentSelect(){
 function applyMsgFieldVisibility(){
   const type=document.getElementById('msg-type').value;
   const scope=document.getElementById('msg-scope').value;
-  document.getElementById('msg-date-wrap').style.display=type==='daily'?'block':'none';
-  document.getElementById('msg-thanks-wrap').style.display=type==='thanks'?'block':'none';
-  document.getElementById('msg-broadcast-wrap').style.display=type==='broadcast'?'block':'none';
+  const isSup=scope==='supervisor';
+
+  document.getElementById('msg-type-wrap').style.display=isSup?'none':'block';
+  document.getElementById('msg-date-wrap').style.display=(!isSup&&type==='daily')?'block':'none';
+  document.getElementById('msg-thanks-wrap').style.display=(!isSup&&type==='thanks')?'block':'none';
+  document.getElementById('msg-broadcast-wrap').style.display=(isSup||type==='broadcast')?'block':'none';
+  document.getElementById('msg-broadcast-label').textContent=isSup?'نص الرسالة إلى المشرف *':'نص التعميم / الإعلان *';
   const noteEl=document.getElementById('msg-auto-note');
-  if(type==='examNom'||type==='examResult'){
+  if(!isSup&&(type==='examNom'||type==='examResult')){
     noteEl.style.display='block';
     noteEl.textContent=type==='examNom'
       ?'سيتم تلقائياً جلب آخر ترشيح اختبار "بانتظار الاختبار" لكل طالب ضمن من تم اختيارهم.'
@@ -2798,7 +2835,20 @@ function applyMsgFieldVisibility(){
   } else {
     noteEl.style.display='none';
   }
-  document.getElementById('msg-student-wrap').style.display=scope==='one'?'block':'none';
+  document.getElementById('msg-student-wrap').style.display=(!isSup&&scope==='one')?'block':'none';
+
+  // المشرف ليس له رقم جوال مسجَّل في النظام، لذا القناة الوحيدة المتاحة للتواصل معه هي الإشعار داخل الموقع
+  const waBtn=document.querySelector('.channel-btn[data-val="whatsapp"]');
+  const smsBtn=document.querySelector('.channel-btn[data-val="sms"]');
+  waBtn.disabled=isSup; smsBtn.disabled=isSup;
+  if(isSup) setMsgChannel('app');
+}
+
+// اختيار قناة الإرسال عبر الأزرار (واتساب / SMS / إشعار داخل الموقع)
+function setMsgChannel(val){
+  document.getElementById('msg-channel').value=val;
+  document.querySelectorAll('.channel-btn').forEach(b=>b.classList.toggle('active',b.dataset.val===val));
+  renderMessageQueue();
 }
 
 function msgTypeChanged(){ applyMsgFieldVisibility(); resetMessageQueue(); }
@@ -2831,8 +2881,18 @@ function buildBroadcastMessage(s,text){
 }
 
 function buildMessageQueue(){
-  const type=document.getElementById('msg-type').value;
   const scope=document.getElementById('msg-scope').value;
+
+  if(scope==='supervisor'){
+    const text=document.getElementById('msg-broadcast-text').value.trim();
+    if(!text){ toast('⚠️ اكتب نص الرسالة إلى المشرف أولاً','error'); return; }
+    const msg=`📨 رسالة من المحفّظ *${window._teacherName||'—'}*${window._teacherCircle?` (${window._teacherCircle})`:''}:\n\n${text}`;
+    messageQueue=[{toSupervisor:true,name:'المشرف',message:msg,sent:false}];
+    renderMessageQueue();
+    return;
+  }
+
+  const type=document.getElementById('msg-type').value;
 
   let targets;
   if(scope==='one'){
@@ -2856,11 +2916,15 @@ function buildMessageQueue(){
     if(!thanksText){ toast('⚠️ نص الشكر فارغ','error'); return; }
   }
   const dateVal=document.getElementById('msg-date').value||TODAY();
+  const channel=document.getElementById('msg-channel').value;
 
   const queue=[]; let skippedNoPhone=0, skippedNoData=0;
 
   targets.forEach(s=>{
-    if(!s.parentPhone){ skippedNoPhone++; return; }
+    // قناة الإشعار داخل الموقع تحتاج حساب دخول مفعّل للطالب، لا رقم جوال
+    if(channel==='app'){
+      if(!(studentAuthMap[s.id]&&studentAuthMap[s.id].uid)){ skippedNoPhone++; return; }
+    } else if(!s.parentPhone){ skippedNoPhone++; return; }
     let msg=null;
 
     if(type==='daily'){
@@ -2894,7 +2958,8 @@ function buildMessageQueue(){
   renderMessageQueue(skippedNoPhone,skippedNoData);
 
   if(!queue.length){
-    const reason=skippedNoPhone&&!skippedNoData?'لا يوجد رقم جوال مسجّل لدى الفئة المختارة'
+    const reason=skippedNoPhone&&!skippedNoData
+      ?(channel==='app'?'لا يوجد حساب دخول مفعّل للطلاب ضمن الفئة المختارة':'لا يوجد رقم جوال مسجّل لدى الفئة المختارة')
       :skippedNoData?'لا توجد بيانات مطابقة لنوع الرسالة المختار (مثلاً: لا يوجد ترشيح/نتيجة اختبار بعد)'
       :'لا توجد رسائل لإرسالها';
     toast('⚠️ '+reason,'error');
@@ -2911,29 +2976,34 @@ function renderMessageQueue(skippedNoPhone=0,skippedNoData=0){
     return;
   }
   const sentCount=messageQueue.filter(m=>m.sent).length;
+  const channelForCount=document.getElementById('msg-channel')?.value||'whatsapp';
   let countTxt=`${messageQueue.length} رسالة جاهزة`;
   if(sentCount) countTxt+=` · أُرسل ${sentCount}`;
-  if(skippedNoPhone) countTxt+=` · ${skippedNoPhone} بلا رقم جوال`;
+  if(skippedNoPhone) countTxt+=channelForCount==='app'?` · ${skippedNoPhone} بلا حساب مفعّل`:` · ${skippedNoPhone} بلا رقم جوال`;
   if(skippedNoData) countTxt+=` · ${skippedNoData} بلا بيانات مطابقة`;
   countEl.textContent=countTxt;
   document.getElementById('msg-sendall-btn').style.display=messageQueue.length>1?'inline-flex':'none';
 
   wrap.innerHTML=messageQueue.map((m,i)=>{
     const preview=m.message.split('\n').filter(Boolean).slice(0,2).join('  ·  ');
-    const channel=document.getElementById('msg-channel')?.value||'whatsapp';
-    const isSms=channel==='sms';
+    const channel=m.toSupervisor?'app':(document.getElementById('msg-channel')?.value||'whatsapp');
+    const isSms=channel==='sms', isApp=channel==='app';
+    const color=isApp?'#c9a227':isSms?'#2563eb':'#16a34a';
+    const icon=isApp
+      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.3"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`
+      : isSms
+      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.3"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`
+      : `<svg width="13" height="13" viewBox="0 0 24 24" fill="${color}"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>`;
     return `<div class="student-row">
-      <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(m.name)}</div>
+      <div class="st-avatar" style="background:var(--go);color:var(--gd);">${m.toSupervisor?'📨':ini(m.name)}</div>
       <div class="st-info">
         <div class="st-name">${m.name}</div>
         <div class="st-meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px;">${preview}</div>
       </div>
       ${m.sent?'<span class="month-badge badge-ok">تم الإرسال</span>':''}
-      <button class="att-wa-btn" style="width:auto;padding:0 10px;gap:5px;${isSms?'border-color:#2563eb;':''}" onclick="sendQueueItem(${i})" title="${isSms?'إرسال عبر SMS':'إرسال عبر واتساب'}">
-        ${isSms
-          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.3"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
-          : '<svg width="13" height="13" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>'}
-        <span style="font-size:12px;${isSms?'color:#2563eb;':'color:#16a34a;'}font-weight:600;">إرسال</span>
+      <button class="att-wa-btn" style="width:auto;padding:0 10px;gap:5px;border-color:${color};" onclick="sendQueueItem(${i})" title="${isApp?'إرسال إشعار داخل الموقع':isSms?'إرسال عبر SMS':'إرسال عبر واتساب'}">
+        ${icon}
+        <span style="font-size:12px;color:${color};font-weight:600;">إرسال</span>
       </button>
     </div>`;
   }).join('');
@@ -2955,9 +3025,49 @@ function openSms(phoneRaw,msg){
   window.location.href=`sms:${num}${sep}body=${encodeURIComponent(msg)}`;
 }
 
+// تحميل خريطة (معرّف الطالب المحلي ← حساب الدخول الفعلي) لإتاحة إرسال إشعارات داخل الموقع لهم
+function loadStudentAuthMap(teacherUid){
+  db.collection('users')
+    .where('teacherId','==',teacherUid)
+    .where('role','==','student')
+    .onSnapshot(snap=>{
+      const map={};
+      snap.docs.forEach(d=>{ const v=d.data(); if(v.studentId) map[v.studentId]={uid:d.id,status:v.status}; });
+      studentAuthMap=map;
+    }, e=>console.warn('studentAuthMap err',e));
+}
+
+// إرسال إشعار داخل الموقع (يُخزَّن في Firestore ويظهر لدى المستقبِل داخل النظام مباشرة)
+function sendAppNotification({toRole,toId,text},onDone){
+  db.collection('appMessages').add({
+    fromRole:'teacher', fromId:currentUser.uid, fromName:window._teacherName||'المحفّظ',
+    toRole, toId: toId||null,
+    text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    read:false
+  }).then(()=>{ if(onDone) onDone(true); })
+    .catch(e=>{ console.warn('appMessages err',e); toast('⚠️ تعذّر إرسال الإشعار','error'); if(onDone) onDone(false); });
+}
+
 function sendQueueItem(i){
   const m=messageQueue[i]; if(!m) return;
+
+  if(m.toSupervisor){
+    sendAppNotification({toRole:'admin',toId:null,text:m.message},ok=>{
+      if(ok){ m.sent=true; renderMessageQueue(); toast('✅ تم إرسال الرسالة إلى المشرف'); }
+    });
+    return;
+  }
+
   const channel=document.getElementById('msg-channel')?.value||'whatsapp';
+  if(channel==='app'){
+    const auth=studentAuthMap[m.studentId];
+    if(!auth||!auth.uid){ toast('⚠️ حساب الطالب "'+m.name+'" غير مفعّل، لا يمكن إرسال إشعار داخل الموقع له','error'); return; }
+    sendAppNotification({toRole:'student',toId:auth.uid,text:m.message},ok=>{
+      if(ok){ m.sent=true; renderMessageQueue(); }
+    });
+    return;
+  }
   if(channel==='sms') openSms(m.phone,m.message);
   else openWhatsApp(m.phone,m.message);
   m.sent=true;
@@ -2968,7 +3078,9 @@ function sendAllQueue(){
   const pending=messageQueue.map((m,i)=>({m,i})).filter(x=>!x.m.sent);
   if(!pending.length){ toast('✅ تم إرسال جميع الرسائل بالفعل'); return; }
   const channel=document.getElementById('msg-channel')?.value||'whatsapp';
-  toast(channel==='sms'
+  toast(channel==='app'
+    ? '⏳ يتم إرسال الإشعارات داخل الموقع...'
+    : channel==='sms'
     ? '⏳ يتم فتح تطبيق الرسائل النصية لكل طالب تباعاً'
     : '⏳ يتم فتح نافذة واتساب لكل طالب — سمح بالنوافذ المنبثقة لهذا الموقع إن طُلب منك ذلك');
   pending.forEach(({m,i},idx)=>{
