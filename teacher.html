@@ -190,16 +190,16 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-att-pill.none{background:var(--crd);color:var(--txm);}
 .eval-att-pts{font-size:10px;color:var(--txm);}
 
-/* صناديق النقر الدائرية للحفظ والمراجعة — تصميم إسلامي دائري بحلقة تقدّم ذهبية/زمردية تحفيزية */
+/* صناديق النقر الدائرية للحفظ/المراجعة/الانضباط — تصميم إسلامي دائري بحلقة تقدّم مزخرفة ونجمة ثمانية */
 .eval-tapbox-wrap{position:relative;flex-shrink:0;}
 .eval-tapbox{
   position:relative;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  width:60px;height:60px;border-radius:50%;flex-shrink:0;
+  width:58px;height:58px;border-radius:50%;flex-shrink:0;
   cursor:pointer;user-select:none;
-  background:conic-gradient(from -90deg, var(--ring,var(--gl)) calc(var(--pct,0)*1%), rgba(10,61,43,.08) 0);
-  padding:4px;
-  box-shadow:0 2px 8px rgba(10,61,43,.10);
+  background:conic-gradient(from -90deg, var(--ring,var(--gl)) calc(var(--pct,0)*1%), rgba(10,61,43,.07) 0);
+  padding:5px;
+  box-shadow:0 2px 8px rgba(10,61,43,.10), 0 0 0 1px rgba(201,162,39,.10);
   transition:transform .18s, filter .18s, box-shadow .18s;
   isolation:isolate;
 }
@@ -207,22 +207,24 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   position:relative;z-index:1;
   width:100%;height:100%;border-radius:50%;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 35% 30%, var(--wh) 55%, var(--go) 130%);
-  box-shadow:inset 0 1px 5px rgba(10,61,43,.12), inset 0 0 0 1px rgba(201,162,39,.18);
+  background:radial-gradient(circle at 35% 28%, var(--wh) 52%, var(--go) 135%);
+  box-shadow:inset 0 1px 5px rgba(10,61,43,.12), inset 0 0 0 1px rgba(201,162,39,.22);
 }
-.eval-tapbox::after{
-  /* زخرفة نجمة ثمانية إسلامية خفيفة في الخلفية لإضفاء طابع ديني دون إزعاج بصري */
-  content:'';position:absolute;inset:0;border-radius:50%;
-  background-image:
-    radial-gradient(circle at 50% 50%, transparent 62%, var(--ring,var(--gl)) 62.5%, transparent 63.2%);
-  opacity:.12;pointer-events:none;z-index:0;
+.eval-tapbox::before{
+  /* نجمة ثمانية إسلامية (رسمة هندسية) تدور بهدوء خلف الصندوق — لمسة دينية زخرفية أنيقة */
+  content:'';position:absolute;inset:-3px;border-radius:50%;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23c9a227' stroke-width='1.4'%3E%3Cpolygon points='50,4 61,32 90,32 66,50 76,79 50,61 24,79 34,50 10,32 39,32'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:78% 78%;background-position:center;background-repeat:no-repeat;
+  opacity:.16;animation:tapboxSpin 22s linear infinite;
 }
 .eval-tapbox-ico{font-size:14px;line-height:1;margin-bottom:1px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.08));}
 .eval-tapbox-val{font-size:16px;font-weight:800;color:var(--gd);line-height:1;}
 .eval-tapbox-max{font-size:7px;color:var(--txm);margin-top:1px;letter-spacing:.2px;}
+.eval-tapbox-lbl{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:8.5px;font-weight:700;color:var(--txl);white-space:nowrap;}
 .eval-tapbox.t-hifz{--ring:var(--gl);}
 .eval-tapbox.t-murajaa{--ring:var(--blu);}
-.eval-tapbox:hover{transform:scale(1.1);box-shadow:0 5px 16px rgba(15,92,64,.24);}
+.eval-tapbox.t-discipline{--ring:#8b5cf6;}
+.eval-tapbox:hover{transform:scale(1.1) rotate(1deg);box-shadow:0 6px 18px rgba(15,92,64,.26), 0 0 0 1px rgba(201,162,39,.18);}
 .eval-tapbox:active{transform:scale(.92);}
 /* زر التعديل اليدوي الصغير — يظهر في زاوية الصندوق */
 .eval-tapbox-edit{
@@ -232,7 +234,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   box-shadow:0 1px 4px rgba(10,61,43,.22);z-index:2;transition:all .15s;padding:0;
 }
 .eval-tapbox-edit:hover{background:var(--gd);color:var(--gld);transform:scale(1.12);}
-/* عند اكتمال النقاط (30/30) — توهّج ذهبي احتفالي بطابع إسلامي + نجمة تحفيزية */
+/* عند اكتمال النقاط — توهّج ذهبي احتفالي بطابع إسلامي + نجمة تحفيزية */
 .eval-tapbox.full{--ring:var(--gold);}
 .eval-tapbox.full .eval-tapbox-inner{background:radial-gradient(circle at 35% 30%, #fffdf5 45%, var(--gold) 160%);}
 .eval-tapbox.full{animation:tapboxGlow 2.4s ease-in-out infinite;}
@@ -249,6 +251,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   0%,100%{box-shadow:0 2px 8px rgba(10,61,43,.10), 0 0 0 0 rgba(201,162,39,.0);}
   50%{box-shadow:0 2px 8px rgba(10,61,43,.10), 0 0 0 6px rgba(201,162,39,.16);}
 }
+@keyframes tapboxSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 
 .eval-opened{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex:1 1 130px;justify-content:flex-end;white-space:nowrap;}
 .eval-opened.yes{color:var(--grn);}
@@ -258,6 +261,13 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-total-badge{text-align:center;border-radius:14px;padding:6px 14px;min-width:58px;flex-shrink:0;background:var(--go);}
 .eval-total-num{font-size:19px;font-weight:800;line-height:1;color:var(--gl);}
 .eval-total-max{font-size:8.5px;color:var(--gl);opacity:.75;margin-top:2px;}
+
+/* زر إعدادات معايير التقييم */
+.eval-cfg-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--bdr);background:var(--wh);color:var(--gd);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;}
+.eval-cfg-btn:hover{background:var(--go);border-color:var(--gd);}
+.eval-cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.eval-cfg-grid .mf{margin-bottom:0;}
+.eval-cfg-total{text-align:center;font-size:12.5px;font-weight:700;color:var(--gd);background:var(--go);border-radius:8px;padding:8px;margin:10px 0;}
 
 @media(max-width:640px){
   .eval-opened{justify-content:flex-start;order:10;flex:1 1 100%;}
@@ -740,22 +750,22 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <div class="panel-hd">
           <div class="panel-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            تقييم الطلاب اليومي (من 100)
+            <span id="eval-title-lbl">تقييم الطلاب اليومي (من 100)</span>
           </div>
-          <input type="date" id="eval-date-sel" onchange="renderEvalTab()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button class="eval-cfg-btn" onclick="openEvalSettings()" title="تعديل معايير التقييم واعتمادها">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              معايير التقييم
+            </button>
+            <input type="date" id="eval-date-sel" onchange="renderEvalTab()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
+          </div>
         </div>
         <div class="panel-body" id="eval-list"></div>
       </div>
 
       <div class="panel" style="margin-top:1.2rem;">
         <div class="panel-hd"><div class="panel-title">ℹ️ آلية حساب التقييم اليومي</div></div>
-        <div class="panel-body" style="font-size:12.5px;color:var(--txm);line-height:1.9;">
-          🟢 الحضور: حاضر = 30 · متأخر = 15 · عذر = 5 · غائب = 0<br>
-          📖🔄 الحفظ والمراجعة اليومية: اضغط على الصندوق فتزيد قيمته 5 نقاط في كل مرة، وإذا تجاوز 30 يعود من جديد للصفر (من 30 لكل منهما)<br>
-          ✎ لضبط القيمة يدوياً بدقة (مثلاً لتعديلها لاحقاً): اضغط على زر القلم الصغير أعلى الصندوق واكتب القيمة مباشرة.<br>
-          ⭐ فتح الطالب لصفحته الخاصة اليوم (مرة واحدة تكفي): +10 تلقائياً<br>
-          <b>مثال: إن كان المطلوب حفظ صفحتين وحفظ الطالب صفحة واحدة فقط، اضغط على صندوق "الحفظ" 3 مرات ليصل إلى 15/30.</b>
-        </div>
+        <div class="panel-body" id="eval-info-box" style="font-size:12.5px;color:var(--txm);line-height:1.9;"></div>
       </div>
     </div>
 
@@ -1177,13 +1187,12 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <div id="me-field-label" style="font-size:12px;color:var(--txm);margin-top:2px;"></div>
       </div>
       <div class="mf">
-        <label>القيمة (من 0 إلى 30)</label>
+        <label id="me-value-label">القيمة (من 0 إلى 30)</label>
         <input type="number" id="me-value" min="0" max="30" step="1" style="text-align:center;font-size:20px;font-weight:800;">
       </div>
-      <div style="display:flex;gap:8px;margin:2px 0 4px;">
+      <div id="me-presets" style="display:flex;gap:8px;margin:2px 0 4px;">
         <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=0">0</button>
-        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=10">10</button>
-        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=20">20</button>
+        <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=15">15</button>
         <button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=30">30</button>
       </div>
       <div style="font-size:11.5px;color:var(--txl);line-height:1.7;background:var(--bg2,#f1f1f1);padding:7px 10px;border-radius:8px;margin:8px 0 12px;">
@@ -1192,6 +1201,50 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
       <button class="btn-submit-modal" onclick="saveManualEval()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         حفظ القيمة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EVAL SETTINGS — تعديل معايير التقييم اليومي واعتمادها -->
+<div class="modal-bg" id="mEvalSettings">
+  <div class="modal" style="max-width:440px;">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        معايير التقييم اليومي
+      </div>
+      <button class="modal-close" onclick="cm('mEvalSettings')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11.5px;color:var(--txl);line-height:1.7;background:var(--bg2,#f1f1f1);padding:7px 10px;border-radius:8px;margin-bottom:12px;">
+        ℹ️ عدّل النقاط حسب ما يناسب حلقتك، ثم اضغط "اعتماد المعايير" لتفعيلها. تُطبَّق التعديلات على التقييمات القادمة.
+      </div>
+
+      <div style="font-size:12.5px;font-weight:800;color:var(--gd);margin-bottom:6px;">🟢 نقاط الحضور</div>
+      <div class="eval-cfg-grid" style="margin-bottom:12px;">
+        <div class="mf"><label>حاضر</label><input type="number" id="ec-att-present" min="0" max="100" step="1" oninput="updateEcTotalPreview()"></div>
+        <div class="mf"><label>متأخر</label><input type="number" id="ec-att-late" min="0" max="100" step="1" oninput="updateEcTotalPreview()"></div>
+        <div class="mf"><label>عذر</label><input type="number" id="ec-att-excused" min="0" max="100" step="1" oninput="updateEcTotalPreview()"></div>
+        <div class="mf"><label>غائب</label><input type="number" value="0" disabled style="opacity:.6;"></div>
+      </div>
+
+      <div style="font-size:12.5px;font-weight:800;color:var(--gd);margin-bottom:6px;">📖🔄 الحفظ والمراجعة والانضباط</div>
+      <div class="eval-cfg-grid" style="margin-bottom:6px;">
+        <div class="mf"><label>الحد الأقصى للحفظ</label><input type="number" id="ec-hifz-max" min="1" max="100" step="1" oninput="updateEcTotalPreview()"></div>
+        <div class="mf"><label>الحد الأقصى للمراجعة</label><input type="number" id="ec-murajaa-max" min="1" max="100" step="1" oninput="updateEcTotalPreview()"></div>
+      </div>
+      <div class="mf" style="margin-bottom:10px;">
+        <label>🕊️ الحد الأقصى للانضباط داخل الحلقة (الأدب والمشاغبة)</label>
+        <input type="number" id="ec-discipline-max" min="0" max="100" step="1" oninput="updateEcTotalPreview()">
+      </div>
+
+      <div class="eval-cfg-total" id="ec-total-preview">مجموع التقييم الكلي: 100 (يشمل +10 لفتح الطالب صفحته)</div>
+
+      <button class="btn-submit-modal" onclick="saveEvalConfig()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        اعتماد المعايير
       </button>
     </div>
   </div>
@@ -1237,6 +1290,9 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
+// معايير التقييم اليومي — قابلة للتعديل والاعتماد من المحفّظ (الحضور من 20 + الحفظ والمراجعة والانضباط + مكافأة الفتح)
+const DEFAULT_EVAL_CONFIG={attPresent:20, attLate:10, attExcused:5, attAbsent:0, hifzMax:30, murajaaMax:30, disciplineMax:10};
+let evalConfig={...DEFAULT_EVAL_CONFIG};
 let currentSessStudentId=null, hifzEntries=[], murajaaEntries=[], editingSessionId=null;
 let bulkMode=false, bulkSelectedIds=new Set();
 
@@ -1325,7 +1381,7 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
   if(unsubSupervisorMsgs){unsubSupervisorMsgs.forEach(u=>u());unsubSupervisorMsgs=null;}
-  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
+  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
@@ -1388,10 +1444,12 @@ function enterApp(user,data){
       suppressSave=true;
       const d=snap.data();
       students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; dailyEval=d.dailyEval||{}; pageOpens=d.pageOpens||{}; homework=d.homework||{};
+      evalConfig={...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
       renderAll();
       suppressSave=false;
     } else {
       students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
+      evalConfig={...DEFAULT_EVAL_CONFIG};
       renderAll();
     }
   },e=>console.log('snap err',e));
@@ -1571,18 +1629,31 @@ function editSessionRecord(sessionId){
 // ════════════════════════════════════════
 //  EVALUATION (تقييم الطلاب اليومي)
 // ════════════════════════════════════════
-const ATT_SCORE_MAP={present:30,late:15,excused:5,absent:0};
 const ATT_LABEL_MAP={present:'حاضر',late:'متأخر',absent:'غائب',excused:'عذر'};
 let _manualEvalTarget=null; // {studentId, field, studentName}
 let studentAuthMap={}; // localStudentId -> {uid, status} — لإرسال الإشعارات داخل الموقع للطلاب
 let supervisorPhone=''; // رقم جوال المشرف (إن سجّله) — لإتاحة إرسال واتساب/SMS له من المحفّظ
 
+// نقاط الحضور حسب المعايير المعتمدة حالياً (قابلة للتعديل من المحفّظ)
+function attScoreFor(status){
+  const map={present:evalConfig.attPresent, late:evalConfig.attLate, excused:evalConfig.attExcused, absent:evalConfig.attAbsent};
+  return map[status]??0;
+}
+const OPEN_BONUS=10; // مكافأة فتح الطالب لصفحته اليوم — ثابتة
+// الحد الأقصى الكلي للتقييم = مجموع كل المعايير المعتمدة حالياً + مكافأة الفتح
+function evalTotalMax(){
+  return evalConfig.attPresent + evalConfig.hifzMax + evalConfig.murajaaMax + evalConfig.disciplineMax + OPEN_BONUS;
+}
+// خطوة الزيادة عند كل نقرة على الصندوق — تُحسب تناسبياً مع الحد الأقصى المعتمد (نحو 6 نقرات للوصول للحد الأقصى)
+function tapStepFor(max){ return Math.max(1, Math.round(max/6)); }
+
 function computeStudentDailyScore(studentId, date){
   const attStatus=(attendance[date]||{})[studentId];
-  const attScore=ATT_SCORE_MAP[attStatus]??0;
+  const attScore=attScoreFor(attStatus);
   const ev=((dailyEval[date]||{})[studentId])||{};
-  const hifzScore=Math.max(0,Math.min(30,Number(ev.hifzScore)||0));
-  const murajaaScore=Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
+  const hifzScore=Math.max(0,Math.min(evalConfig.hifzMax,Number(ev.hifzScore)||0));
+  const murajaaScore=Math.max(0,Math.min(evalConfig.murajaaMax,Number(ev.murajaaScore)||0));
+  const disciplineScore=Math.max(0,Math.min(evalConfig.disciplineMax,Number(ev.disciplineScore)||0));
 
   // المصدر الموثوق: مستند المستخدم الخاص بالطالب (lastOpenDate)
   const openInfo=studentOpenInfo[studentId];
@@ -1590,9 +1661,9 @@ function computeStudentDailyScore(studentId, date){
   if(openInfo && openInfo.date===date){ opened=true; openedAt=openInfo.at; }
   else if((pageOpens[date]||{})[studentId]){ opened=true; openedAt=(pageOpens[date]||{})[studentId]; } // مسار احتياطي قديم
 
-  const bonus=opened?10:0;
-  const total=Math.min(100, attScore+hifzScore+murajaaScore+bonus);
-  return {attStatus, attScore, hifzScore, murajaaScore, opened, openedAt, bonus, total};
+  const bonus=opened?OPEN_BONUS:0;
+  const total=Math.min(evalTotalMax(), attScore+hifzScore+murajaaScore+disciplineScore+bonus);
+  return {attStatus, attScore, hifzScore, murajaaScore, disciplineScore, opened, openedAt, bonus, total};
 }
 
 function evalCurrentDate(){
@@ -1609,15 +1680,25 @@ function formatOpenTime(iso){
   }catch(e){ return ''; }
 }
 
-// زيادة/تنقيص نقاط الحفظ أو المراجعة بمقدار 5 (من 0 إلى 30) — يُحفظ فوراً
-// النقر يزيد 5 نقاط، وعند تجاوز 30 يعود للصفر من جديد
+// خرائط مساعدة للحقول الثلاثة القابلة للنقر: الحفظ / المراجعة / الانضباط
+const EVAL_FIELD_KEY={hifz:'hifzScore', murajaa:'murajaaScore', discipline:'disciplineScore'};
+const EVAL_FIELD_MAX_KEY={hifz:'hifzMax', murajaa:'murajaaMax', discipline:'disciplineMax'};
+const EVAL_FIELD_LABEL={hifz:'نقاط الحفظ اليومي', murajaa:'نقاط المراجعة اليومية', discipline:'نقاط الانضباط داخل الحلقة (الأدب والمشاغبة)'};
+const EVAL_FIELD_ICON={hifz:'📖', murajaa:'🔄', discipline:'🕊️'};
+const EVAL_FIELD_GRAD={hifz:'linear-gradient(135deg,var(--gl),var(--gm))', murajaa:'linear-gradient(135deg,#3b82c4,#1e5f91)', discipline:'linear-gradient(135deg,#9d7cf7,#6d43d6)'};
+function emptyEvalEntry(){ return {hifzScore:0,murajaaScore:0,disciplineScore:0}; }
+
+// زيادة نقاط الحفظ/المراجعة/الانضباط بمقدار خطوة تناسبية مع الحد الأقصى المعتمد — يُحفظ فوراً
+// النقر يزيد قيمة الخطوة، وعند تجاوز الحد الأقصى يعود للصفر من جديد
 function cycleEval(studentId, field){
   const date=evalCurrentDate();
+  const max=evalConfig[EVAL_FIELD_MAX_KEY[field]];
+  const step=tapStepFor(max);
   if(!dailyEval[date]) dailyEval[date]={};
-  if(!dailyEval[date][studentId]) dailyEval[date][studentId]={hifzScore:0,murajaaScore:0};
-  const key = field==='hifz' ? 'hifzScore' : 'murajaaScore';
+  if(!dailyEval[date][studentId]) dailyEval[date][studentId]=emptyEvalEntry();
+  const key=EVAL_FIELD_KEY[field];
   const cur = Number(dailyEval[date][studentId][key])||0;
-  const next = cur>=30 ? 0 : cur+5;
+  const next = cur>=max ? 0 : Math.min(max, cur+step);
   dailyEval[date][studentId][key]=next;
 
   userDocRef.set({
@@ -1627,35 +1708,45 @@ function cycleEval(studentId, field){
   renderEvalTab();
 }
 
-// فتح نافذة الضبط اليدوي لنقاط الحفظ أو المراجعة — لتصحيح القيمة مستقبلاً دون الحاجة للنقر المتكرر
+// فتح نافذة الضبط اليدوي لنقاط الحفظ/المراجعة/الانضباط — لتصحيح القيمة مستقبلاً دون الحاجة للنقر المتكرر
 function openManualEvalEdit(studentId, field){
   const s=students.find(x=>x.id===studentId); if(!s) return;
   const date=evalCurrentDate();
+  const max=evalConfig[EVAL_FIELD_MAX_KEY[field]];
+  const key=EVAL_FIELD_KEY[field];
   const ev=((dailyEval[date]||{})[studentId])||{};
-  const curVal = field==='hifz' ? Math.max(0,Math.min(30,Number(ev.hifzScore)||0)) : Math.max(0,Math.min(30,Number(ev.murajaaScore)||0));
-  _manualEvalTarget={studentId, field, studentName:s.name};
+  const curVal=Math.max(0,Math.min(max,Number(ev[key])||0));
+  _manualEvalTarget={studentId, field, studentName:s.name, max};
   document.getElementById('me-student-name').textContent=s.name;
-  document.getElementById('me-field-label').textContent = field==='hifz' ? 'نقاط الحفظ اليومي' : 'نقاط المراجعة اليومية';
+  document.getElementById('me-field-label').textContent=EVAL_FIELD_LABEL[field];
   const badge=document.getElementById('me-badge');
-  badge.textContent = field==='hifz' ? '📖' : '🔄';
-  badge.style.background = field==='hifz' ? 'linear-gradient(135deg,var(--gl),var(--gm))' : 'linear-gradient(135deg,#3b82c4,#1e5f91)';
+  badge.textContent=EVAL_FIELD_ICON[field];
+  badge.style.background=EVAL_FIELD_GRAD[field];
   badge.style.color='#fff';
-  document.getElementById('me-value').value=curVal;
+  const valInput=document.getElementById('me-value');
+  valInput.value=curVal; valInput.max=max;
+  const lbl=document.getElementById('me-value-label');
+  if(lbl) lbl.textContent=`القيمة (من 0 إلى ${max})`;
+  const presetsWrap=document.getElementById('me-presets');
+  if(presetsWrap){
+    const half=Math.round(max/2);
+    presetsWrap.innerHTML=[0,half,max].map(v=>`<button class="qbtn qbtn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('me-value').value=${v}">${v}</button>`).join('');
+  }
   om('mManualEval');
 }
 
-// حفظ القيمة المُدخَلة يدوياً لنقاط الحفظ أو المراجعة
+// حفظ القيمة المُدخَلة يدوياً لنقاط الحفظ/المراجعة/الانضباط
 function saveManualEval(){
   if(!_manualEvalTarget) return;
-  const {studentId, field}=_manualEvalTarget;
+  const {studentId, field, max}=_manualEvalTarget;
   const date=evalCurrentDate();
   let val=Number(document.getElementById('me-value').value);
   if(isNaN(val)) val=0;
-  val=Math.max(0,Math.min(30,Math.round(val)));
+  val=Math.max(0,Math.min(max,Math.round(val)));
 
   if(!dailyEval[date]) dailyEval[date]={};
-  if(!dailyEval[date][studentId]) dailyEval[date][studentId]={hifzScore:0,murajaaScore:0};
-  const key = field==='hifz' ? 'hifzScore' : 'murajaaScore';
+  if(!dailyEval[date][studentId]) dailyEval[date][studentId]=emptyEvalEntry();
+  const key=EVAL_FIELD_KEY[field];
   dailyEval[date][studentId][key]=val;
 
   userDocRef.set({
@@ -1668,8 +1759,52 @@ function saveManualEval(){
   toast('✅ تم حفظ القيمة بنجاح');
 }
 
+// ─── إعدادات معايير التقييم (يعدّلها المحفّظ ويعتمدها) ───
+function openEvalSettings(){
+  document.getElementById('ec-att-present').value=evalConfig.attPresent;
+  document.getElementById('ec-att-late').value=evalConfig.attLate;
+  document.getElementById('ec-att-excused').value=evalConfig.attExcused;
+  document.getElementById('ec-hifz-max').value=evalConfig.hifzMax;
+  document.getElementById('ec-murajaa-max').value=evalConfig.murajaaMax;
+  document.getElementById('ec-discipline-max').value=evalConfig.disciplineMax;
+  updateEcTotalPreview();
+  om('mEvalSettings');
+}
+
+function updateEcTotalPreview(){
+  const g=id=>Math.max(0,Number(document.getElementById(id).value)||0);
+  const total=g('ec-att-present')+g('ec-hifz-max')+g('ec-murajaa-max')+g('ec-discipline-max')+OPEN_BONUS;
+  const el=document.getElementById('ec-total-preview');
+  if(el) el.textContent=`مجموع التقييم الكلي: ${total} (يشمل +${OPEN_BONUS} لفتح الطالب صفحته)`;
+}
+
+// اعتماد المعايير الجديدة وحفظها — تُطبَّق فوراً على كل التقييمات
+function saveEvalConfig(){
+  const g=(id,fallback)=>{const v=Number(document.getElementById(id).value); return isNaN(v)||v<0 ? fallback : Math.round(v);};
+  evalConfig={
+    attPresent:g('ec-att-present', DEFAULT_EVAL_CONFIG.attPresent),
+    attLate:g('ec-att-late', DEFAULT_EVAL_CONFIG.attLate),
+    attExcused:g('ec-att-excused', DEFAULT_EVAL_CONFIG.attExcused),
+    attAbsent:0,
+    hifzMax:Math.max(1,g('ec-hifz-max', DEFAULT_EVAL_CONFIG.hifzMax)),
+    murajaaMax:Math.max(1,g('ec-murajaa-max', DEFAULT_EVAL_CONFIG.murajaaMax)),
+    disciplineMax:g('ec-discipline-max', DEFAULT_EVAL_CONFIG.disciplineMax),
+  };
+  if(userDocRef){
+    userDocRef.set({evalConfig}, {merge:true}).catch(e=>console.warn('evalConfig save err', e));
+  }
+  cm('mEvalSettings');
+  renderEvalTab();
+  toast('✅ تم اعتماد معايير التقييم الجديدة');
+}
+
 function renderEvalTab(){
   const date=evalCurrentDate();
+  const totalMax=evalTotalMax();
+
+  const titleEl=document.getElementById('eval-title-lbl');
+  if(titleEl) titleEl.textContent=`تقييم الطلاب اليومي (من ${totalMax})`;
+  renderEvalInfoBox();
 
   const active=students.filter(s=>!s.archived);
   const el=document.getElementById('eval-list');
@@ -1702,6 +1837,7 @@ function renderEvalTab(){
     const attLbl=ATT_LABEL_MAP[r.attStatus]||'لم يُسجَّل';
     const attCls=r.attStatus||'none';
     const openTime=formatOpenTime(r.openedAt);
+    const hMax=evalConfig.hifzMax, mMax=evalConfig.murajaaMax, dMax=evalConfig.disciplineMax;
     return `<div class="eval-card">
       <div class="eval-rank ${rankCls}">${rank}</div>
       <div class="eval-avatar">${ini(r.name)}</div>
@@ -1709,33 +1845,46 @@ function renderEvalTab(){
         <div class="eval-name">${r.name}</div>
         <div class="eval-att-mini">
           <span class="eval-att-pill ${attCls}">${attLbl}</span>
-          <span class="eval-att-pts">${r.attScore}/30</span>
+          <span class="eval-att-pts">${r.attScore}/${evalConfig.attPresent}</span>
         </div>
       </div>
 
       <div class="eval-tapbox-wrap">
-        <div class="eval-tapbox t-murajaa${r.murajaaScore>=30?' full':''}" style="--pct:${Math.round(r.murajaaScore/30*100)}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+        <div class="eval-tapbox t-murajaa${r.murajaaScore>=mMax?' full':''}" style="--pct:${mMax?Math.round(r.murajaaScore/mMax*100):0}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة النقاط — يعود للصفر عند تجاوز ${mMax}">
           <div class="eval-tapbox-inner">
             <div class="eval-tapbox-ico">🔄</div>
             <div class="eval-tapbox-val">${r.murajaaScore}</div>
-            <div class="eval-tapbox-max">/30</div>
+            <div class="eval-tapbox-max">/${mMax}</div>
           </div>
-          ${r.murajaaScore>=30?'<div class="eval-tapbox-star">⭐</div>':''}
+          ${r.murajaaScore>=mMax?'<div class="eval-tapbox-star">⭐</div>':''}
         </div>
         <button class="eval-tapbox-edit" onclick="event.stopPropagation();openManualEvalEdit('${r.id}','murajaa')" title="ضبط القيمة يدوياً">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
         </button>
       </div>
       <div class="eval-tapbox-wrap">
-        <div class="eval-tapbox t-hifz${r.hifzScore>=30?' full':''}" style="--pct:${Math.round(r.hifzScore/30*100)}" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة 5 نقاط — يعود للصفر بعد 30">
+        <div class="eval-tapbox t-hifz${r.hifzScore>=hMax?' full':''}" style="--pct:${hMax?Math.round(r.hifzScore/hMax*100):0}" onclick="cycleEval('${r.id}','hifz')" title="اضغط لزيادة النقاط — يعود للصفر عند تجاوز ${hMax}">
           <div class="eval-tapbox-inner">
             <div class="eval-tapbox-ico">📖</div>
             <div class="eval-tapbox-val">${r.hifzScore}</div>
-            <div class="eval-tapbox-max">/30</div>
+            <div class="eval-tapbox-max">/${hMax}</div>
           </div>
-          ${r.hifzScore>=30?'<div class="eval-tapbox-star">⭐</div>':''}
+          ${r.hifzScore>=hMax?'<div class="eval-tapbox-star">⭐</div>':''}
         </div>
         <button class="eval-tapbox-edit" onclick="event.stopPropagation();openManualEvalEdit('${r.id}','hifz')" title="ضبط القيمة يدوياً">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+      </div>
+      <div class="eval-tapbox-wrap">
+        <div class="eval-tapbox t-discipline${r.disciplineScore>=dMax&&dMax>0?' full':''}" style="--pct:${dMax?Math.round(r.disciplineScore/dMax*100):0}" onclick="cycleEval('${r.id}','discipline')" title="الانضباط داخل الحلقة (الأدب والمشاغبة) — يعود للصفر عند تجاوز ${dMax}">
+          <div class="eval-tapbox-inner">
+            <div class="eval-tapbox-ico">🕊️</div>
+            <div class="eval-tapbox-val">${r.disciplineScore}</div>
+            <div class="eval-tapbox-max">/${dMax}</div>
+          </div>
+          ${r.disciplineScore>=dMax&&dMax>0?'<div class="eval-tapbox-star">⭐</div>':''}
+        </div>
+        <button class="eval-tapbox-edit" onclick="event.stopPropagation();openManualEvalEdit('${r.id}','discipline')" title="ضبط القيمة يدوياً">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
         </button>
       </div>
@@ -1747,10 +1896,25 @@ function renderEvalTab(){
 
       <div class="eval-total-badge">
         <div class="eval-total-num">${r.total}</div>
-        <div class="eval-total-max">من 100</div>
+        <div class="eval-total-max">من ${totalMax}</div>
       </div>
     </div>`;
   }).join('');
+}
+
+// يبني نص "آلية حساب التقييم" ديناميكياً حسب المعايير المعتمدة حالياً
+function renderEvalInfoBox(){
+  const el=document.getElementById('eval-info-box'); if(!el) return;
+  const c=evalConfig;
+  el.innerHTML=`
+    🟢 الحضور (من ${c.attPresent}): حاضر = ${c.attPresent} · متأخر = ${c.attLate} · عذر = ${c.attExcused} · غائب = 0<br>
+    📖🔄 الحفظ والمراجعة اليومية: اضغط على الصندوق فتزيد قيمته ${tapStepFor(c.hifzMax)} نقاط في كل مرة، وإذا تجاوز الحد الأقصى يعود من جديد للصفر (من ${c.hifzMax} للحفظ و${c.murajaaMax} للمراجعة)<br>
+    🕊️ الانضباط داخل الحلقة (الأدب والمشاغبة): من 0 إلى ${c.disciplineMax} نقاط بنفس طريقة النقر<br>
+    ✎ لضبط أي قيمة يدوياً بدقة: اضغط على زر القلم الصغير أعلى الصندوق واكتب القيمة مباشرة.<br>
+    ⭐ فتح الطالب لصفحته الخاصة اليوم (مرة واحدة تكفي): +${OPEN_BONUS} تلقائياً<br>
+    ⚙️ جميع هذه القيم قابلة للتعديل من زر "معايير التقييم" أعلى القائمة، ثم اضغط "اعتماد المعايير" لتفعيلها.<br>
+    <b>المجموع الكلي للتقييم اليومي حالياً: ${evalTotalMax()}</b>
+  `;
 }
 
 // ════════════════════════════════════════
