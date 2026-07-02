@@ -757,6 +757,10 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
               معايير التقييم
             </button>
+            <button class="eval-cfg-btn" onclick="previewDailyEvalReport()" title="معاينة وتصدير تقرير التقييم اليومي PDF">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              تقرير يومي
+            </button>
             <input type="date" id="eval-date-sel" onchange="renderEvalTab()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
           </div>
         </div>
@@ -781,6 +785,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
           </div>
         </div>
         <div class="panel-body">
+
+          <!-- شريط حالة الواجب اليومي — يعرض من لديه واجب مُسجَّل اليوم ومن ينتظر، ويتحدث تلقائياً كل يوم -->
+          <div id="hw-today-status" style="font-size:12px;line-height:1.9;background:var(--cream);border:1px solid var(--bdr);border-radius:10px;padding:8px 12px;margin-bottom:1rem;"></div>
 
           <!-- اختيار الطلاب: فردي / جماعي -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;background:var(--cream);border-radius:10px;padding:8px 12px;">
@@ -1944,15 +1951,22 @@ function toggleHwBulk(checked){
   if(checked) renderHwBulkStudentsList();
 }
 
+// هل لدى هذا الطالب واجب مُسجَّل بالفعل لهذا اليوم؟ — يُستخدم لتحديث الحالة يومياً في نموذج التسجيل
+function hasHwToday(studentId){
+  return !!((homework[TODAY()]||{})[studentId]);
+}
+
 function renderHwBulkStudentsList(){
   const el=document.getElementById('hw-bulk-students-list'); if(!el) return;
   const active=students.filter(s=>!s.archived);
   el.innerHTML=active.map(s=>{
     const checked=hwBulkSelectedIds.has(s.id);
+    const doneToday=hasHwToday(s.id);
     return `<label class="student-row" style="cursor:pointer;${checked?'background:rgba(10,61,43,.04);':''}">
       <input type="checkbox" ${checked?'checked':''} onchange="toggleHwBulkStudent('${s.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--gd);margin-left:6px;flex-shrink:0;">
       <div class="st-avatar" style="background:var(--go);color:var(--gd);width:30px;height:30px;font-size:12px;">${ini(s.name)}</div>
       <div class="st-info"><div class="st-name">${s.name}</div></div>
+      ${doneToday?'<span style="font-size:10.5px;font-weight:700;color:var(--grn,#1a9c5b);background:rgba(26,156,91,.1);border-radius:20px;padding:2px 8px;flex-shrink:0;">✅ لديه واجب اليوم</span>':''}
     </label>`;
   }).join('');
   updateHwBulkCountLbl();
@@ -2046,7 +2060,7 @@ function saveHomework(){
   renderHwEntries();
   if(hwBulkMode){ hwBulkSelectedIds.clear(); renderHwBulkStudentsList(); }
   toast(`✅ تم حفظ الواجب البيتي لـ ${targets.length} طالب`);
-  renderHwList();
+  renderHomeworkTab();
 }
 
 function setHomeworkCompletion(date,studentId,pct){
@@ -2065,6 +2079,7 @@ function deleteHomework(date,studentId){
   if(!confirm('هل تريد حذف هذا الواجب؟')) return;
   delete homework[date][studentId];
   userDocRef.set({homework:{[date]:{[studentId]:firebase.firestore.FieldValue.delete()}}},{merge:true}).catch(e=>console.warn('hw delete err',e));
+  renderHwTodayStatus();
   renderHwList();
 }
 
@@ -2075,13 +2090,28 @@ function renderHomeworkTab(){
   const active=students.filter(s=>!s.archived);
   if(sel){
     const curS=sel.value;
-    sel.innerHTML='<option value="">— اختر طالباً —</option>'+active.map(s=>`<option value="${s.id}"${curS===s.id?' selected':''}>${s.name}</option>`).join('');
+    sel.innerHTML='<option value="">— اختر طالباً —</option>'+active.map(s=>`<option value="${s.id}"${curS===s.id?' selected':''}>${hasHwToday(s.id)?'✅ ':''}${s.name}${hasHwToday(s.id)?' (لديه واجب اليوم)':''}</option>`).join('');
   }
   if(flt){
     const curF=flt.value;
     flt.innerHTML='<option value="">كل الطلاب</option>'+active.map(s=>`<option value="${s.id}"${curF===s.id?' selected':''}>${s.name}</option>`).join('');
   }
+  renderHwTodayStatus();
   renderHwList();
+}
+
+// شريط يعرض عدد الطلاب الذين لديهم واجب مُسجَّل اليوم — يتحدث تلقائياً كل يوم لأنه مبني على تاريخ اليوم
+function renderHwTodayStatus(){
+  const el=document.getElementById('hw-today-status'); if(!el) return;
+  const active=students.filter(s=>!s.archived);
+  if(!active.length){ el.innerHTML=''; return; }
+  const doneCount=active.filter(s=>hasHwToday(s.id)).length;
+  const pendingNames=active.filter(s=>!hasHwToday(s.id)).map(s=>s.name);
+  el.innerHTML=`
+    <span style="font-weight:700;color:var(--gd);">📅 اليوم:</span>
+    <span style="font-weight:700;color:var(--em);">${doneCount}/${active.length} طالب لديهم واجب مُسجَّل</span>
+    ${pendingNames.length?`<span style="color:var(--txm);">— بانتظار التسجيل: ${pendingNames.join('، ')}</span>`:'<span style="color:var(--em);">— ✅ الجميع لديهم واجب اليوم</span>'}
+  `;
 }
 
 function renderHwList(){
@@ -3634,15 +3664,27 @@ function buildCurrentReportHTML(){
   return html;
 }
 
+// بانيا التقرير الفعّال حالياً واسم الملف — تُضبَط قبل فتح نافذة المعاينة، ليتشارك زر "تنزيل PDF" الواحد بين كل أنواع التقارير
+let _activeReportBuilder=buildCurrentReportHTML;
+let _activeReportFilename=()=>{
+  const content=document.getElementById('exp-content').value;
+  return (content==='attendance'?'سجل_الحضور':content==='progress'?'سجل_الحفظ_والمراجعة':content==='exams'?'ترشيحات_الاختبارات':'تقرير_شامل')+'_'+TODAY();
+};
+
 function previewReport(){
-  const html=buildCurrentReportHTML();
+  _activeReportBuilder=buildCurrentReportHTML;
+  _activeReportFilename=()=>{
+    const content=document.getElementById('exp-content').value;
+    return (content==='attendance'?'سجل_الحضور':content==='progress'?'سجل_الحفظ_والمراجعة':content==='exams'?'ترشيحات_الاختبارات':'تقرير_شامل')+'_'+TODAY();
+  };
+  const html=_activeReportBuilder();
   if(!html) return;
   document.getElementById('pdfPreviewWrap').innerHTML=html;
   om('mPdfPreview');
 }
 
 function exportReportPDF(){
-  const html=buildCurrentReportHTML();
+  const html=_activeReportBuilder();
   if(!html) return;
   const area=document.getElementById('pdfRenderArea');
   area.innerHTML=html;
@@ -3665,9 +3707,7 @@ function exportReportPDF(){
       pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
       heightLeft-=pageHeight;
     }
-    const content=document.getElementById('exp-content').value;
-    const fname=content==='attendance'?'سجل_الحضور':content==='progress'?'سجل_الحفظ_والمراجعة':content==='exams'?'ترشيحات_الاختبارات':'تقرير_شامل';
-    pdf.save(`${fname}_${TODAY()}.pdf`);
+    pdf.save(`${_activeReportFilename()}.pdf`);
     area.innerHTML='';
     cm('mPdfPreview');
     toast('✅ تم تنزيل الملف بنجاح');
@@ -3675,6 +3715,77 @@ function exportReportPDF(){
     console.log('pdf export err',e);
     toast('⚠️ تعذر إنشاء الملف','error');
   });
+}
+
+// ─── تقرير تقييم الطلاب اليومي (من تبويب "تقييم الطلاب") ───
+function buildDailyEvalReportHTML(date){
+  const active=students.filter(s=>!s.archived);
+  if(!active.length){ toast('⚠️ لا يوجد طلاب','error'); return null; }
+  const totalMax=evalTotalMax();
+  const list=active.map(s=>({id:s.id,name:s.name,...computeStudentDailyScore(s.id,date)}))
+    .sort((a,b)=>b.total-a.total);
+
+  const avg=Math.round(list.reduce((sum,r)=>sum+r.total,0)/list.length);
+  const openedCount=list.filter(r=>r.opened).length;
+  const presentCount=list.filter(r=>r.attStatus==='present').length;
+  const absentCount=list.filter(r=>r.attStatus==='absent').length;
+  const dateFmt=new Date(date).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+  const gradeOf=(pct)=> pct>=90?{lbl:'ممتاز',clr:'#0f9d58'}: pct>=75?{lbl:'جيد جداً',clr:'#2e7dd7'}: pct>=60?{lbl:'جيد',clr:'#c9a227'}: pct>=40?{lbl:'متوسط',clr:'#e08a00'}:{lbl:'ضعيف',clr:'#d9453d'};
+
+  let html=reportHeader(`تقرير التقييم اليومي — ${dateFmt}`);
+
+  html+=`<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+    ${[
+      {n:list.length,l:'عدد الطلاب',c:'#0a3d2b'},
+      {n:avg,l:'متوسط التقييم',c:'#0f9d58'},
+      {n:`${openedCount}/${list.length}`,l:'فتحوا صفحتهم',c:'#2e7dd7'},
+      {n:presentCount,l:'حاضر اليوم',c:'#0f9d58'},
+      {n:absentCount,l:'غائب اليوم',c:'#d9453d'}
+    ].map(b=>`<div style="flex:1;min-width:100px;background:#f8f5ef;border:1px solid #e0e8e4;border-radius:10px;padding:10px 8px;text-align:center;">
+      <div style="font-size:19px;font-weight:800;color:${b.c};">${b.n}</div>
+      <div style="font-size:10.5px;color:#6b7a6b;margin-top:2px;">${b.l}</div>
+    </div>`).join('')}
+  </div>`;
+
+  const cols=['الترتيب','الطالب','الحضور','الحفظ','المراجعة','الانضباط','فتح الصفحة','المجموع','التقدير']
+    .map(c=>`<th style="padding:8px 6px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;font-size:11.5px;">${c}</th>`).join('');
+
+  html+=`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;"><thead><tr>${cols}</tr></thead><tbody>`;
+  list.forEach((r,i)=>{
+    const rank=i+1;
+    const medal=rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+    const rowBg=rank<=3?'#fdf8ea':(i%2?'#f8f5ef':'#fff');
+    const attLbl=ATT_LABEL_MAP[r.attStatus]||'—';
+    const attClr=r.attStatus==='present'?'#0f9d58':r.attStatus==='late'?'#e08a00':r.attStatus==='excused'?'#2e7dd7':r.attStatus==='absent'?'#d9453d':'#9ab0a6';
+    const pct=totalMax>0?Math.round(r.total/totalMax*100):0;
+    const grade=gradeOf(pct);
+    html+=`<tr style="background:${rowBg};">
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;font-weight:800;">${medal}</td>
+      <td style="padding:6px 10px;border:1px solid #e0e8e4;font-weight:700;">${r.name}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;"><span style="color:${attClr};font-weight:700;">${attLbl}</span><br><span style="color:#9ab0a6;font-size:10px;">${r.attScore}/${evalConfig.attPresent}</span></td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;">${r.hifzScore}/${evalConfig.hifzMax}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;">${r.murajaaScore}/${evalConfig.murajaaMax}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;">${r.disciplineScore}/${evalConfig.disciplineMax}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;">${r.opened?'✅':'—'}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;font-weight:800;color:#0a3d2b;">${r.total}/${totalMax}</td>
+      <td style="padding:6px;border:1px solid #e0e8e4;text-align:center;"><span style="color:${grade.clr};font-weight:700;">${grade.lbl}</span></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  html+=`<div style="font-size:10.5px;color:#9ab0a6;margin-top:6px;">🕊️ الانضباط داخل الحلقة مضاف حديثاً ضمن معايير التقييم اليومي (من ${evalConfig.disciplineMax}) — والحضور والغياب الآن من ${evalConfig.attPresent}.</div>`;
+  html+=reportFooter();
+  return html;
+}
+
+function previewDailyEvalReport(){
+  const date=evalCurrentDate();
+  _activeReportBuilder=()=>buildDailyEvalReportHTML(date);
+  _activeReportFilename=()=>`تقرير_تقييم_يومي_${date}`;
+  const html=_activeReportBuilder();
+  if(!html) return;
+  document.getElementById('pdfPreviewWrap').innerHTML=html;
+  om('mPdfPreview');
 }
 
 // ════════════════════════════════════════
