@@ -546,7 +546,7 @@ select.form-input{cursor:pointer;}
       <div class="list-toolbar">
         <input class="search-inp" id="studentSearchInp" placeholder="بحث باسم الطالب..." oninput="filterStudents(this.value)">
         <select class="filter-sel" id="studentTeacherFilter" onchange="filterStudents(document.getElementById('studentSearchInp').value)">
-          <option value="">كل الحلقات</option>
+          <option value="">كل المحفّظين</option>
         </select>
         <button class="btn-save" style="flex:none;padding:10px 18px;" onclick="openAddStudentAdmin()">+ إضافة طالب جديد</button>
         <button class="btn-primary" style="flex:none;" onclick="openImportStudentsModal()">
@@ -718,7 +718,11 @@ select.form-input{cursor:pointer;}
       <div class="card">
         <div class="card-header">
           <div class="card-title">📊 نتائج الاختبارات الأخيرة</div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="filter-sel" id="examResultsPeriod" onchange="loadExamResultsAdmin()" style="padding:8px 12px;min-width:130px;">
+              <option value="week" selected>آخر أسبوع</option>
+              <option value="all">كل النتائج</option>
+            </select>
             <button class="report-btn" onclick="openSupervisorReportModal()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
               تقرير
@@ -2386,8 +2390,8 @@ ${appUrl}
 function renderTeacherFilterOptions(){
   const sel=document.getElementById('studentTeacherFilter');
   const cur=sel.value;
-  sel.innerHTML='<option value="">كل الحلقات</option>'+
-    getTeachers().map(t=>`<option value="${t.id}" ${cur===t.id?'selected':''}>${t.circle||t.name}</option>`).join('');
+  sel.innerHTML='<option value="">كل المحفّظين</option>'+
+    getTeachers().map(t=>`<option value="${t.id}" ${cur===t.id?'selected':''}>${t.name||t.circle}</option>`).join('');
 }
 
 function renderStudents(data){
@@ -2954,11 +2958,18 @@ async function saveNewExaminer(){
 
 async function loadExamResultsAdmin(){
   try{
+    const period=document.getElementById('examResultsPeriod')?.value || 'week';
     const snap=await db.collection('examResults').get();
-    const results=snap.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate)).slice(0,50);
+    let results=snap.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+    if(period==='week'){
+      const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7); weekAgo.setHours(0,0,0,0);
+      results=results.filter(r=>new Date(r.examDate)>=weekAgo);
+    } else {
+      results=results.slice(0,200); // سقف احتياطي حتى عند اختيار "كل النتائج" لتفادي إثقال الصفحة
+    }
     const tb=document.getElementById('examResultsAdminTable');
     if(!results.length){
-      tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">لا توجد نتائج بعد</td></tr>';
+      tb.innerHTML=`<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">${period==='week'?'لا توجد نتائج خلال آخر أسبوع':'لا توجد نتائج بعد'}</td></tr>`;
       return;
     }
     const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
