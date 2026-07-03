@@ -2771,6 +2771,26 @@ function openStudentDetail(studentId){
       ℹ️ تعديل بيانات الطالب أصبح متاحاً فقط من صفحة المشرف.
     </div>
     <div class="modal-divider"></div>
+    ${(()=>{
+      const acc = studentAuthMap[s.id];
+      const isActive = !!(acc && acc.status==='approved');
+      if(isActive){
+        return `
+    <button class="qbtn" style="width:100%;justify-content:center;background:linear-gradient(135deg,#075e54,#25d366);color:#fff;margin-bottom:10px;" onclick="sendActivationWhatsappTeacher('${s.id}')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
+      ✅ تفعيل حساب الطالب — إرسال بيانات الدخول
+    </button>`;
+      }
+      return `
+    <button class="qbtn" style="width:100%;justify-content:center;background:var(--bg2,#f1f1f1);color:var(--txl);cursor:not-allowed;margin-bottom:6px;" disabled>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      🔒 تفعيل حساب الطالب
+    </button>
+    <div style="font-size:11.5px;background:var(--ambb);color:var(--amb);padding:7px 10px;border-radius:8px;margin-bottom:10px;line-height:1.6;">
+      ⚠️ ${acc && acc.status==='disabled' ? 'حساب هذا الطالب موقوف حالياً، يرجى مراجعة المشرف لإعادة تفعيله.' : 'لم يُفعَّل حساب دخول لهذا الطالب بعد، يرجى مراجعة المشرف لتفعيله.'}
+    </div>`;
+    })()}
+    <div class="modal-divider"></div>
     ${s.pendingDeletion?`
     <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:10px;line-height:1.6;">
       ⏳ طلب حذف هذا الطالب قيد المراجعة من المشرف، ولن يتم حذفه إلا بعد الموافقة.
@@ -2809,6 +2829,52 @@ function calcAge(dob){
   const m=now.getMonth()-d.getMonth();
   if(m<0||(m===0&&now.getDate()<d.getDate())) age--;
   return age>=0?age:'—';
+}
+
+// ════════════════════════════════════════
+//  إرسال رسالة تفعيل الحساب لولي الأمر — من صفحة المحفّظ
+// ════════════════════════════════════════
+function sendActivationWhatsappTeacher(studentId){
+  const s=students.find(x=>x.id===studentId); if(!s){ toast('⚠️ تعذّر العثور على الطالب','error'); return; }
+  if(!s.parentPhone){ toast('⚠️ لا يوجد رقم جوال لولي الأمر','error'); return; }
+  if(!s.nationalId){ toast('⚠️ لا يوجد رقم هوية للطالب','error'); return; }
+  const acc=studentAuthMap[studentId];
+  if(!acc || acc.status!=='approved'){ toast('⚠️ حساب الطالب غير مفعّل بعد','error'); return; }
+
+  const teacherName   = window._teacherName || 'المحفّظ';
+  const teacherCircle = window._teacherCircle || 'حلقة القرآن';
+  const appUrl         = new URL('student.html', window.location.href).href;
+
+  const msg =
+`السلام عليكم ورحمة الله وبركاته 🌿
+
+نُبشّركم بأنه تم تفعيل حساب الطالب *${s.name}* ✅
+
+━━━━━━━━━━━━━━
+📚 *الحلقة:* ${teacherCircle}
+👨‍🏫 *المحفّظ:* ${teacherName}
+━━━━━━━━━━━━━━
+
+🔐 *بيانات الدخول:*
+• اسم المستخدم: *${s.nationalId}*
+• كلمة المرور: *${s.nationalId}*
+  _(يُرجى تغييرها عند أول دخول)_
+
+🔗 *رابط البوابة:*
+${appUrl}
+
+يُمكن للطالب من خلال البوابة متابعة:
+✔️ سجل الحضور والغياب
+✔️ جلسات الحفظ والمراجعة
+✔️ الاختبارات والنتائج
+✔️ ترتيبه في الحلقة
+
+بارك الله في الطالب ووفّقه لحفظ كتاب الله 🤲
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+
+  openWhatsApp(s.parentPhone, msg);
+  toast('✅ تم فتح واتساب بالرسالة');
 }
 
 function toggleArchive(studentId){
