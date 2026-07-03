@@ -172,18 +172,19 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .badge-warn{background:var(--ambb);color:var(--amb)}
 .badge-bad{background:var(--redb);color:var(--red)}
 
-/* EVALUATION TAB — صف واحد متناسب */
+/* EVALUATION TAB — بطاقة بسطرين ثابتين: سطر الهوية ثم سطر التقييم */
 #eval-list{padding:14px;display:flex;flex-direction:column;gap:10px;}
-.eval-card{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;background:var(--wh);border:1px solid var(--bdr);border-radius:16px;padding:10px 14px;box-shadow:0 1px 3px rgba(10,61,43,.04);transition:box-shadow .2s,transform .2s;}
+.eval-card{display:flex;flex-direction:column;gap:10px;background:var(--wh);border:1px solid var(--bdr);border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(10,61,43,.04);transition:box-shadow .2s,transform .2s;}
 .eval-card:hover{box-shadow:0 6px 18px rgba(10,61,43,.09);transform:translateY(-1px);}
+.eval-card-top{display:flex;align-items:center;gap:10px;min-width:0;}
 .eval-rank{width:26px;height:26px;border-radius:50%;background:var(--crd);color:var(--txm);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
 .eval-rank.top1{background:linear-gradient(135deg,#f0d060,#c9a227);color:#fff;box-shadow:0 2px 8px rgba(201,162,39,.4);}
 .eval-rank.top2{background:linear-gradient(135deg,#dcdcdc,#a8a8a8);color:#fff;}
 .eval-rank.top3{background:linear-gradient(135deg,#e0a96d,#b0723b);color:#fff;}
 .eval-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gl),var(--gm));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;flex-shrink:0;}
-.eval-info{flex:1 1 120px;min-width:96px;}
+.eval-info{flex:1;min-width:0;}
 .eval-name{font-size:13.5px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.eval-att-mini{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.eval-att-mini{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;}
 .eval-att-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:7px;white-space:nowrap;}
 .eval-att-pill.present{background:var(--grnb);color:var(--grn);}
 .eval-att-pill.late{background:#fff7e0;color:#b7791f;}
@@ -191,6 +192,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-att-pill.excused{background:var(--blub);color:var(--blu);}
 .eval-att-pill.none{background:var(--crd);color:var(--txm);}
 .eval-att-pts{font-size:10px;color:var(--txm);}
+
+/* سطر التقييم — الدوائر + مجموع التقييم معاً في صف واحد أنيق تحت خط فاصل */
+.eval-card-bottom{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;row-gap:16px;padding-top:10px;border-top:1px dashed var(--bdr);}
 
 /* صناديق النقر الدائرية للحفظ/المراجعة/الانضباط — تصميم إسلامي دائري بحلقة تقدّم مزخرفة ونجمة ثمانية */
 .eval-tapbox-wrap{position:relative;flex-shrink:0;}
@@ -255,12 +259,13 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 }
 @keyframes tapboxSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 
-.eval-opened{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex:1 1 130px;justify-content:flex-end;white-space:nowrap;}
+.eval-opened{display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.eval-opened svg{flex-shrink:0;}
 .eval-opened.yes{color:var(--grn);}
 .eval-opened.no{color:var(--txl);font-weight:600;}
 
 /* شارة التقييم الكلي — أخضر موحّد دائماً */
-.eval-total-badge{text-align:center;border-radius:14px;padding:6px 14px;min-width:58px;flex-shrink:0;background:var(--go);}
+.eval-total-badge{text-align:center;border-radius:14px;padding:6px 16px;min-width:58px;flex-shrink:0;background:var(--go);}
 .eval-total-num{font-size:19px;font-weight:800;line-height:1;color:var(--gl);}
 .eval-total-max{font-size:8.5px;color:var(--gl);opacity:.75;margin-top:2px;}
 
@@ -272,7 +277,11 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .eval-cfg-total{text-align:center;font-size:12.5px;font-weight:700;color:var(--gd);background:var(--go);border-radius:8px;padding:8px;margin:10px 0;}
 
 @media(max-width:640px){
-  .eval-opened{justify-content:flex-start;order:10;flex:1 1 100%;}
+  .eval-card-bottom{gap:10px;}
+  .eval-tapbox{width:52px;height:52px;}
+  .eval-tapbox-val{font-size:14.5px;}
+  .eval-total-badge{padding:5px 13px;min-width:52px;}
+  .eval-total-num{font-size:17px;}
 }
 
 .prog-student{padding:.7rem 0;border-bottom:1px solid var(--bdr)}
@@ -438,6 +447,12 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   .qbtn span{display:none}
   #hdr-teacher-name{max-width:30vw;}
   .tb-logo-t{font-size:12.5px}
+  .eval-card-bottom{gap:8px;row-gap:14px;}
+  .eval-tapbox{width:48px;height:48px;}
+  .eval-tapbox-val{font-size:13.5px;}
+  .eval-tapbox-max{font-size:6.5px;}
+  .eval-total-badge{padding:5px 11px;min-width:48px;}
+  .eval-total-num{font-size:16px;}
 }
 </style>
 </head>
@@ -467,7 +482,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   <div class="tb-center">
     <div class="tb-halqa">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span id="hdr-teacher-name" style="font-weight:700;">لوحة المحفّظ</span>
+      <span id="hdr-teacher-name" style="font-weight:700;">المحفّظ</span>
     </div>
   </div>
   <div class="tb-actions">
@@ -1425,6 +1440,7 @@ function enterApp(user,data){
   const ls = document.getElementById('loadingScreen');
   ls.classList.add('hide');
   setTimeout(()=>ls.classList.add('gone'), 300);
+  document.getElementById('hdr-teacher-name').textContent=data.name||user.email;
   document.getElementById('sb-name').textContent=data.name||user.email;
   document.getElementById('sb-circle').textContent=data.circle||'حلقة القرآن';
   document.getElementById('hdr-avatar').textContent=ini(data.name||'م');
@@ -1473,6 +1489,7 @@ function saveSettings(){
   if(!name){toast('⚠️ أدخل الاسم','error');return;}
   db.collection('users').doc(currentUser.uid).update({name,circle:circle||'حلقة القرآن'}).then(()=>{
     window._teacherName=name;
+    document.getElementById('hdr-teacher-name').textContent=name;
     document.getElementById('sb-name').textContent=name;
     document.getElementById('sb-circle').textContent=circle||'حلقة القرآن';
     document.getElementById('hdr-avatar').textContent=ini(name);
@@ -1843,16 +1860,23 @@ function renderEvalTab(){
     const openTime=formatOpenTime(r.openedAt);
     const hMax=evalConfig.hifzMax, mMax=evalConfig.murajaaMax, dMax=evalConfig.disciplineMax;
     return `<div class="eval-card">
-      <div class="eval-rank ${rankCls}">${rank}</div>
-      <div class="eval-avatar">${ini(r.name)}</div>
-      <div class="eval-info">
-        <div class="eval-name">${r.name}</div>
-        <div class="eval-att-mini">
-          <span class="eval-att-pill ${attCls}">${attLbl}</span>
-          <span class="eval-att-pts">${r.attScore}/${evalConfig.attPresent}</span>
+      <div class="eval-card-top">
+        <div class="eval-rank ${rankCls}">${rank}</div>
+        <div class="eval-avatar">${ini(r.name)}</div>
+        <div class="eval-info">
+          <div class="eval-name">${r.name}</div>
+          <div class="eval-att-mini">
+            <span class="eval-att-pill ${attCls}">${attLbl}</span>
+            <span class="eval-att-pts">${r.attScore}/${evalConfig.attPresent}</span>
+          </div>
+          <div class="eval-opened ${r.opened?'yes':'no'}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${r.opened ? `فتح صفحته — ${openTime}` : 'لم يفتح صفحته اليوم'}
+          </div>
         </div>
       </div>
 
+      <div class="eval-card-bottom">
       <div class="eval-tapbox-wrap">
         <div class="eval-tapbox t-murajaa${r.murajaaScore>=mMax?' full':''}" style="--pct:${mMax?Math.round(r.murajaaScore/mMax*100):0}" onclick="cycleEval('${r.id}','murajaa')" title="اضغط لزيادة النقاط — يعود للصفر عند تجاوز ${mMax}">
           <div class="eval-tapbox-inner">
@@ -1893,14 +1917,10 @@ function renderEvalTab(){
         </button>
       </div>
 
-      <div class="eval-opened ${r.opened?'yes':'no'}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        ${r.opened ? `فتح صفحته — ${openTime}` : 'لم يفتح صفحته اليوم'}
-      </div>
-
       <div class="eval-total-badge">
         <div class="eval-total-num">${r.total}</div>
         <div class="eval-total-max">من ${totalMax}</div>
+      </div>
       </div>
     </div>`;
   }).join('');
