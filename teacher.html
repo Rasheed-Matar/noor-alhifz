@@ -62,8 +62,8 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .tb-logo-t{color:var(--gld);font-size:16px;font-weight:700;line-height:1.1}
 .tb-logo-s{color:rgba(240,208,96,.5);font-size:10px}
 .tb-center{display:flex;align-items:center;gap:8px;flex:1;justify-content:center;min-width:0;}
-.tb-halqa{background:rgba(255,255,255,.06);border:1px solid rgba(201,162,39,.2);border-radius:20px;padding:5px 14px;color:var(--gld);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;max-width:100%;overflow:hidden;}
-.tb-halqa svg{opacity:.7;flex-shrink:0;}
+.tb-halqa{background:linear-gradient(135deg,rgba(201,162,39,.16),rgba(255,255,255,.04));border:1px solid rgba(201,162,39,.38);border-radius:22px;padding:6px 16px;color:var(--gld);font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;max-width:100%;overflow:hidden;letter-spacing:.3px;box-shadow:0 2px 10px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.05);white-space:nowrap;}
+.tb-halqa svg{opacity:.85;flex-shrink:0;}
 #hdr-teacher-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(50vw,300px);}
 .tb-actions{display:flex;align-items:center;gap:8px}
 .tb-btn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.8);cursor:pointer;transition:all .2s;position:relative;text-decoration:none;}
@@ -124,7 +124,8 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 
 .three-col{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:1.4rem}
 .sess-grid{grid-template-columns:1fr 1.3fr;}
-@media(max-width:1024px){.sess-grid{grid-template-columns:1fr}}
+.three-col.wide-right{grid-template-columns:1fr 1.4fr;}
+@media(max-width:1024px){.sess-grid{grid-template-columns:1fr}.three-col.wide-right{grid-template-columns:1fr}}
 
 .panel{background:var(--wh);border-radius:var(--r);border:1px solid var(--bdr);box-shadow:var(--sd1);overflow:hidden}
 .panel-hd{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;border-bottom:1px solid var(--bdr)}
@@ -466,7 +467,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   <div class="tb-center">
     <div class="tb-halqa">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span id="hdr-teacher-name" style="font-weight:700;">المحفّظ</span>
+      <span id="hdr-teacher-name" style="font-weight:700;">لوحة المحفّظ</span>
     </div>
   </div>
   <div class="tb-actions">
@@ -690,7 +691,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
     <!-- ═══ REPORTS ═══ -->
     <!-- ═══ EXAMS (ترشيح الاختبارات) ═══ -->
     <div class="scr" id="scr-exams">
-      <div class="three-col" style="grid-template-columns:1fr 1.4fr;">
+      <div class="three-col wide-right">
         <div class="panel">
           <div class="panel-hd"><div class="panel-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -878,7 +879,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 
     <!-- ═══ MESSAGES (مركز الرسائل) ═══ -->
     <div class="scr" id="scr-messages">
-      <div class="three-col" style="grid-template-columns:1fr 1.4fr;">
+      <div class="three-col wide-right">
         <div class="panel">
           <div class="panel-hd"><div class="panel-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -1424,7 +1425,6 @@ function enterApp(user,data){
   const ls = document.getElementById('loadingScreen');
   ls.classList.add('hide');
   setTimeout(()=>ls.classList.add('gone'), 300);
-  document.getElementById('hdr-teacher-name').textContent=data.name||user.email;
   document.getElementById('sb-name').textContent=data.name||user.email;
   document.getElementById('sb-circle').textContent=data.circle||'حلقة القرآن';
   document.getElementById('hdr-avatar').textContent=ini(data.name||'م');
@@ -1472,7 +1472,7 @@ function saveSettings(){
   const circle=document.getElementById('set-circle').value.trim();
   if(!name){toast('⚠️ أدخل الاسم','error');return;}
   db.collection('users').doc(currentUser.uid).update({name,circle:circle||'حلقة القرآن'}).then(()=>{
-    document.getElementById('hdr-teacher-name').textContent=name;
+    window._teacherName=name;
     document.getElementById('sb-name').textContent=name;
     document.getElementById('sb-circle').textContent=circle||'حلقة القرآن';
     document.getElementById('hdr-avatar').textContent=ini(name);
@@ -3465,7 +3465,7 @@ const rangeLabel={day:'تقرير اليوم',week:'تقرير الأسبوع (�
 
 function reportHeader(title){
   const today=new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'});
-  const teacherName=document.getElementById('hdr-teacher-name').textContent||'';
+  const teacherName=window._teacherName||'';
   return `
   <div style="font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl;padding:28px 32px;color:#1a2e25;">
     <div style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #c9a227;padding-bottom:14px;margin-bottom:18px;">
