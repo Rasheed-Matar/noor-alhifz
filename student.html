@@ -1398,6 +1398,8 @@ function renderDash(){
 
 // ════════════════════════════════════════
 //  الواجب البيتي — صفحة الطالب
+//  نموذج مسطّح: واجب "حالي" واحد فقط لكل طالب (بدون تقييم/نسبة إنجاز)
+//  يُستبدل بالكامل كل مرة يسجّل فيها المحفّظ واجباً جديداً — لا يُعرض أي سجل لأيام سابقة
 // ════════════════════════════════════════
 function renderHomeworkCard(){
   const wrap=document.getElementById('hw-card-wrap');
@@ -1405,62 +1407,28 @@ function renderHomeworkCard(){
   const titleEl=document.getElementById('hw-card-title');
   if(!wrap||!body) return;
 
-  const hwAll=teacherData.homework||{};
-  const todayStr=TODAY();
-  let rows=[];
-  Object.keys(hwAll).forEach(date=>{
-    const hw=(hwAll[date]||{})[myStudentId];
-    if(hw) rows.push({date,...hw});
-  });
-
-  if(!rows.length){ wrap.style.display='none'; return; }
   wrap.style.display='block';
-  rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||'').localeCompare(a.createdAt||''));
-
   if(titleEl) titleEl.textContent = '📔 الواجب البيتي';
 
-  const todayHw = rows.find(r=>r.date===todayStr) || null;
-  // آخر واجب سابق (قبل اليوم) — يُعرض تقييمه (نسبة إنجازه) بجانب واجب اليوم الجديد
-  const prevHw = rows.find(r=>r.date!==todayStr) || null;
+  const r=(teacherData.homework||{})[myStudentId] || null;
 
-  function hwItemHTML(r, dateBadge){
-    const hasCompletion=r.completion!==null&&r.completion!==undefined;
-    const pct=hasCompletion?r.completion:0;
-    const barCls=!hasCompletion?'pending':pct>=75?'great':pct>=40?'mid':'low';
-    const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-dash-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
-    const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-dash-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
-    return `<div class="hw-dash-item">
-      <div class="hw-dash-top">
-        <span>${dateBadge}</span>
-        <span class="hw-dash-date">📅 ${r.dateLabel||r.date}</span>
-      </div>
-      ${(hifzPills||muraPills)?`<div class="hw-dash-pills">${hifzPills}${muraPills}</div>`:''}
-      ${r.notes?`<div class="hw-dash-notes">📝 ${r.notes}</div>`:''}
-      <div class="hw-dash-bar-wrap">
-        <div class="hw-dash-bar ${barCls}" style="width:${hasCompletion?pct:100}%;"></div>
-      </div>
-      <div class="hw-dash-status">
-        ${hasCompletion?`<span class="hw-dash-pct">${pct}%</span> من الواجب تم إنجازه`:'⏳ بانتظار تسجيل المحفّظ لنسبة الإنجاز'}
-      </div>
+  if(!r){
+    body.innerHTML=`<div class="hw-dash-item">
+      <div class="hw-dash-status" style="margin-top:0;">⏳ لم يُسجَّل بعد</div>
     </div>`;
+    return;
   }
 
-  let html='';
-  // ١) واجب اليوم — إن لم يُعيَّن بعد نعرض تنبيهاً لطيفاً بدل إخفاء البطاقة بالكامل
-  if(todayHw){
-    html += hwItemHTML(todayHw, '📔 واجب اليوم الجديد');
-  } else {
-    html += `<div class="hw-dash-item">
-      <div class="hw-dash-top"><span>📔 واجب اليوم الجديد</span></div>
-      <div class="hw-dash-status">⏳ لم يُسجَّل واجب لهذا اليوم بعد — تابع مع محفّظك</div>
-    </div>`;
-  }
-  // ٢) تقييم الواجب السابق — نسبة إنجاز آخر واجب قبل اليوم (إن وُجد)
-  if(prevHw){
-    html += hwItemHTML(prevHw, '📊 تقييم الواجب السابق');
-  }
+  const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-dash-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
+  const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-dash-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
 
-  body.innerHTML = html;
+  body.innerHTML=`<div class="hw-dash-item">
+    <div class="hw-dash-top">
+      <span class="hw-dash-date">📅 ${r.dateLabel||r.date}</span>
+    </div>
+    ${(hifzPills||muraPills)?`<div class="hw-dash-pills">${hifzPills}${muraPills}</div>`:''}
+    ${r.notes?`<div class="hw-dash-notes">📝 ${r.notes}</div>`:''}
+  </div>`;
 }
 
 const HIFZ_DUAS=['بارك الله في حفظك وثبّتك على كتابه ✨','اللهم اجعل القرآن ربيع قلبك 🌿','زادك الله من فضله علماً وحفظاً'];
