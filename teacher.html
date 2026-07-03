@@ -360,15 +360,8 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .hw-info{flex:1;min-width:0}
 .hw-name{font-weight:700;font-size:13.5px;color:var(--gd)}
 .hw-meta{font-size:11.5px;color:var(--txm);margin-top:2px}
+.hw-meta-pending{color:var(--amb,#c98a1c);font-weight:600;}
 .hw-notes{font-size:12px;color:var(--txm);background:var(--cream);border-radius:8px;padding:6px 10px;margin-top:8px;line-height:1.6}
-.hw-completion-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px}
-.hw-completion-lbl{font-size:11.5px;color:var(--txm);font-weight:600}
-.hw-pct-pills{display:flex;gap:5px}
-.hw-pct-pill{border:1.5px solid var(--bdr);background:var(--wh);color:var(--txm);font-family:inherit;font-size:11px;font-weight:700;border-radius:7px;padding:4px 8px;cursor:pointer;transition:all .15s}
-.hw-pct-pill:hover{border-color:var(--gold)}
-.hw-pct-pill.sel{background:var(--grn,#1a6b4a);border-color:var(--grn,#1a6b4a);color:#fff}
-.hw-completion-badge{margin-right:auto;font-size:12px;font-weight:800;color:var(--grn,#1a6b4a);background:rgba(26,107,74,.1);border-radius:8px;padding:3px 10px}
-.hw-completion-pending{margin-right:auto;font-size:11px;font-weight:600;color:var(--amb,#c98a1c);background:rgba(201,138,28,.1);border-radius:8px;padding:3px 10px}
 
 .hw-entries{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px;}
 .hw-entry-pill{font-size:11px;font-weight:600;border-radius:20px;padding:3px 10px;display:inline-block;}
@@ -870,7 +863,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
       <!-- ═══ قائمة الواجبات ═══ -->
       <div class="panel" style="margin-top:1.2rem;">
         <div class="panel-hd">
-          <div class="panel-title">📔 الواجبات الأخيرة وتسجيل نسبة الإنجاز</div>
+          <div class="panel-title">📔 الواجب البيتي الحالي لكل طالب</div>
           <select id="hw-filter-student" onchange="renderHwList()" style="height:30px;border:1px solid var(--bdr);border-radius:8px;padding:0 8px;font-size:12px;font-family:inherit;">
             <option value="">كل الطلاب</option>
           </select>
@@ -1951,9 +1944,9 @@ function toggleHwBulk(checked){
   if(checked) renderHwBulkStudentsList();
 }
 
-// هل لدى هذا الطالب واجب مُسجَّل بالفعل لهذا اليوم؟ — يُستخدم لتحديث الحالة يومياً في نموذج التسجيل
-function hasHwToday(studentId){
-  return !!((homework[TODAY()]||{})[studentId]);
+// هل لدى هذا الطالب واجب "حالي" مُسجَّل الآن؟ (بغض النظر عن تاريخه — النموذج الجديد لا يحتفظ إلا بواجب واحد حالي)
+function hasHomework(studentId){
+  return !!homework[studentId];
 }
 
 function renderHwBulkStudentsList(){
@@ -1961,12 +1954,12 @@ function renderHwBulkStudentsList(){
   const active=students.filter(s=>!s.archived);
   el.innerHTML=active.map(s=>{
     const checked=hwBulkSelectedIds.has(s.id);
-    const doneToday=hasHwToday(s.id);
+    const has=hasHomework(s.id);
     return `<label class="student-row" style="cursor:pointer;${checked?'background:rgba(10,61,43,.04);':''}">
       <input type="checkbox" ${checked?'checked':''} onchange="toggleHwBulkStudent('${s.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--gd);margin-left:6px;flex-shrink:0;">
       <div class="st-avatar" style="background:var(--go);color:var(--gd);width:30px;height:30px;font-size:12px;">${ini(s.name)}</div>
       <div class="st-info"><div class="st-name">${s.name}</div></div>
-      ${doneToday?'<span style="font-size:10.5px;font-weight:700;color:var(--grn,#1a9c5b);background:rgba(26,156,91,.1);border-radius:20px;padding:2px 8px;flex-shrink:0;">✅ لديه واجب اليوم</span>':''}
+      ${has?'<span style="font-size:10.5px;font-weight:700;color:var(--grn,#1a9c5b);background:rgba(26,156,91,.1);border-radius:20px;padding:2px 8px;flex-shrink:0;">✅ لديه واجب حالي</span>':''}
     </label>`;
   }).join('');
   updateHwBulkCountLbl();
@@ -2030,6 +2023,8 @@ function renderHwEntries(){
     </div>`).join('');
 }
 
+// نموذج الواجب البيتي الآن "مسطّح" — واجب واحد "حالي" فقط لكل طالب (homework[studentId])
+// بلا أي تقييم/نسبة إنجاز، وبلا الاحتفاظ بتاريخ الأيام السابقة — كل حفظ جديد يستبدل القديم بالكامل
 function saveHomework(){
   if(!hwHifzEntries.length&&!hwMurajaaEntries.length){toast('⚠️ أضف حفظاً أو مراجعة على الأقل','error');return;}
   const notes=(document.getElementById('hw-notes')||{}).value||'';
@@ -2047,14 +2042,13 @@ function saveHomework(){
   const hwData={
     hifz:hwHifzEntries.map(e=>({...e})),
     murajaa:hwMurajaaEntries.map(e=>({...e})),
-    notes, dateLabel,
-    createdAt:new Date().toISOString(),
-    completion:null, completionAt:null
+    notes, date, dateLabel,
+    createdAt:new Date().toISOString()
   };
-  if(!homework[date]) homework[date]={};
+  // استبدال كامل لحقل كل طالب عبر مسار منقّط (dot-path) — يضمن حذف أي بيانات قديمة (كنسبة إنجاز سابقة) بدل دمجها
   const patch={};
-  targets.forEach(studentId=>{ homework[date][studentId]={...hwData}; patch[studentId]={...hwData}; });
-  userDocRef.set({homework:{[date]:patch}},{merge:true}).catch(e=>console.warn('homework save err',e));
+  targets.forEach(studentId=>{ homework[studentId]={...hwData}; patch['homework.'+studentId]=hwData; });
+  userDocRef.update(patch).catch(e=>console.warn('homework save err',e));
   hwHifzEntries=[]; hwMurajaaEntries=[];
   document.getElementById('hw-notes').value='';
   renderHwEntries();
@@ -2063,22 +2057,11 @@ function saveHomework(){
   renderHomeworkTab();
 }
 
-function setHomeworkCompletion(date,studentId,pct){
-  if(!homework[date]||!homework[date][studentId]) return;
-  homework[date][studentId].completion=pct;
-  homework[date][studentId].completionAt=new Date().toISOString();
-  userDocRef.set({
-    homework:{[date]:{[studentId]:{completion:pct,completionAt:homework[date][studentId].completionAt}}}
-  },{merge:true}).catch(e=>console.warn('hw completion err',e));
-  renderHwList();
-  toast(`✅ تم تسجيل نسبة الإنجاز: ${pct}%`);
-}
-
-function deleteHomework(date,studentId){
-  if(!homework[date]||!homework[date][studentId]) return;
-  if(!confirm('هل تريد حذف هذا الواجب؟')) return;
-  delete homework[date][studentId];
-  userDocRef.set({homework:{[date]:{[studentId]:firebase.firestore.FieldValue.delete()}}},{merge:true}).catch(e=>console.warn('hw delete err',e));
+function deleteHomework(studentId){
+  if(!homework[studentId]) return;
+  if(!confirm('هل تريد حذف الواجب البيتي الحالي لهذا الطالب؟')) return;
+  delete homework[studentId];
+  userDocRef.update({['homework.'+studentId]:firebase.firestore.FieldValue.delete()}).catch(e=>console.warn('hw delete err',e));
   renderHwTodayStatus();
   renderHwList();
 }
@@ -2090,7 +2073,7 @@ function renderHomeworkTab(){
   const active=students.filter(s=>!s.archived);
   if(sel){
     const curS=sel.value;
-    sel.innerHTML='<option value="">— اختر طالباً —</option>'+active.map(s=>`<option value="${s.id}"${curS===s.id?' selected':''}>${hasHwToday(s.id)?'✅ ':''}${s.name}${hasHwToday(s.id)?' (لديه واجب اليوم)':''}</option>`).join('');
+    sel.innerHTML='<option value="">— اختر طالباً —</option>'+active.map(s=>`<option value="${s.id}"${curS===s.id?' selected':''}>${hasHomework(s.id)?'✅ ':''}${s.name}${hasHomework(s.id)?' (لديه واجب حالي)':''}</option>`).join('');
   }
   if(flt){
     const curF=flt.value;
@@ -2105,57 +2088,50 @@ function renderHwTodayStatus(){
   const el=document.getElementById('hw-today-status'); if(!el) return;
   const active=students.filter(s=>!s.archived);
   if(!active.length){ el.innerHTML=''; return; }
-  const doneCount=active.filter(s=>hasHwToday(s.id)).length;
-  const pendingNames=active.filter(s=>!hasHwToday(s.id)).map(s=>s.name);
+  const doneCount=active.filter(s=>hasHomework(s.id)).length;
+  const pendingNames=active.filter(s=>!hasHomework(s.id)).map(s=>s.name);
   el.innerHTML=`
-    <span style="font-weight:700;color:var(--gd);">📅 اليوم:</span>
-    <span style="font-weight:700;color:var(--em);">${doneCount}/${active.length} طالب لديهم واجب مُسجَّل</span>
-    ${pendingNames.length?`<span style="color:var(--txm);">— بانتظار التسجيل: ${pendingNames.join('، ')}</span>`:'<span style="color:var(--em);">— ✅ الجميع لديهم واجب اليوم</span>'}
+    <span style="font-weight:700;color:var(--gd);">📔 الحالة الآن:</span>
+    <span style="font-weight:700;color:var(--em);">${doneCount}/${active.length} طالب لديهم واجب بيتي مُسجَّل</span>
+    ${pendingNames.length?`<span style="color:var(--txm);">— لم يُسجَّل بعد لـ: ${pendingNames.join('، ')}</span>`:'<span style="color:var(--em);">— ✅ الجميع لديهم واجب مُسجَّل حالياً</span>'}
   `;
 }
 
+// قائمة الواجب البيتي "الحالي" لكل طالب — لا يوجد سجل تاريخي، واجب واحد فقط لكل طالب يُستبدل بالكامل عند كل تسجيل جديد
 function renderHwList(){
   const el=document.getElementById('hw-list'); if(!el) return;
   const filterStudentId=(document.getElementById('hw-filter-student')||{}).value||'';
-  let rows=[];
-  Object.keys(homework).forEach(date=>{
-    Object.keys(homework[date]||{}).forEach(studentId=>{
-      const hw=homework[date][studentId];
-      if(!hw) return;
-      if(filterStudentId&&studentId!==filterStudentId) return;
-      const student=students.find(s=>s.id===studentId);
-      rows.push({date,studentId,studentName:student?student.name:'طالب محذوف',...hw});
-    });
-  });
-  rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||'').localeCompare(a.createdAt||''));
-  rows=rows.slice(0,50);
-  if(!rows.length){
-    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا توجد واجبات بعد</div></div>';
+  const active=students.filter(s=>!s.archived).filter(s=>!filterStudentId||s.id===filterStudentId);
+  if(!active.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا يوجد طلاب بعد — أضف طلاباً أولاً</div></div>';
     return;
   }
-  const PCTS=[25,50,75,100];
-  el.innerHTML=rows.map(r=>{
-    const hasCompletion=r.completion!==null&&r.completion!==undefined;
+  el.innerHTML=active.map(s=>{
+    const r=homework[s.id];
+    if(!r){
+      return `<div class="hw-card">
+        <div class="hw-card-top">
+          <div class="hw-avatar">${ini(s.name)}</div>
+          <div class="hw-info">
+            <div class="hw-name">${s.name}</div>
+            <div class="hw-meta hw-meta-pending">لم يُسجَّل واجب بعد</div>
+          </div>
+        </div>
+      </div>`;
+    }
     const hifzPills=(r.hifz||[]).map(h=>`<span class="hw-entry-pill hifz">📖 ${h.surah} (${h.from}–${h.to})</span>`).join('');
     const muraPills=(r.murajaa||[]).map(m=>`<span class="hw-entry-pill murajaa">🔄 ${m.surah} (${m.from}–${m.to})</span>`).join('');
     return `<div class="hw-card">
       <div class="hw-card-top">
-        <div class="hw-avatar">${ini(r.studentName)}</div>
+        <div class="hw-avatar">${ini(s.name)}</div>
         <div class="hw-info">
-          <div class="hw-name">${r.studentName}</div>
-          <div class="hw-meta">📅 ${r.dateLabel||r.date}</div>
+          <div class="hw-name">${s.name}</div>
+          <div class="hw-meta">📅 آخر تحديث: ${r.dateLabel||r.date}</div>
         </div>
-        <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${r.date}','${r.studentId}')">×</button>
+        <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${s.id}')" title="حذف الواجب الحالي">×</button>
       </div>
       ${(hifzPills||muraPills)?`<div class="hw-entries">${hifzPills}${muraPills}</div>`:''}
       ${r.notes?`<div class="hw-notes">📝 ${r.notes}</div>`:''}
-      <div class="hw-completion-row">
-        <span class="hw-completion-lbl">نسبة الإنجاز:</span>
-        <div class="hw-pct-pills">
-          ${PCTS.map(p=>`<button class="hw-pct-pill${hasCompletion&&r.completion===p?' sel':''}" onclick="setHomeworkCompletion('${r.date}','${r.studentId}',${p})">${p}%</button>`).join('')}
-        </div>
-        ${hasCompletion?`<span class="hw-completion-badge">${r.completion}%</span>`:`<span class="hw-completion-pending">بانتظار</span>`}
-      </div>
     </div>`;
   }).join('');
 }
