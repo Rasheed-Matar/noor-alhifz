@@ -1467,6 +1467,7 @@ function enterApp(user,data){
       evalConfig={...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
       renderAll();
       suppressSave=false;
+      _checkDocSizeWarning(d);
     } else {
       students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
       evalConfig={...DEFAULT_EVAL_CONFIG};
@@ -1475,11 +1476,62 @@ function enterApp(user,data){
   },e=>console.log('snap err',e));
 }
 
-function save(){
+// ═══════════════════════════════════════════════════════════
+//  حفظ ذكي: كل عملية تكتب فقط الحقل الذي تغيّر فعلاً بدل
+//  إعادة إرسال كل بيانات المحفّظ (طلاب+جلسات+حضور+اختبارات+طلبات)
+//  في كل مرة — هذا يقلّل حجم الكتابة، يسرّع الحفظ على شبكة
+//  ضعيفة، ويُبعدنا عن حد الـ1 ميجابايت لحجم وثيقة Firestore.
+// ═══════════════════════════════════════════════════════════
+function saveField(patch){
   if(suppressSave||!userDocRef) return;
-  userDocRef.set({students,sessions,attendance,exams,deletionRequests},{merge:true}).catch(e=>{
+  userDocRef.set(patch,{merge:true}).catch(e=>{
     console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
+}
+// حفظ يوم حضور واحد فقط (dot-notation) بدل كل تاريخ الحضور
+function saveAttendance(date){
+  saveField({attendance:{[date]: attendance[date]||{}}});
+}
+// حفظ مصفوفة الطلاب فقط (صغيرة ومحدودة بعدد طلاب الحلقة، لا تكبر بلا حدود)
+function saveStudents(){
+  saveField({students});
+}
+// إضافة جلسة جديدة: نرسل السجل الجديد فقط عبر arrayUnion بدل
+// إعادة رفع كامل تاريخ الجلسات (وهو أكبر حقل وأخطرها على حجم الوثيقة)
+function saveNewSession(record){
+  saveField({sessions: firebase.firestore.FieldValue.arrayUnion(record)});
+}
+// تعديل جلسة موجودة مسبقاً: لا يوجد بديل غير استبدال المصفوفة كاملة
+// (نادر الحدوث مقارنة بالإضافة، لذلك أثره محدود)
+function saveSessionsFull(){
+  saveField({sessions});
+}
+function saveExams(){
+  saveField({exams});
+}
+function saveStudentsAndDeletionRequests(){
+  saveField({students, deletionRequests});
+}
+// إنذار مبكر قبل الوصول لحد Firestore الصارم لحجم الوثيقة (1 ميجابايت):
+// نقيس حجم الوثيقة تقريبياً عند كل تحديث، ونُنبّه المحفّظ إذا اقترب من الحد
+// حتى يُبلّغ المشرف لأرشفة البيانات القديمة قبل أن تتعطّل الكتابة فجأة.
+let _lastSizeWarnAt=0;
+function _checkDocSizeWarning(d){
+  try{
+    const approxBytes=new Blob([JSON.stringify(d)]).size;
+    const limitBytes=1048576; // 1 MiB — حد Firestore الثابت لكل وثيقة
+    const ratio=approxBytes/limitBytes;
+    if(ratio>=0.75 && Date.now()-_lastSizeWarnAt>1000*60*60*12){ // تحذير مرة كل 12 ساعة كحد أقصى
+      _lastSizeWarnAt=Date.now();
+      toast(`⚠️ بيانات حلقتك اقتربت من الحد الأقصى المسموح (${Math.round(ratio*100)}%). يرجى التواصل مع المشرف لأرشفة السجلات القديمة قبل أن يتعطّل الحفظ`,'error');
+    }
+  }catch(e){/* تجاهل أي خطأ بالقياس، هذا فحص احترازي فقط */}
+}
+
+// دالة قديمة أُبقيت للتوافق فقط — تُستخدم حصراً في الحالات النادرة
+// التي يتغيّر فيها أكثر من حقل رئيسي دفعة واحدة
+function save(){
+  saveField({students,sessions,attendance,exams,deletionRequests});
 }
 
 function saveSettings(){
@@ -1711,6 +1763,37 @@ function emptyEvalEntry(){ return {hifzScore:0,murajaaScore:0,disciplineScore:0}
 
 // زيادة نقاط الحفظ/المراجعة/الانضباط بمقدار خطوة تناسبية مع الحد الأقصى المعتمد — يُحفظ فوراً
 // النقر يزيد قيمة الخطوة، وعند تجاوز الحد الأقصى يعود للصفر من جديد
+// نقرات التقييم متكررة وسريعة (قد تحدث عدة نقرات بالثانية على نفس الطالب/المعيار)،
+// لذلك نجمّعها محلياً ونرسل كتابة واحدة لـ Firestore بعد توقّف قصير عن النقر،
+// بدل كتابة مستقلة على كل نقرة — الواجهة تبقى فورية لأن dailyEval المحلي يتحدّث فوراً.
+const _pendingEvalWrites={};
+function _flushEvalWrite(date,studentId,key,val){
+  if(!userDocRef) return;
+  userDocRef.set({
+    dailyEval: { [date]: { [studentId]: { [key]: val } } }
+  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+}
+function _scheduleEvalWrite(date,studentId,key,val){
+  const cellKey=date+'|'+studentId+'|'+key;
+  if(_pendingEvalWrites[cellKey]) clearTimeout(_pendingEvalWrites[cellKey]);
+  _pendingEvalWrites[cellKey]=setTimeout(()=>{
+    delete _pendingEvalWrites[cellKey];
+    _flushEvalWrite(date,studentId,key,val);
+  },500);
+}
+// إرسال أي كتابات معلّقة فوراً عند مغادرة الصفحة/تصغيرها كي لا تُفقد آخر نقرة
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    Object.keys(_pendingEvalWrites).forEach(cellKey=>{
+      clearTimeout(_pendingEvalWrites[cellKey]);
+      delete _pendingEvalWrites[cellKey];
+      const [date,studentId,key]=cellKey.split('|');
+      const val=((dailyEval[date]||{})[studentId]||{})[key];
+      if(val!==undefined) _flushEvalWrite(date,studentId,key,val);
+    });
+  }
+});
+
 function cycleEval(studentId, field){
   const date=evalCurrentDate();
   const max=evalConfig[EVAL_FIELD_MAX_KEY[field]];
@@ -1722,9 +1805,7 @@ function cycleEval(studentId, field){
   const next = cur>=max ? 0 : Math.min(max, cur+step);
   dailyEval[date][studentId][key]=next;
 
-  userDocRef.set({
-    dailyEval: { [date]: { [studentId]: { [key]: next } } }
-  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+  _scheduleEvalWrite(date,studentId,key,next);
 
   renderEvalTab();
 }
@@ -1770,9 +1851,9 @@ function saveManualEval(){
   const key=EVAL_FIELD_KEY[field];
   dailyEval[date][studentId][key]=val;
 
-  userDocRef.set({
-    dailyEval: { [date]: { [studentId]: { [key]: val } } }
-  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+  const cellKey=date+'|'+studentId+'|'+key;
+  if(_pendingEvalWrites[cellKey]){ clearTimeout(_pendingEvalWrites[cellKey]); delete _pendingEvalWrites[cellKey]; }
+  _flushEvalWrite(date,studentId,key,val);
 
   cm('mManualEval');
   _manualEvalTarget=null;
@@ -2193,7 +2274,7 @@ function setAttendance(studentId,status){
   const cur=attendance[TODAY()][studentId];
   if(cur===status) delete attendance[TODAY()][studentId];
   else attendance[TODAY()][studentId]=status;
-  save();
+  saveAttendance(TODAY());
   renderAttendance();
   renderDash();
   const badge=document.getElementById('att-saved-badge');
@@ -2350,7 +2431,7 @@ function saveBulkSession(){
       newCount++;
     }
   });
-  save();
+  saveSessionsFull();
   hifzEntries=[]; murajaaEntries=[]; editingHifzIdx=null; editingMurajaaIdx=null;
   const selectedCount=bulkSelectedIds.size;
   bulkSelectedIds.clear();
@@ -2557,9 +2638,10 @@ function saveSession(){
       createdAt:new Date().toISOString()
     };
     sessions.push(record);
+    saveNewSession(record);
   }
+  if(wasEditing) saveSessionsFull();
   editingSessionId=null;
-  save();
   hifzEntries=[]; murajaaEntries=[];
   selectSessStudent(currentSessStudentId);
   toast(wasEditing?'✅ تم حفظ التعديل على الجلسة':'✅ تم حفظ الجلسة بنجاح');
@@ -2880,7 +2962,7 @@ ${appUrl}
 function toggleArchive(studentId){
   const s=students.find(x=>x.id===studentId); if(!s) return;
   s.archived=!s.archived;
-  save(); renderAll(); cm('mStudentDetail');
+  saveStudents(); renderAll(); cm('mStudentDetail');
   toast(s.archived?'📦 تم أرشفة الطالب':'✅ تم إعادة تفعيل الطالب');
 }
 
@@ -2907,7 +2989,7 @@ function submitDeleteRequest(){
   s.pendingDeletion=true;
   s.notes=(s.notes?s.notes+'\n':'')+'سبب طلب الحذف: '+reason;
 
-  save(); renderAll();
+  saveStudentsAndDeletionRequests(); renderAll();
   cm('mDeleteRequest'); cm('mStudentDetail');
   toast('✅ تم إرسال طلب الحذف إلى المشرف');
 }
@@ -2918,7 +3000,7 @@ function cancelDeleteRequest(studentId){
   s.pendingDeletion=false;
   const req=[...deletionRequests].reverse().find(r=>r.studentId===studentId&&r.status==='pending');
   if(req){ req.status='rejected'; req.resolvedAt=new Date().toISOString(); }
-  save(); renderAll(); cm('mStudentDetail');
+  saveStudentsAndDeletionRequests(); renderAll(); cm('mStudentDetail');
   toast('↩️ تم إلغاء طلب الحذف');
 }
 
@@ -2954,7 +3036,7 @@ function nominateStudent(){
     nominatedAt:new Date().toISOString()
   };
   exams.push(record);
-  save();
+  saveExams();
   document.getElementById('exam-notes').value='';
   renderExamsList();
   toast('✅ تم ترشيح الطالب للاختبار بنجاح');
@@ -2969,7 +3051,7 @@ function deleteExam(examId){
   }
   if(!confirm('حذف هذا الترشيح؟')) return;
   exams=exams.filter(x=>x.id!==examId);
-  save();
+  saveExams();
   renderExamsList();
   toast('🗑️ تم حذف الترشيح');
 }
