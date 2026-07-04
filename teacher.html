@@ -1310,6 +1310,12 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
+// ═══ مراجع الوثائق الفرعية (subcollections) — كل يوم/جلسة وثيقة مستقلة بحد أقصى 1MB خاص فيها،
+// بدل تجميعها بمصفوفة واحدة تكبر بلا حدود داخل وثيقة المحفّظ الرئيسية ═══
+let attendanceCol=null, dailyEvalCol=null, sessionsCol=null;
+let attTodayUnsub=null, evalTodayUnsub=null;
+const loadedAttendanceDates=new Set(), loadedEvalDates=new Set(), loadedSessionStudents=new Set();
+let loadedSessionsFullRange=null; // {from,to} آخر مدى تواريخ حُمّلت بالكامل لأجل التقارير
 // معايير التقييم اليومي — قابلة للتعديل والاعتماد من المحفّظ (الحضور من 20 + الحفظ والمراجعة والانضباط + مكافأة الفتح)
 const DEFAULT_EVAL_CONFIG={attPresent:20, attLate:10, attExcused:5, attAbsent:0, hifzMax:30, murajaaMax:30, disciplineMax:10};
 let evalConfig={...DEFAULT_EVAL_CONFIG};
@@ -1400,9 +1406,64 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
+  if(attTodayUnsub){attTodayUnsub();attTodayUnsub=null;}
+  if(evalTodayUnsub){evalTodayUnsub();evalTodayUnsub=null;}
   if(unsubSupervisorMsgs){unsubSupervisorMsgs.forEach(u=>u());unsubSupervisorMsgs=null;}
-  userDocRef=null;currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};
+  userDocRef=null;attendanceCol=null;dailyEvalCol=null;sessionsCol=null;
+  currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};
+  loadedAttendanceDates.clear();loadedEvalDates.clear();loadedSessionStudents.clear();loadedSessionsFullRange=null;
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ترحيل لمرة واحدة: أي بيانات قديمة كانت مخزّنة داخل وثيقة
+//  المحفّظ نفسها (attendance/dailyEval/sessions) تُنقل إلى
+//  وثائق فرعية منفصلة، ثم تُحذف من الوثيقة الرئيسية.
+//  يعمل مرة واحدة فقط لكل محفّظ (يتحقق من migratedSubcollections).
+// ═══════════════════════════════════════════════════════════
+let _migrationInFlight=false;
+async function migrateLegacyIfNeeded(d){
+  if(d.migratedSubcollections || _migrationInFlight) return false;
+  const hasLegacy = (d.sessions&&d.sessions.length) || (d.attendance&&Object.keys(d.attendance).length) || (d.dailyEval&&Object.keys(d.dailyEval).length);
+  if(!hasLegacy){
+    // لا يوجد بيانات قديمة أصلاً (محفّظ جديد) — فقط علّم الوثيقة كمهاجَرة لتفادي الفحص المتكرر
+    await userDocRef.set({migratedSubcollections:true},{merge:true}).catch(()=>{});
+    return false;
+  }
+  _migrationInFlight=true;
+  toast('⏳ جارٍ ترحيل بياناتك لصيغة أسرع وأكثر أماناً، الرجاء الانتظار...');
+  try{
+    let batch=db.batch(); let ops=0;
+    async function flushIfNeeded(){ if(ops>=400){ await batch.commit(); batch=db.batch(); ops=0; } }
+
+    for(const [date,dayObj] of Object.entries(d.attendance||{})){
+      batch.set(attendanceCol.doc(date), dayObj||{}, {merge:true}); ops++; await flushIfNeeded();
+    }
+    for(const [date,dayObj] of Object.entries(d.dailyEval||{})){
+      batch.set(dailyEvalCol.doc(date), dayObj||{}, {merge:true}); ops++; await flushIfNeeded();
+    }
+    for(const record of (d.sessions||[])){
+      if(!record||!record.id) continue;
+      batch.set(sessionsCol.doc(record.id), record, {merge:true}); ops++; await flushIfNeeded();
+    }
+    if(ops>0) await batch.commit();
+
+    // بعد نجاح النقل: تفريغ الحقول القديمة من الوثيقة الرئيسية وتعليمها كمهاجَرة
+    await userDocRef.set({
+      sessions: firebase.firestore.FieldValue.delete(),
+      attendance: firebase.firestore.FieldValue.delete(),
+      dailyEval: firebase.firestore.FieldValue.delete(),
+      migratedSubcollections: true
+    }, {merge:true});
+    toast('✅ تم ترحيل بياناتك بنجاح');
+    return true;
+  }catch(e){
+    console.error('migration err', e);
+    toast('⚠️ تعذّر ترحيل البيانات القديمة، سيُعاد المحاولة لاحقاً','error');
+    return false;
+  }finally{
+    _migrationInFlight=false;
+  }
 }
 
 const authTimeout=setTimeout(()=>{ window.location.href='login.html'; },8000);
@@ -1450,6 +1511,9 @@ function enterApp(user,data){
   window._teacherName = data.name||'';
   window._teacherCircle = data.circle||'حلقة القرآن';
   userDocRef=db.collection('userdata').doc(user.uid);
+  attendanceCol=userDocRef.collection('attendance');
+  dailyEvalCol=userDocRef.collection('dailyEval');
+  sessionsCol=userDocRef.collection('sessions');
   loadStudentOpenStatus(user.uid);
   loadStudentAuthMap(user.uid);
   loadSupervisorPhone();
@@ -1459,12 +1523,22 @@ function enterApp(user,data){
     setTimeout(()=>om('mFirstPassword'), 600);
   }
   if(fsUnsub)fsUnsub();
-  fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},snap=>{
+  fsUnsub=userDocRef.onSnapshot({includeMetadataChanges:true},async snap=>{
     if(snap.exists){
       suppressSave=true;
       const d=snap.data();
-      students=d.students||[]; sessions=d.sessions||[]; attendance=d.attendance||{}; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; dailyEval=d.dailyEval||{}; pageOpens=d.pageOpens||{}; homework=d.homework||{};
+      students=d.students||[]; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; pageOpens=d.pageOpens||{}; homework=d.homework||{};
       evalConfig={...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
+
+      const migrated = await migrateLegacyIfNeeded(d);
+      if(!migrated){
+        // أثناء نافذة الترحيل القصيرة (أو إن لم يوجد ترحيل أصلاً) نعرض أي بيانات قديمة متبقية
+        // مؤقتاً كي لا تظهر الواجهة فارغة، لحين اكتمال نقلها للوثائق الفرعية
+        if(d.sessions&&d.sessions.length) sessions=d.sessions;
+        if(d.attendance&&Object.keys(d.attendance).length) attendance=d.attendance;
+        if(d.dailyEval&&Object.keys(d.dailyEval).length) dailyEval=d.dailyEval;
+      }
+      ensureTodayListeners();
       renderAll();
       suppressSave=false;
       _checkDocSizeWarning(d);
@@ -1482,29 +1556,82 @@ function enterApp(user,data){
 //  في كل مرة — هذا يقلّل حجم الكتابة، يسرّع الحفظ على شبكة
 //  ضعيفة، ويُبعدنا عن حد الـ1 ميجابايت لحجم وثيقة Firestore.
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  مستمعان حيّان فقط على "وثيقة اليوم" بكل من الحضور والتقييم
+//  (لوحة التحكم والتبويبات النشطة تحتاج تحديثاً لحظياً لليوم الحالي فقط،
+//  أما التواريخ الأخرى فتُجلب عند الطلب بدالة ensure أدناه)
+// ═══════════════════════════════════════════════════════════
+function ensureTodayListeners(){
+  if(attTodayUnsub || !attendanceCol) return;
+  const today=TODAY();
+  attTodayUnsub=attendanceCol.doc(today).onSnapshot(doc=>{
+    attendance[today]=doc.exists?(doc.data()||{}):{};
+    loadedAttendanceDates.add(today);
+    renderAll();
+  },e=>console.warn('att today listen err',e));
+  evalTodayUnsub=dailyEvalCol.doc(today).onSnapshot(doc=>{
+    dailyEval[today]=doc.exists?(doc.data()||{}):{};
+    loadedEvalDates.add(today);
+    renderEvalTab();
+  },e=>console.warn('eval today listen err',e));
+}
+
+// جلب حضور تاريخ معيّن غير اليوم عند الحاجة فقط (تصفّح تاريخ سابق، تقرير يوم واحد)
+async function ensureAttendanceDate(date){
+  if(loadedAttendanceDates.has(date)) return;
+  const doc=await attendanceCol.doc(date).get();
+  attendance[date]=doc.exists?(doc.data()||{}):{};
+  loadedAttendanceDates.add(date);
+}
+async function ensureEvalDate(date){
+  if(loadedEvalDates.has(date)) return;
+  const doc=await dailyEvalCol.doc(date).get();
+  dailyEval[date]=doc.exists?(doc.data()||{}):{};
+  loadedEvalDates.add(date);
+}
+// جلب كل جلسات طالب معيّن (تُستخدم عند فتح ملفه/سجل جلساته) — بدل تحميل جلسات كل الطلاب دفعة واحدة
+async function ensureSessionsForStudent(studentId){
+  if(loadedSessionStudents.has(studentId)) return;
+  const snap=await sessionsCol.where('studentId','==',studentId).get();
+  const ids=new Set(sessions.map(s=>s.id));
+  snap.forEach(doc=>{ if(!ids.has(doc.id)){ sessions.push(doc.data()); ids.add(doc.id); } });
+  loadedSessionStudents.add(studentId);
+}
+// جلب كل الجلسات ضمن مدى تاريخ معيّن (تُستخدم لتقارير PDF التي تغطي عدة أيام لكل الطلاب)
+async function ensureSessionsForDateRange(fromDate,toDate){
+  if(loadedSessionsFullRange && loadedSessionsFullRange.from<=fromDate && loadedSessionsFullRange.to>=toDate) return;
+  const snap=await sessionsCol.where('date','>=',fromDate).where('date','<=',toDate).get();
+  const ids=new Set(sessions.map(s=>s.id));
+  snap.forEach(doc=>{ if(!ids.has(doc.id)){ sessions.push(doc.data()); ids.add(doc.id); } });
+  loadedSessionsFullRange={from:fromDate,to:toDate};
+}
+
 function saveField(patch){
   if(suppressSave||!userDocRef) return;
   userDocRef.set(patch,{merge:true}).catch(e=>{
     console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
 }
-// حفظ يوم حضور واحد فقط (dot-notation) بدل كل تاريخ الحضور
+// حفظ يوم حضور واحد فقط — وثيقة مستقلة بذاتها ضمن attendance/{date}
 function saveAttendance(date){
-  saveField({attendance:{[date]: attendance[date]||{}}});
+  if(suppressSave||!attendanceCol) return;
+  attendanceCol.doc(date).set(attendance[date]||{},{merge:true}).catch(e=>{
+    console.log('attendance save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
+  });
 }
 // حفظ مصفوفة الطلاب فقط (صغيرة ومحدودة بعدد طلاب الحلقة، لا تكبر بلا حدود)
 function saveStudents(){
   saveField({students});
 }
-// إضافة جلسة جديدة: نرسل السجل الجديد فقط عبر arrayUnion بدل
-// إعادة رفع كامل تاريخ الجلسات (وهو أكبر حقل وأخطرها على حجم الوثيقة)
-function saveNewSession(record){
-  saveField({sessions: firebase.firestore.FieldValue.arrayUnion(record)});
-}
-// تعديل جلسة موجودة مسبقاً: لا يوجد بديل غير استبدال المصفوفة كاملة
-// (نادر الحدوث مقارنة بالإضافة، لذلك أثره محدود)
-function saveSessionsFull(){
-  saveField({sessions});
+// كل جلسة الآن وثيقة مستقلة بذاتها (sessions/{id}) — نكتب فقط السجلات اللي
+// تغيّرت فعلاً دفعة واحدة (batch)، بدل إعادة رفع كل تاريخ الجلسات مهما كان حجمه
+function saveSessionRecords(records){
+  if(suppressSave||!sessionsCol||!records||!records.length) return;
+  const batch=db.batch();
+  records.forEach(r=>batch.set(sessionsCol.doc(r.id), r, {merge:true}));
+  batch.commit().catch(e=>{
+    console.log('sessions save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
+  });
 }
 function saveExams(){
   saveField({exams});
@@ -1528,11 +1655,8 @@ function _checkDocSizeWarning(d){
   }catch(e){/* تجاهل أي خطأ بالقياس، هذا فحص احترازي فقط */}
 }
 
-// دالة قديمة أُبقيت للتوافق فقط — تُستخدم حصراً في الحالات النادرة
-// التي يتغيّر فيها أكثر من حقل رئيسي دفعة واحدة
-function save(){
-  saveField({students,sessions,attendance,exams,deletionRequests});
-}
+// ملاحظة: دالة save() الموحّدة القديمة أُزيلت نهائياً بعد الانتقال للوثائق الفرعية —
+// كل نوع بيانات له الآن دالة حفظ خاصة به (saveStudents, saveAttendance, saveSessionRecords...)
 
 function saveSettings(){
   if(!currentUser) return;
@@ -1619,7 +1743,7 @@ function renderAll(){
 // ════════════════════════════════════════
 //  DASHBOARD
 // ════════════════════════════════════════
-function renderDash(){
+async function renderDash(){
   const active=students.filter(s=>!s.archived);
   const todayAtt=attendance[TODAY()]||{};
   const present=active.filter(s=>todayAtt[s.id]==='present'||todayAtt[s.id]==='late').length;
@@ -1630,9 +1754,19 @@ function renderDash(){
   document.getElementById('st-absent').textContent=absent;
   document.getElementById('sb-att-pct').innerHTML=(active.length?Math.round(present/active.length*100):0)+'%<span>نسبة الحضور اليوم</span>';
 
+  // جلسات الحلقة هذا الأسبوع — نجلبها عند الحاجة فقط (مدى أسبوع، وليس كل التاريخ)
+  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekAgoStr=weekAgo.toISOString().slice(0,10);
+  const topEl=document.getElementById('top-students-list');
+  const actEl=document.getElementById('today-activity-list');
+  const alreadyLoaded=loadedSessionsFullRange && loadedSessionsFullRange.from<=weekAgoStr;
+  if(!alreadyLoaded){
+    topEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ التحميل...</div></div>';
+    actEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ التحميل...</div></div>';
+    await ensureSessionsForDateRange(weekAgoStr, TODAY());
+  }
   // جلسات الحلقة هذا الأسبوع — الجلسة الواحدة تضم كل الطلاب في نفس اليوم،
   // فالعدد الصحيح هو عدد الأيام المختلفة التي عُقدت فيها الحلقة، وليس مجموع تسجيلات الطلاب
-  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   const weekSessions=sessions.filter(s=>new Date(s.createdAt)>=weekAgo);
   const weekSessionDays=new Set(weekSessions.map(s=>s.date));
   document.getElementById('st-sessions').textContent=weekSessionDays.size;
@@ -1641,7 +1775,6 @@ function renderDash(){
   const scoreMap={};
   weekSessions.forEach(s=>{ scoreMap[s.studentId]=(scoreMap[s.studentId]||0)+ (s.hifz||[]).length + (s.murajaa||[]).length; });
   const ranked=Object.entries(scoreMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const topEl=document.getElementById('top-students-list');
   if(!ranked.length){
     topEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا توجد بيانات كافية حتى الآن</div></div>';
   } else {
@@ -1659,7 +1792,6 @@ function renderDash(){
 
   // today activity
   const todaySessions=sessions.filter(s=>s.date===TODAY());
-  const actEl=document.getElementById('today-activity-list');
   if(!todaySessions.length){
     actEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">لم يُسجَّل أي إنجاز اليوم بعد</div></div>';
   } else {
@@ -1768,9 +1900,9 @@ function emptyEvalEntry(){ return {hifzScore:0,murajaaScore:0,disciplineScore:0}
 // بدل كتابة مستقلة على كل نقرة — الواجهة تبقى فورية لأن dailyEval المحلي يتحدّث فوراً.
 const _pendingEvalWrites={};
 function _flushEvalWrite(date,studentId,key,val){
-  if(!userDocRef) return;
-  userDocRef.set({
-    dailyEval: { [date]: { [studentId]: { [key]: val } } }
+  if(!dailyEvalCol) return;
+  dailyEvalCol.doc(date).set({
+    [studentId]: { [key]: val }
   }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
 }
 function _scheduleEvalWrite(date,studentId,key,val){
@@ -1900,8 +2032,14 @@ function saveEvalConfig(){
   toast('✅ تم اعتماد معايير التقييم الجديدة');
 }
 
-function renderEvalTab(){
+async function renderEvalTab(){
   const date=evalCurrentDate();
+  const el=document.getElementById('eval-list');
+  if(date!==TODAY() && !loadedEvalDates.has(date)){
+    if(el) el.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ تحميل بيانات هذا اليوم...</div></div>';
+    await Promise.all([ensureAttendanceDate(date), ensureEvalDate(date)]);
+    if(evalCurrentDate()!==date) return; // المستخدم غيّر التاريخ أثناء التحميل، نتجاهل هذه النتيجة القديمة
+  }
   const totalMax=evalTotalMax();
 
   const titleEl=document.getElementById('eval-title-lbl');
@@ -1909,7 +2047,6 @@ function renderEvalTab(){
   renderEvalInfoBox();
 
   const active=students.filter(s=>!s.archived);
-  const el=document.getElementById('eval-list');
   if(!active.length){
     el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا يوجد طلاب بعد — أضف طلاباً أولاً</div></div>';
     document.getElementById('ev-avg').textContent='0';
@@ -2302,7 +2439,7 @@ function renderSessSelect(){
     active.map(s=>`<option value="${s.id}" ${cur===s.id?'selected':''}>${s.name}</option>`).join('');
 }
 
-function selectSessStudent(studentId){
+async function selectSessStudent(studentId){
   currentSessStudentId=studentId;
   hifzEntries=[]; murajaaEntries=[];
   editingSessionId=null;
@@ -2320,6 +2457,12 @@ function selectSessStudent(studentId){
     infoEl.innerHTML='';
     formEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">اختر طالباً أولاً من القائمة</div></div>';
     return;
+  }
+  if(!loadedSessionStudents.has(studentId)){
+    infoEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ تحميل سجل الطالب...</div></div>';
+    formEl.innerHTML='';
+    await ensureSessionsForStudent(studentId);
+    if(currentSessStudentId!==studentId) return; // اختار المستخدم طالباً آخر أثناء التحميل
   }
   const s=students.find(x=>x.id===studentId);
   const stdSess=sessions.filter(x=>x.studentId===studentId);
@@ -2413,6 +2556,7 @@ function saveBulkSession(){
   const notesVal=(document.getElementById('sess-notes')||{}).value||'';
   const today=TODAY();
   let updatedCount=0, newCount=0;
+  const touchedRecords=[];
   bulkSelectedIds.forEach(studentId=>{
     let record=sessions.find(x=>x.studentId===studentId&&x.date===today);
     if(record){
@@ -2423,15 +2567,20 @@ function saveBulkSession(){
       record.updatedAt=new Date().toISOString();
       updatedCount++;
     } else {
-      sessions.push({
+      record={
         id:uid(), studentId, date:today, dateLabel:getDateLabel(),
         hifz:hifzEntries.map(e=>({...e})), murajaa:murajaaEntries.map(e=>({...e})),
         notes:notesVal, createdAt:new Date().toISOString()
-      });
+      };
+      sessions.push(record);
       newCount++;
+      const st=students.find(x=>x.id===studentId);
+      if(st) st.sessionsCount=(st.sessionsCount||0)+1;
     }
+    touchedRecords.push(record);
   });
-  saveSessionsFull();
+  saveSessionRecords(touchedRecords);
+  saveStudents();
   hifzEntries=[]; murajaaEntries=[]; editingHifzIdx=null; editingMurajaaIdx=null;
   const selectedCount=bulkSelectedIds.size;
   bulkSelectedIds.clear();
@@ -2638,9 +2787,10 @@ function saveSession(){
       createdAt:new Date().toISOString()
     };
     sessions.push(record);
-    saveNewSession(record);
+    const st=students.find(x=>x.id===record.studentId);
+    if(st){ st.sessionsCount=(st.sessionsCount||0)+1; saveStudents(); }
   }
-  if(wasEditing) saveSessionsFull();
+  saveSessionRecords([record]);
   editingSessionId=null;
   hifzEntries=[]; murajaaEntries=[];
   selectSessStudent(currentSessStudentId);
@@ -2762,7 +2912,7 @@ function renderStudentsList(){
   // الحفاظ على ترتيب الطلاب الأصلي الثابت دائماً (وليس ترتيب الفلترة) — يمنع "قفز" الأسماء أثناء الكتابة
   list.sort((a,b)=>students.indexOf(a)-students.indexOf(b));
   el.innerHTML=list.map(s=>{
-    const stdSess=sessions.filter(x=>x.studentId===s.id);
+    const sessCount=s.sessionsCount||0;
     const att=todayAtt[s.id];
     const attDot=att==='present'?'<span title="حاضر اليوم" style="width:10px;height:10px;border-radius:50%;background:var(--grn);flex-shrink:0;display:inline-block;"></span>'
       :att==='late'?'<span title="متأخر اليوم" style="width:10px;height:10px;border-radius:50%;background:#eab308;flex-shrink:0;display:inline-block;"></span>'
@@ -2772,7 +2922,7 @@ function renderStudentsList(){
     return `<div class="student-row" style="cursor:pointer;">
       <div onclick="openStudentDetail('${s.id}')" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
         <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(s.name)}</div>
-        <div class="st-info"><div class="st-name">${s.name}</div><div class="st-meta">${stdSess.length} جلسة | الجزء ${s.juz||0}</div></div>
+        <div class="st-info"><div class="st-name">${s.name}</div><div class="st-meta">${sessCount} جلسة | الجزء ${s.juz||0}</div></div>
       </div>
       ${attDot}
       ${s.parentPhone?`<button class="att-wa-btn" onclick='event.stopPropagation();sendQuickReport("${s.id}")' title="إرسال تقرير اليوم عبر واتساب">
@@ -2783,8 +2933,9 @@ function renderStudentsList(){
   }).join('');
 }
 
-function sendQuickReport(studentId){
+async function sendQuickReport(studentId){
   const s=students.find(x=>x.id===studentId); if(!s||!s.parentPhone){toast('⚠️ لا يوجد رقم هاتف','error');return;}
+  await ensureSessionsForStudent(studentId);
   const today=TODAY();
   const todaySess=sessions.filter(x=>x.studentId===studentId&&x.date===today);
   const record=todaySess.length
@@ -2828,10 +2979,15 @@ function isValidPastDate(v){
 }
 function buildFullName(first,father,grand,family){ return [first,father,grand,family].map(s=>(s||'').trim()).filter(Boolean).join(' '); }
 
-function openStudentDetail(studentId){
+async function openStudentDetail(studentId){
   const s=students.find(x=>x.id===studentId); if(!s) return;
-  const stdSess=sessions.filter(x=>x.studentId===studentId);
   const body=document.getElementById('student-detail-body');
+  if(!loadedSessionStudents.has(studentId)){
+    body.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ تحميل بيانات الطالب...</div></div>';
+    om('mStudentDetail');
+    await ensureSessionsForStudent(studentId);
+  }
+  const stdSess=sessions.filter(x=>x.studentId===studentId);
   const age=s.dob?calcAge(s.dob):'—';
   body.innerHTML=`
     <div style="text-align:center;margin-bottom:1rem;">
@@ -3242,7 +3398,7 @@ function buildBroadcastMessage(s,text){
   return msg;
 }
 
-function buildMessageQueue(){
+async function buildMessageQueue(){
   const scope=document.getElementById('msg-scope').value;
 
   if(scope==='supervisor'){
@@ -3279,6 +3435,11 @@ function buildMessageQueue(){
   }
   const dateVal=document.getElementById('msg-date').value||TODAY();
   const channel=document.getElementById('msg-channel').value;
+
+  if(type==='daily'){
+    toast('⏳ جارٍ تجهيز الرسائل...');
+    await Promise.all([ensureSessionsForDateRange(dateVal,dateVal), ensureAttendanceDate(dateVal)]);
+  }
 
   const queue=[]; let skippedNoPhone=0, skippedNoData=0;
 
@@ -3550,12 +3711,18 @@ function sendAllQueue(){
   });
 }
 
-function renderProgress(){
+async function renderProgress(){
   const active=students.filter(s=>!s.archived);
   const el=document.getElementById('progress-list');
   if(!active.length){
     el.innerHTML='<div class="empty-state"><div class="empty-state-txt">لا يوجد طلاب بعد</div></div>';
     return;
+  }
+  const notLoaded=active.filter(s=>!loadedSessionStudents.has(s.id));
+  if(notLoaded.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ تحميل سجلات التقدّم...</div></div>';
+    await Promise.all(notLoaded.map(s=>ensureSessionsForStudent(s.id)));
+    if(document.getElementById('progress-list')!==el) return; // غادر المستخدم التبويب أثناء التحميل
   }
   el.innerHTML=active.map(s=>{
     const stdSess=sessions.filter(x=>x.studentId===s.id);
@@ -3773,7 +3940,7 @@ function buildExamsTable(studentsList,from,to,examTypeFilter){
   return html;
 }
 
-function buildCurrentReportHTML(){
+async function buildCurrentReportHTML(){
   const scope=document.getElementById('exp-scope').value;
   const content=document.getElementById('exp-content').value;
   const range=document.getElementById('exp-range').value;
@@ -3804,6 +3971,14 @@ function buildCurrentReportHTML(){
     return html;
   }
 
+  // تحميل بيانات الجلسات والحضور اللازمة لهذا المدى الزمني قبل بناء التقرير
+  // (تُجلَب فقط عند الحاجة الفعلية لتقرير، وليست محمّلة دوماً في الذاكرة)
+  const fromStr=from.toISOString().slice(0,10), toStr=to.toISOString().slice(0,10);
+  await ensureSessionsForDateRange(fromStr,toStr);
+  if(content==='attendance'||content==='both'){
+    await Promise.all(getRangeDates(from,to).map(d=>ensureAttendanceDate(d)));
+  }
+
   const contentLabel=content==='attendance'?'الحضور والغياب':content==='progress'?'الحفظ والمراجعة':'الحضور والحفظ والمراجعة';
   const scopeLabel=scope==='one'?studentsList[0].name:'جميع الطلاب';
   let html=reportHeader(`${rangeLabel[range]} — ${contentLabel} — ${scopeLabel}`);
@@ -3819,20 +3994,21 @@ let _activeReportFilename=()=>{
   return (content==='attendance'?'سجل_الحضور':content==='progress'?'سجل_الحفظ_والمراجعة':content==='exams'?'ترشيحات_الاختبارات':'تقرير_شامل')+'_'+TODAY();
 };
 
-function previewReport(){
+async function previewReport(){
   _activeReportBuilder=buildCurrentReportHTML;
   _activeReportFilename=()=>{
     const content=document.getElementById('exp-content').value;
     return (content==='attendance'?'سجل_الحضور':content==='progress'?'سجل_الحفظ_والمراجعة':content==='exams'?'ترشيحات_الاختبارات':'تقرير_شامل')+'_'+TODAY();
   };
-  const html=_activeReportBuilder();
+  toast('⏳ جارٍ تجهيز التقرير...');
+  const html=await _activeReportBuilder();
   if(!html) return;
   document.getElementById('pdfPreviewWrap').innerHTML=html;
   om('mPdfPreview');
 }
 
-function exportReportPDF(){
-  const html=_activeReportBuilder();
+async function exportReportPDF(){
+  const html=await _activeReportBuilder();
   if(!html) return;
   const area=document.getElementById('pdfRenderArea');
   area.innerHTML=html;
@@ -3866,9 +4042,10 @@ function exportReportPDF(){
 }
 
 // ─── تقرير تقييم الطلاب اليومي (من تبويب "تقييم الطلاب") ───
-function buildDailyEvalReportHTML(date){
+async function buildDailyEvalReportHTML(date){
   const active=students.filter(s=>!s.archived);
   if(!active.length){ toast('⚠️ لا يوجد طلاب','error'); return null; }
+  await Promise.all([ensureAttendanceDate(date), ensureEvalDate(date)]);
   const totalMax=evalTotalMax();
   const list=active.map(s=>({id:s.id,name:s.name,...computeStudentDailyScore(s.id,date)}))
     .sort((a,b)=>b.total-a.total);
@@ -3926,11 +4103,12 @@ function buildDailyEvalReportHTML(date){
   return html;
 }
 
-function previewDailyEvalReport(){
+async function previewDailyEvalReport(){
   const date=evalCurrentDate();
   _activeReportBuilder=()=>buildDailyEvalReportHTML(date);
   _activeReportFilename=()=>`تقرير_تقييم_يومي_${date}`;
-  const html=_activeReportBuilder();
+  toast('⏳ جارٍ تجهيز التقرير...');
+  const html=await _activeReportBuilder();
   if(!html) return;
   document.getElementById('pdfPreviewWrap').innerHTML=html;
   om('mPdfPreview');
