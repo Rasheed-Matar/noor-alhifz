@@ -1344,17 +1344,17 @@ function startListening(){
     },e=>console.log('appMessages err',e));
   }
   unsubUsers=db.collection('users').onSnapshot(snap=>{
-    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],sessions:[],attendance:{},deletionRequests:[],teacherAttendance:{}}));
+    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],deletionRequests:[],teacherAttendance:{},todayAttendance:{}}));
     allUsers=users;
     unsubData.forEach(u=>u()); unsubData=[];
     users.filter(u=>u.status==='approved'&&u.role==='teacher').forEach(user=>{
+      // وثيقة المحفّظ الرئيسية الآن صغيرة وثابتة (طلاب+إعدادات+اختبارات+طلبات حذف فقط) —
+      // الحضور والجلسات صارت بوثائق فرعية منفصلة، تُجلب عند الحاجة عبر refreshTodayAttendance/refreshWeekSessions أدناه
       const u2=db.collection('userdata').doc(user.id).onSnapshot(dSnap=>{
         const idx=allUsers.findIndex(x=>x.id===user.id);
         if(idx>=0&&dSnap.exists){
           const d=dSnap.data();
           allUsers[idx].students=d.students||[];
-          allUsers[idx].sessions=d.sessions||[];
-          allUsers[idx].attendance=d.attendance||{};
           allUsers[idx].deletionRequests=d.deletionRequests||[];
           allUsers[idx].teacherAttendance=d.teacherAttendance||{};
         }
@@ -1363,7 +1363,54 @@ function startListening(){
       unsubData.push(u2);
     });
     renderEverything();
+    refreshTodayAttendance();
+    refreshWeekSessions();
   },e=>console.log('users err',e));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  حضور اليوم عبر كل المحفّظين: جلب لمرة واحدة (وليس مستمعاً حياً دائماً)
+//  عند فتح اللوحة، بدل مستمع منفصل لكل محفّظ يتكرر مع كل تغيير —
+//  تحديث الحضور خلال اليوم لا يحتاج دقة لحظية بمستوى الثانية للوحة الإشراف
+// ═══════════════════════════════════════════════════════════
+let _refreshingAttendance=false;
+async function refreshTodayAttendance(){
+  if(_refreshingAttendance) return;
+  _refreshingAttendance=true;
+  try{
+    const today=todayISO();
+    const teachers=getTeachers();
+    await Promise.all(teachers.map(async t=>{
+      try{
+        const doc=await db.collection('userdata').doc(t.id).collection('attendance').doc(today).get();
+        const idx=allUsers.findIndex(x=>x.id===t.id);
+        if(idx>=0) allUsers[idx].todayAttendance=doc.exists?(doc.data()||{}):{};
+      }catch(e){ console.warn('att fetch err', t.id, e); }
+    }));
+    renderEverything();
+  } finally { _refreshingAttendance=false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  جلسات هذا الأسبوع عبر كل المحفّظين: استعلام واحد فقط عبر
+//  collectionGroup على كل المجموعات الفرعية "sessions" مهما كان محفّظها،
+//  بدل مستمع منفصل على كل محفّظ (حل نمط N+1 الأصلي جذرياً لهذه البيانات)
+// ═══════════════════════════════════════════════════════════
+let weekSessionsCache=[]; // [{...record, teacherId}]
+let _refreshingWeekSessions=false;
+async function refreshWeekSessions(){
+  if(_refreshingWeekSessions) return;
+  _refreshingWeekSessions=true;
+  try{
+    const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+    const weekAgoStr=weekAgo.toISOString().slice(0,10);
+    const todayStr=todayISO();
+    const snap=await db.collectionGroup('sessions').where('date','>=',weekAgoStr).where('date','<=',todayStr).get();
+    weekSessionsCache=snap.docs.map(doc=>({...doc.data(), teacherId:doc.ref.parent.parent.id}));
+    renderEverything();
+  }catch(e){
+    console.warn('week sessions collectionGroup err (تحتاج فهرس Firestore على الأغلب، راجع رابط الخطأ بالـ console)', e);
+  } finally { _refreshingWeekSessions=false; }
 }
 
 function renderEverything(){
@@ -2080,6 +2127,12 @@ function showPage(page){
   const nav=document.getElementById('nav-'+page);
   if(nav)nav.classList.add('active');
   document.getElementById('sidebar').classList.remove('open');
+  // هذه التبويبات تعرض حضور اليوم/جلسات الأسبوع، وهي بيانات تُجلب عند الطلب
+  // (وليست عبر مستمع حي دائم) — نحدّثها عند فتح التبويب لضمان بيانات حديثة
+  if(page==='dashboard'||page==='teachers'||page==='stats'){
+    refreshTodayAttendance();
+    refreshWeekSessions();
+  }
 }
 
 // ════════════════════════════════════════
@@ -2089,9 +2142,7 @@ function renderDashboard(){
   const teachers=getTeachers();
   const pendingDeletes=getPendingDeleteRequests();
   const allStudents=getAllStudents();
-  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
-  let weekSessions=0;
-  teachers.forEach(t=>{ weekSessions+=(t.sessions||[]).filter(s=>new Date(s.createdAt)>=weekAgo).length; });
+  const weekSessions=weekSessionsCache.length;
 
   document.getElementById('dStatTeachers').textContent=teachers.length;
   document.getElementById('dStatStudents').textContent=allStudents.length;
@@ -2109,10 +2160,9 @@ function renderDashboard(){
   if(!teachers.length){
     tb.innerHTML='<tr><td colspan="6"><div class="empty-state">لا يوجد محفظون نشطون بعد</div></td></tr>';
   } else {
-    const todayKey=todayISO();
     tb.innerHTML=teachers.map(t=>{
       const active=(t.students||[]).filter(s=>!s.archived);
-      const todayAtt=(t.attendance||{})[todayKey]||{};
+      const todayAtt=t.todayAttendance||{};
       const present=active.filter(s=>todayAtt[s.id]==='present').length;
       const pct=active.length?Math.round(present/active.length*100):0;
       return `<tr onclick="openTeacherDetail('${t.id}')">
@@ -2127,11 +2177,9 @@ function renderDashboard(){
 
   // top students this week
   const scoreMap={};
-  teachers.forEach(t=>{
-    (t.sessions||[]).filter(s=>new Date(s.createdAt)>=weekAgo).forEach(s=>{
-      const key=t.id+'|'+s.studentId;
-      scoreMap[key]=(scoreMap[key]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
-    });
+  weekSessionsCache.forEach(s=>{
+    const key=s.teacherId+'|'+s.studentId;
+    scoreMap[key]=(scoreMap[key]||0)+(s.hifz||[]).length+(s.murajaa||[]).length;
   });
   const ranked=Object.entries(scoreMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const nomEl=document.getElementById('topStudentsNom');
@@ -2181,13 +2229,25 @@ function renderRequests(){
 function approveDeleteRequest(teacherId,requestId){
   const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
   const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
-  confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',()=>{
+  confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',async ()=>{
     const updatedStudents=(teacher.students||[]).filter(s=>s.id!==req.studentId);
-    const updatedSessions=(teacher.sessions||[]).filter(s=>s.studentId!==req.studentId);
     const updatedRequests=(teacher.deletionRequests||[]).map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
-    db.collection('userdata').doc(teacherId).set({
-      students:updatedStudents, sessions:updatedSessions, deletionRequests:updatedRequests
-    },{merge:true}).then(()=>toast('🗑️ تم حذف الطالب نهائياً')).catch(e=>toast('⚠️ خطأ: '+e.message));
+    try{
+      // حذف كل وثائق جلسات هذا الطالب من المجموعة الفرعية (كل جلسة وثيقة مستقلة الآن)
+      const sessSnap=await db.collection('userdata').doc(teacherId).collection('sessions')
+        .where('studentId','==',req.studentId).get();
+      if(!sessSnap.empty){
+        const batch=db.batch();
+        sessSnap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      // ملاحظة: قد تبقى إشارات لمعرّف الطالب داخل وثائق الحضور/التقييم اليومي القديمة
+      // (سجلات تاريخية لأيام سابقة) — هذا غير ضار لأن الطالب لم يعد يظهر بقائمة الطلاب أصلاً
+      await db.collection('userdata').doc(teacherId).set({
+        students:updatedStudents, deletionRequests:updatedRequests
+      },{merge:true});
+      toast('🗑️ تم حذف الطالب نهائياً');
+    }catch(e){ toast('⚠️ خطأ: '+e.message); }
   });
 }
 
@@ -2220,10 +2280,9 @@ function renderTeachers(data){
     tb.innerHTML='<tr><td colspan="7"><div class="empty-state">لا يوجد محفظون</div></td></tr>';
     return;
   }
-  const todayKey=todayISO();
   tb.innerHTML=data.map(t=>{
     const active=(t.students||[]).filter(s=>!s.archived);
-    const todayAtt=(t.attendance||{})[todayKey]||{};
+    const todayAtt=t.todayAttendance||{};
     const present=active.filter(s=>todayAtt[s.id]==='present').length;
     return `<tr onclick="openTeacherDetail('${t.id}')">
       <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div></div></div></td>
@@ -2252,8 +2311,10 @@ function suspendTeacher(uid){
 function openTeacherDetail(uid){
   const t=allUsers.find(x=>x.id===uid); if(!t) return;
   const active=(t.students||[]).filter(s=>!s.archived);
-  const todayAtt=(t.attendance||{})[todayISO()]||{};
+  const todayAtt=t.todayAttendance||{};
   const present=active.filter(s=>todayAtt[s.id]==='present').length;
+  // إجمالي عدد الجلسات: عدّاد خفيف محفوظ على كل طالب (sessionsCount) بدل تحميل كل الجلسات
+  const totalSessions=(t.students||[]).reduce((a,s)=>a+(s.sessionsCount||0),0);
   document.getElementById('detailModalTitle').textContent=t.name;
   document.getElementById('detailModalBody').innerHTML=`
     <div style="text-align:center;margin-bottom:16px;">
@@ -2263,7 +2324,7 @@ function openTeacherDetail(uid){
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--em);">${active.length}</div><div style="font-size:11px;color:#7a8a7a;">طالب</div></div>
-      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--gold3);">${(t.sessions||[]).length}</div><div style="font-size:11px;color:#7a8a7a;">جلسة</div></div>
+      <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:var(--gold3);">${totalSessions}</div><div style="font-size:11px;color:#7a8a7a;">جلسة</div></div>
       <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px;"><div style="font-size:18px;font-weight:800;color:#1a4a8a;">${present}/${active.length}</div><div style="font-size:11px;color:#7a8a7a;">حضور اليوم</div></div>
     </div>
 
@@ -2836,9 +2897,8 @@ function markMsgRead(id){
 // ════════════════════════════════════════
 function renderStats(){
   const teachers=getTeachers();
-  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
   const data=teachers.map(t=>{
-    const pages=(t.sessions||[]).filter(s=>new Date(s.createdAt)>=weekAgo)
+    const pages=weekSessionsCache.filter(s=>s.teacherId===t.id)
       .reduce((a,s)=>a+(s.hifz||[]).length+(s.murajaa||[]).length,0);
     return {name:t.name,pages};
   }).sort((a,b)=>b.pages-a.pages);
