@@ -474,7 +474,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser = null, currentExaminerDoc = null;
 let allTeachers = [], allTeacherData = {}, allExamResults = [];
-let unsubUsers=null, unsubTeacherData=[], unsubResults=null, unsubSettings=null;
+let unsubUsers=null, unsubResults=null, unsubSettings=null, _teacherDataInterval=null;
 let passingGrade = 70;
 let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
 
@@ -520,7 +520,31 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 //  AUTH
 // ════════════════════════════════════════
 function doLogout(){
+  if(unsubUsers){unsubUsers();unsubUsers=null;}
+  if(unsubResults){unsubResults();unsubResults=null;}
+  if(unsubSettings){unsubSettings();unsubSettings=null;}
+  if(_teacherDataInterval){clearInterval(_teacherDataInterval);_teacherDataInterval=null;}
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  جلب دفعة واحدة لبيانات كل المحفّظين (طلاب + ترشيحات اختبارات)
+//  بدل مستمع onSnapshot دائم لكل محفّظ على حدة — يُستدعى عند فتح
+//  الصفحة، دورياً كل 25 ثانية، وعند فتح تبويب الترشيحات مباشرة
+// ═══════════════════════════════════════════════════════════
+let _refreshingTeacherData=false;
+async function refreshTeacherData(){
+  if(_refreshingTeacherData || !allTeachers.length) return;
+  _refreshingTeacherData=true;
+  try{
+    await Promise.all(allTeachers.map(async t=>{
+      try{
+        const doc=await db.collection('userdata').doc(t.id).get();
+        allTeacherData[t.id]=doc.exists?doc.data():{};
+      }catch(e){ console.warn('teacher data fetch err', t.id, e); }
+    }));
+    renderAll();
+  } finally { _refreshingTeacherData=false; }
 }
 
 const authTimeout = setTimeout(()=>window.location.href='login.html',8000);
@@ -584,29 +608,23 @@ function initLiveListeners(){
     renderAll();
   }, err=>toast('⚠️ خطأ تحميل علامة النجاح: '+err.message,'error'));
 
-  // 2) المحفّظون وبياناتهم (الطلاب + الترشيحات) — لحظي
+  // 2) المحفّظون وبياناتهم (الطلاب + الترشيحات)
+  // ملاحظة مهمة: كنا سابقاً نفتح مستمعاً حياً (onSnapshot) منفصلاً لكل محفّظ على حدة —
+  // مع عدد كبير من المحفّظين هذا يعني عشرات المستمعين يعملون بنفس الوقت، وكل تغيير
+  // بسيط بأي محفّظ (حتى لو غير متعلق بالاختبارات) يُطلق قراءة مدفوعة لكل مختبر جودة فتح الصفحة.
+  // البديل: جلب دفعة واحدة (batched) عند فتح الصفحة وتحديثها دورياً، بدل مستمع دائم لكل محفّظ.
   if(unsubUsers) unsubUsers();
   unsubUsers = db.collection('users').onSnapshot(snap=>{
-    // تنظيف المستمعين القدامى الخاصين ببيانات كل محفّظ قبل إعادة بنائهم
-    unsubTeacherData.forEach(u=>u());
-    unsubTeacherData=[];
-    allTeachers=[];
-    allTeacherData={};
-
-    snap.docs.forEach(d=>{
-      const u={id:d.id,...d.data()};
-      if(u.status==='approved' && u.role==='teacher'){
-        allTeachers.push(u);
-        const unsub = db.collection('userdata').doc(u.id).onSnapshot(ds=>{
-          allTeacherData[u.id] = ds.exists? ds.data() : {};
-          renderAll();
-        }, err=>toast('⚠️ خطأ تحميل بيانات محفّظ: '+err.message,'error'));
-        unsubTeacherData.push(unsub);
-      }
-    });
+    allTeachers = snap.docs
+      .map(d=>({id:d.id,...d.data()}))
+      .filter(u=>u.status==='approved' && u.role==='teacher');
     populateManualTeachers();
     renderAll();
+    refreshTeacherData();
   }, err=>toast('⚠️ خطأ تحميل المحفّظين: '+err.message,'error'));
+
+  if(_teacherDataInterval) clearInterval(_teacherDataInterval);
+  _teacherDataInterval=setInterval(refreshTeacherData, 25000); // تحديث دوري كل 25 ثانية بدل الاعتماد على مستمع دائم لكل محفّظ
 
   // 3) نتائج الاختبارات — لحظي، ومن المصدر الصحيح (مجموعة examResults نفسها)
   if(unsubResults) unsubResults();
@@ -1523,6 +1541,7 @@ function switchTab(name, btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if(name==='results') renderResults(allExamResults);
+  if(name==='nominated') refreshTeacherData();
 }
 
 // Close modals on overlay click
