@@ -853,6 +853,7 @@ let myStudentData = null;     // كائن الطالب
 let teacherData = {};         // {students, sessions, attendance, exams}
 let myExamResults = [];       // من examResults collection
 let fsUnsub = null;
+let attUnsub = null, evalUnsub = null, sessUnsub = null;
 let resultsUnsub = null;
 let pendingFirstLogin = false; // يُعرض بعد إغلاق نافذة الصلاة على النبي ﷺ
 let myLastOpenDate = null;     // آخر تاريخ فتح الطالب لصفحته (من مستنده الخاص — مصدر موثوق)
@@ -1099,23 +1100,48 @@ async function saveNewPassword(){
 // ════════════════════════════════════════
 function loadTeacherData(){
   if(fsUnsub) fsUnsub();
+  if(attUnsub) attUnsub();
+  if(evalUnsub) evalUnsub();
+  if(sessUnsub) sessUnsub();
+
+  teacherData = { students:[], sessions:[], attendance:{}, exams:[], dailyEval:{}, pageOpens:{}, homework:{} };
+
   fsUnsub = db.collection('userdata').doc(myTeacherId).onSnapshot(snap=>{
     if(snap.exists){
       const d = snap.data();
-      teacherData = {
-        students: d.students||[],
-        sessions: d.sessions||[],
-        attendance: d.attendance||{},
-        exams: d.exams||[],
-        dailyEval: d.dailyEval||{},
-        pageOpens: d.pageOpens||{},
-        homework: d.homework||{}
-      };
+      teacherData.students = d.students||[];
+      teacherData.exams = d.exams||[];
+      teacherData.pageOpens = d.pageOpens||{};
+      teacherData.homework = d.homework||{};
       evalConfig = {...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
       myStudentData = teacherData.students.find(s=>s.id===myStudentId)||null;
       renderAll();
     }
   }, e=>console.warn('snap err', e));
+
+  // الحضور والتقييم اليومي والجلسات صارت وثائق فرعية منفصلة عند المعلّم (attendance/{date}, dailyEval/{date}, sessions/{id})
+  // بدل مصفوفة/كائن واحد يكبر بلا حدود — الطالب يستمع لحاله فقط (جلساته الخاصة عبر where studentId)،
+  // أما الحضور والتقييم فهي وثائق يومية صغيرة لكل الحلقة، ومن الطبيعي متابعتها كاملة لحظياً
+  attUnsub = db.collection('userdata').doc(myTeacherId).collection('attendance').onSnapshot(snap=>{
+    const att={};
+    snap.forEach(doc=>{ att[doc.id]=doc.data()||{}; });
+    teacherData.attendance=att;
+    renderAll();
+  }, e=>console.warn('att snap err', e));
+
+  evalUnsub = db.collection('userdata').doc(myTeacherId).collection('dailyEval').onSnapshot(snap=>{
+    const ev={};
+    snap.forEach(doc=>{ ev[doc.id]=doc.data()||{}; });
+    teacherData.dailyEval=ev;
+    renderAll();
+  }, e=>console.warn('eval snap err', e));
+
+  sessUnsub = db.collection('userdata').doc(myTeacherId).collection('sessions')
+    .where('studentId','==',myStudentId)
+    .onSnapshot(snap=>{
+      teacherData.sessions = snap.docs.map(doc=>doc.data());
+      renderAll();
+    }, e=>console.warn('sess snap err', e));
 }
 
 // ════════════════════════════════════════
@@ -1842,6 +1868,9 @@ function renderRank(){
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub) fsUnsub();
+  if(attUnsub) attUnsub();
+  if(evalUnsub) evalUnsub();
+  if(sessUnsub) sessUnsub();
   if(resultsUnsub) resultsUnsub();
   auth.signOut().then(()=>{ navigateTo('login.html'); });
 }
