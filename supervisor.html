@@ -2654,7 +2654,7 @@ function openWA(phone,msg){
   const primaryCode = pref==='970' ? '970' : '972';
   const altCode = pref==='970' ? '972' : '970';
   const primary=primaryCode+local, alt=altCode+local;
-  const openUrl=(num)=>window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`,'_blank');
+  const openUrl=(num)=>window.open(`https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`,'_blank');
 
   openUrl(primary);
 
