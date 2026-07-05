@@ -1165,15 +1165,25 @@ async function ensureMonthData(monthKeyStr){
   const lastDay=new Date(y,m,0).getDate();
   const to=monthKeyStr+'-'+String(lastDay).padStart(2,'0');
 
-  const [attSnap,evalSnap,sessSnap]=await Promise.all([
+  // كل استعلام بمحاولة مستقلة: لو فشل واحد منهم (مثلاً بسبب فهرس Firestore غير
+  // مُنشأ بعد) لا نعلّق الشاشة على "جارٍ التحميل" للأبد — نعرض ما توفّر ونكمل
+  const [attSnap,evalSnap,sessSnap]=await Promise.allSettled([
     attendanceCol.where(firebase.firestore.FieldPath.documentId(),'>=',from).where(firebase.firestore.FieldPath.documentId(),'<=',to).get(),
     dailyEvalCol.where(firebase.firestore.FieldPath.documentId(),'>=',from).where(firebase.firestore.FieldPath.documentId(),'<=',to).get(),
     sessionsCol.where('studentId','==',myStudentId).where('date','>=',from).where('date','<=',to).get()
   ]);
-  attSnap.forEach(doc=>{ teacherData.attendance[doc.id]=doc.data()||{}; });
-  evalSnap.forEach(doc=>{ teacherData.dailyEval[doc.id]=doc.data()||{}; });
-  const ids=new Set(teacherData.sessions.map(s=>s.id));
-  sessSnap.docs.forEach(doc=>{ const r=doc.data(); if(!ids.has(r.id)){ teacherData.sessions.push(r); ids.add(r.id); } });
+  if(attSnap.status==='fulfilled') attSnap.value.forEach(doc=>{ teacherData.attendance[doc.id]=doc.data()||{}; });
+  else console.error('att month fetch err (تحقق من فهرس Firestore)', attSnap.reason);
+
+  if(evalSnap.status==='fulfilled') evalSnap.value.forEach(doc=>{ teacherData.dailyEval[doc.id]=doc.data()||{}; });
+  else console.error('eval month fetch err (تحقق من فهرس Firestore)', evalSnap.reason);
+
+  if(sessSnap.status==='fulfilled'){
+    const ids=new Set(teacherData.sessions.map(s=>s.id));
+    sessSnap.value.docs.forEach(doc=>{ const r=doc.data(); if(!ids.has(r.id)){ teacherData.sessions.push(r); ids.add(r.id); } });
+  } else {
+    console.error('sessions month fetch err (يحتاج فهرس مركّب studentId+date بـFirestore)', sessSnap.reason);
+  }
   loadedMonths.add(monthKeyStr);
 }
 
@@ -1589,14 +1599,26 @@ function buildMonthOptions(selId, onchange){
   const sel=document.getElementById(selId);
   if(sel.options.length) return; // مبنية سابقاً
 
-  // قائمة ثابتة لآخر 24 شهراً (بدل الاعتماد على البيانات المحمّلة حالياً بالذاكرة)،
-  // كي يقدر الطالب يفتح أي شهر سابق حتى لو لم تُجلب بياناته بعد — تُجلب فور اختياره
-  const months = [];
+  // نبدأ القائمة من شهر إنشاء حساب الطالب فعلياً (متوفر مجاناً من بيانات حساب
+  // الدخول نفسه، بلا أي قراءة إضافية) بدل قائمة ثابتة قد تعود لتاريخ أقدم
+  // من انضمام الطالب أصلاً للحلقة
+  let joinDate = new Date();
+  try{
+    if(currentUser && currentUser.metadata && currentUser.metadata.creationTime){
+      joinDate = new Date(currentUser.metadata.creationTime);
+    }
+  }catch(e){ /* نتجاهل ونستخدم الشهر الحالي فقط كحد أدنى احتياطي */ }
+
   const now=new Date();
-  for(let i=0;i<24;i++){
-    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  const months = [];
+  let cursor=new Date(now.getFullYear(), now.getMonth(), 1);
+  const startBound=new Date(joinDate.getFullYear(), joinDate.getMonth(), 1);
+  while(cursor>=startBound){
+    months.push(`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`);
+    cursor.setMonth(cursor.getMonth()-1);
   }
+  if(!months.length) months.push(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+
   sel.innerHTML = months.map(m=>{
     const [y,mo]=m.split('-');
     return`<option value="${m}">${arabicMonth(+y,+mo)}</option>`;
