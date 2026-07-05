@@ -987,7 +987,7 @@ function enterApp(user, userData){
 
   document.getElementById('hdrAvatar').textContent = ini(userData.name||user.email);
   document.getElementById('hdrName').textContent   = userData.name||user.email;
-  document.getElementById('hdrCircle').textContent = userData.circle||'بوابة الطالب';
+  document.getElementById('hdrCircle').textContent = 'بوابة الطالب';
   document.getElementById('wb-name').textContent   = userData.name||user.email;
 
   loadTeacherData();
@@ -1098,13 +1098,22 @@ async function saveNewPassword(){
 // ════════════════════════════════════════
 //  LOAD TEACHER DATA (بيانات المعلم الخاص)
 // ════════════════════════════════════════
+let attendanceCol=null, dailyEvalCol=null, sessionsCol=null;
+const loadedMonths=new Set(); // الأشهر التي جُلبت كاملةً (attendance+dailyEval+sessions لهذا الشهر)
+let _fullStatsLoaded=false;
+
 function loadTeacherData(){
   if(fsUnsub) fsUnsub();
   if(attUnsub) attUnsub();
   if(evalUnsub) evalUnsub();
   if(sessUnsub) sessUnsub();
+  loadedMonths.clear();
+  _fullStatsLoaded=false;
 
   teacherData = { students:[], sessions:[], attendance:{}, exams:[], dailyEval:{}, pageOpens:{}, homework:{} };
+  attendanceCol=db.collection('userdata').doc(myTeacherId).collection('attendance');
+  dailyEvalCol=db.collection('userdata').doc(myTeacherId).collection('dailyEval');
+  sessionsCol=db.collection('userdata').doc(myTeacherId).collection('sessions');
 
   fsUnsub = db.collection('userdata').doc(myTeacherId).onSnapshot(snap=>{
     if(snap.exists){
@@ -1119,29 +1128,85 @@ function loadTeacherData(){
     }
   }, e=>console.warn('snap err', e));
 
-  // الحضور والتقييم اليومي والجلسات صارت وثائق فرعية منفصلة عند المعلّم (attendance/{date}, dailyEval/{date}, sessions/{id})
-  // بدل مصفوفة/كائن واحد يكبر بلا حدود — الطالب يستمع لحاله فقط (جلساته الخاصة عبر where studentId)،
-  // أما الحضور والتقييم فهي وثائق يومية صغيرة لكل الحلقة، ومن الطبيعي متابعتها كاملة لحظياً
-  attUnsub = db.collection('userdata').doc(myTeacherId).collection('attendance').onSnapshot(snap=>{
-    const att={};
-    snap.forEach(doc=>{ att[doc.id]=doc.data()||{}; });
-    teacherData.attendance=att;
+  // ═══════════════════════════════════════════════════════════
+  //  الحضور والتقييم اليومي والجلسات: مستمعون حيّان فقط على آخر 7 أيام
+  //  (وليس كل التاريخ كما كان) — هذا يمنع تراكم عدد القراءات مع مرور
+  //  الأشهر والسنين. الأشهر الأقدم تُجلب فقط عند فتح تقويم شهر سابق
+  //  فعلياً (انظر ensureMonthData أدناه)، وتُخزَّن مؤقتاً بالذاكرة بعدها.
+  // ═══════════════════════════════════════════════════════════
+  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekAgoStr=weekAgo.toISOString().slice(0,10);
+
+  attUnsub = attendanceCol.where(firebase.firestore.FieldPath.documentId(),'>=',weekAgoStr).onSnapshot(snap=>{
+    snap.forEach(doc=>{ teacherData.attendance[doc.id]=doc.data()||{}; });
     renderAll();
   }, e=>console.warn('att snap err', e));
 
-  evalUnsub = db.collection('userdata').doc(myTeacherId).collection('dailyEval').onSnapshot(snap=>{
-    const ev={};
-    snap.forEach(doc=>{ ev[doc.id]=doc.data()||{}; });
-    teacherData.dailyEval=ev;
+  evalUnsub = dailyEvalCol.where(firebase.firestore.FieldPath.documentId(),'>=',weekAgoStr).onSnapshot(snap=>{
+    snap.forEach(doc=>{ teacherData.dailyEval[doc.id]=doc.data()||{}; });
     renderAll();
   }, e=>console.warn('eval snap err', e));
 
-  sessUnsub = db.collection('userdata').doc(myTeacherId).collection('sessions')
+  sessUnsub = sessionsCol
     .where('studentId','==',myStudentId)
+    .where('date','>=',weekAgoStr)
     .onSnapshot(snap=>{
-      teacherData.sessions = snap.docs.map(doc=>doc.data());
+      const ids=new Set(teacherData.sessions.map(s=>s.id));
+      snap.docs.forEach(doc=>{ const r=doc.data(); if(!ids.has(r.id)){ teacherData.sessions.push(r); ids.add(r.id); } });
       renderAll();
     }, e=>console.warn('sess snap err', e));
+}
+
+// جلب شهر محدد كامل (حضور + تقييم + جلسات) عند فتحه فعلياً من التقويم — مرة واحدة فقط لكل شهر
+async function ensureMonthData(monthKeyStr){
+  if(loadedMonths.has(monthKeyStr)) return;
+  const from=monthKeyStr+'-01';
+  const [y,m]=monthKeyStr.split('-').map(Number);
+  const lastDay=new Date(y,m,0).getDate();
+  const to=monthKeyStr+'-'+String(lastDay).padStart(2,'0');
+
+  const [attSnap,evalSnap,sessSnap]=await Promise.all([
+    attendanceCol.where(firebase.firestore.FieldPath.documentId(),'>=',from).where(firebase.firestore.FieldPath.documentId(),'<=',to).get(),
+    dailyEvalCol.where(firebase.firestore.FieldPath.documentId(),'>=',from).where(firebase.firestore.FieldPath.documentId(),'<=',to).get(),
+    sessionsCol.where('studentId','==',myStudentId).where('date','>=',from).where('date','<=',to).get()
+  ]);
+  attSnap.forEach(doc=>{ teacherData.attendance[doc.id]=doc.data()||{}; });
+  evalSnap.forEach(doc=>{ teacherData.dailyEval[doc.id]=doc.data()||{}; });
+  const ids=new Set(teacherData.sessions.map(s=>s.id));
+  sessSnap.docs.forEach(doc=>{ const r=doc.data(); if(!ids.has(r.id)){ teacherData.sessions.push(r); ids.add(r.id); } });
+  loadedMonths.add(monthKeyStr);
+}
+
+// جلب كامل تاريخ الطالب مرة واحدة فقط — تُستخدم حصراً لتبويب "ترتيبي وإنجازي الكلي"
+// الذي يحتاج فعلياً مجموع كل التاريخ (وليس نافذة زمنية)، ولا يُستدعى إلا عند فتح ذلك التبويب تحديداً
+async function ensureFullHistoryForStats(){
+  if(_fullStatsLoaded) return;
+  const [attSnap,evalSnap,sessSnap]=await Promise.all([
+    attendanceCol.get(),
+    dailyEvalCol.get(),
+    sessionsCol.where('studentId','==',myStudentId).get()
+  ]);
+  attSnap.forEach(doc=>{ teacherData.attendance[doc.id]=doc.data()||{}; });
+  evalSnap.forEach(doc=>{ teacherData.dailyEval[doc.id]=doc.data()||{}; });
+  const ids=new Set(teacherData.sessions.map(s=>s.id));
+  sessSnap.docs.forEach(doc=>{ const r=doc.data(); if(!ids.has(r.id)){ teacherData.sessions.push(r); ids.add(r.id); } });
+  _fullStatsLoaded=true;
+}
+
+// حالة نادرة: طالب بلا أي جلسة خلال آخر 7 أيام لكن له جلسات أقدم — نتحقق مرة واحدة
+// بدل عرض "لم تبدأ رحلتك بعد" خطأً لطالب كان نشطاً سابقاً وتوقف مؤقتاً
+let _olderSessionChecked=false;
+async function _checkOlderLastSession(){
+  if(_olderSessionChecked) return;
+  _olderSessionChecked=true;
+  try{
+    const snap=await sessionsCol.where('studentId','==',myStudentId).orderBy('date','desc').limit(1).get();
+    if(!snap.empty){
+      const r=snap.docs[0].data();
+      const ids=new Set(teacherData.sessions.map(s=>s.id));
+      if(!ids.has(r.id)){ teacherData.sessions.push(r); renderDash(); }
+    }
+  }catch(e){ console.warn('older session check err', e); }
 }
 
 // ════════════════════════════════════════
@@ -1169,6 +1234,8 @@ function loadTeacherName(){
       myTeacherName = doc.data().name || '';
       const lbl=document.getElementById('msgRecipTeacherLbl');
       if(lbl) lbl.textContent = myTeacherName ? `المحفّظ (${myTeacherName})` : 'المحفّظ';
+      const hdrEl=document.getElementById('hdrCircle');
+      if(hdrEl) hdrEl.textContent = myTeacherName ? `📖 محفّظك: ${myTeacherName}` : 'بوابة الطالب';
     }
   }).catch(e=>console.warn('loadTeacherName err',e));
 }
@@ -1409,6 +1476,9 @@ function renderDash(){
     if(sessTitleEl) sessTitleEl.textContent=`آخر جلسة — ${fmtDate(lastSess.date)}`;
     sessEl.innerHTML=recapSessionHTML(lastSess);
   }
+  // حالة نادرة: الطالب لم تكن له أي جلسة خلال آخر 7 أيام (نافذة العرض الحيّة) لكن ربما
+  // له جلسات أقدم من ذلك — نتحقق مرة واحدة كي لا نظهر "لم تبدأ رحلتك بعد" خطأً لطالب نشط سابقاً
+  if(!sortedSess.length) _checkOlderLastSession();
 
   // ━━━ آخر الاختبارات (تصميم روحاني) ━━━
   const examEl = document.getElementById('ds-recent-exams');
@@ -1519,22 +1589,31 @@ function buildMonthOptions(selId, onchange){
   const sel=document.getElementById(selId);
   if(sel.options.length) return; // مبنية سابقاً
 
-  // جمع كل الأشهر من سجل الحضور
-  const months = new Set();
-  Object.keys(teacherData.attendance).forEach(date=>months.add(date.slice(0,7)));
-  // إضافة الشهر الحالي دائماً
-  months.add(TODAY().slice(0,7));
-  const sorted = [...months].sort((a,b)=>b.localeCompare(a));
-  sel.innerHTML = sorted.map(m=>{
+  // قائمة ثابتة لآخر 24 شهراً (بدل الاعتماد على البيانات المحمّلة حالياً بالذاكرة)،
+  // كي يقدر الطالب يفتح أي شهر سابق حتى لو لم تُجلب بياناته بعد — تُجلب فور اختياره
+  const months = [];
+  const now=new Date();
+  for(let i=0;i<24;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  sel.innerHTML = months.map(m=>{
     const [y,mo]=m.split('-');
     return`<option value="${m}">${arabicMonth(+y,+mo)}</option>`;
   }).join('');
 }
 
-function renderAttendance(){
+async function renderAttendance(){
   buildMonthOptions('att-month-sel');
   const month = document.getElementById('att-month-sel').value;
   if(!month) return;
+
+  if(!loadedMonths.has(month)){
+    const el=document.getElementById('att-list');
+    if(el) el.innerHTML='<div class="empty"><div class="empty-ico">⏳</div><div class="empty-txt">جارٍ تحميل بيانات هذا الشهر...</div></div>';
+    await ensureMonthData(month);
+    if(document.getElementById('att-month-sel').value!==month) return; // غيّر الطالب الشهر أثناء التحميل
+  }
 
   // فلترة أيام هذا الشهر
   const days = Object.entries(teacherData.attendance)
@@ -1603,6 +1682,15 @@ function renderHifz(){
   buildMonthOptions('hifz-month-sel');
   const month = document.getElementById('hifz-month-sel').value;
   if(!month) return;
+  _renderHifzAsync(month);
+}
+async function _renderHifzAsync(month){
+  if(!loadedMonths.has(month)){
+    const el=document.getElementById('hifz-list');
+    if(el) el.innerHTML='<div class="empty"><div class="empty-ico">⏳</div><div class="empty-txt">جارٍ تحميل بيانات هذا الشهر...</div></div>';
+    await ensureMonthData(month);
+    if(document.getElementById('hifz-month-sel').value!==month) return; // غيّر الطالب الشهر أثناء التحميل
+  }
 
   const mySess = teacherData.sessions
     .filter(s=>s.studentId===myStudentId && monthKey(s.date)===month)
@@ -1794,7 +1882,7 @@ function renderEvalCard(){
   if(rankLbl) rankLbl.textContent = `معيار الترتيب: التقييم اليومي الكلي (من ${totalMax})`;
 }
 
-function renderRank(){
+async function renderRank(){
   renderEvalCard();
   const { active, ranked } = buildTodayRanking();
 
@@ -1834,7 +1922,12 @@ function renderRank(){
     badgeRow.innerHTML='';
   }
 
-  // إحصائيات كاملة
+  // إحصائيات كاملة — تحتاج كل التاريخ فعلياً (مجموع كلي)، لذلك تُجلب مرة واحدة فقط هنا
+  const statsEl=document.getElementById('full-stats');
+  if(!_fullStatsLoaded && statsEl){
+    statsEl.innerHTML='<div class="empty-state"><div class="empty-state-txt">⏳ جارٍ حساب إحصائياتك الكلية...</div></div>';
+  }
+  await ensureFullHistoryForStats();
   const mySess = teacherData.sessions.filter(s=>s.studentId===myStudentId);
   let totalHifzSurahs=0, totalMurajaa=0;
   mySess.forEach(s=>{ totalHifzSurahs+=(s.hifz||[]).length; totalMurajaa+=(s.murajaa||[]).length; });
