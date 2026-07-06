@@ -11,7 +11,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -251,10 +250,10 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
       <div class="modal-title">استعادة كلمة المرور</div>
     </div>
 
-    <!-- الخطوة 1: التحقق من الهوية -->
+    <!-- طلب استعادة: يُرسَل للمشرف ليراجعه ويعيد تعيين كلمة المرور يدوياً -->
     <div id="fgtStep1">
       <div class="modal-desc">
-        أدخل رقم هويتك الوطنية ورقم الهاتف المسجَّل بحسابك للتحقق من هويتك.
+        أدخل رقم هويتك الوطنية ورقم الهاتف المسجَّل بحسابك، وسيصل طلبك مباشرة للمشرف ليتحقق منه ويرسل لك كلمة مرور جديدة عبر واتساب.
       </div>
       <div class="err" id="fgt-err"><span id="fgt-err-txt"></span></div>
       <div class="form-group">
@@ -269,35 +268,15 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
           <input class="fi" id="fgt-phone" type="text" placeholder="05XXXXXXXX" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"/>
         </div>
       </div>
-      <button class="btn" id="fgtVerifyBtn" onclick="verifyForgotIdentity()">تحقّق ←</button>
-      <button class="btn-sec" onclick="closeForgot()">إلغاء</button>
-    </div>
-
-    <!-- الخطوة 2: كلمة مرور جديدة (تظهر فقط بعد نجاح التحقق) -->
-    <div id="fgtStep2" style="display:none;">
-      <div class="modal-desc" id="fgtWelcomeMsg"></div>
-      <div class="err" id="fgt-err2"><span id="fgt-err-txt2"></span></div>
-      <div class="form-group">
-        <label>كلمة المرور الجديدة</label>
-        <div class="inp-wrap">
-          <input class="fi" id="fgt-newpass" type="password" placeholder="6 أحرف على الأقل"/>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>تأكيد كلمة المرور الجديدة</label>
-        <div class="inp-wrap">
-          <input class="fi" id="fgt-newpass2" type="password" placeholder="أعد كتابتها"/>
-        </div>
-      </div>
-      <button class="btn" id="fgtSaveBtn" onclick="saveForgotPassword()">حفظ كلمة المرور الجديدة</button>
+      <button class="btn" id="fgtVerifyBtn" onclick="submitForgotRequest()">إرسال الطلب للمشرف ←</button>
       <button class="btn-sec" onclick="closeForgot()">إلغاء</button>
     </div>
 
     <!-- حالة النجاح -->
     <div id="fgtStep3" style="display:none;text-align:center;">
       <div style="font-size:40px;margin-bottom:8px;">✅</div>
-      <div class="modal-desc">تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.</div>
-      <button class="btn" onclick="closeForgot()">تسجيل الدخول الآن</button>
+      <div class="modal-desc">تم إرسال طلبك بنجاح. سيتواصل معك المشرف عبر واتساب بكلمة مرور جديدة خلال وقت قصير.</div>
+      <button class="btn" onclick="closeForgot()">حسناً</button>
     </div>
   </div>
 </div>
@@ -319,7 +298,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-const fnsClient = firebase.functions();
 // تفعيل العمل بدون إنترنت: تُخزَّن البيانات محلياً وتتم مزامنتها تلقائياً عند رجوع الاتصال
 db.enablePersistence({ synchronizeTabs: true }).catch(err => {
   console.warn('تعذّر تفعيل وضع عدم الاتصال:', err.code);
@@ -405,36 +383,21 @@ function doLogin() {
 //  FORGOT PASSWORD — يتم عبر المشرف فقط
 // ════════════════════════════════════════
 // ════════════════════════════════════════
-//  استعادة كلمة المرور
+//  استعادة كلمة المرور — إرسال طلب يراجعه المشرف يدوياً
+//  (لا تحتاج Cloud Functions ولا خطة Blaze)
 // ════════════════════════════════════════
-let _fgtVerifiedNid = null, _fgtVerifiedPhone = null;
-
 function openForgot() {
   // إعادة ضبط النافذة لحالتها الأولى في كل مرة تُفتح فيها
   document.getElementById('fgtStep1').style.display = 'block';
-  document.getElementById('fgtStep2').style.display = 'none';
   document.getElementById('fgtStep3').style.display = 'none';
   document.getElementById('fgt-nid').value = '';
   document.getElementById('fgt-phone').value = '';
-  document.getElementById('fgt-newpass').value = '';
-  document.getElementById('fgt-newpass2').value = '';
-  clearErr('fgt-err'); clearErr('fgt-err2');
-  _fgtVerifiedNid = null; _fgtVerifiedPhone = null;
+  clearErr('fgt-err');
   document.getElementById('forgotModal').classList.add('open');
 }
 function closeForgot() { document.getElementById('forgotModal').classList.remove('open'); }
 
-function friendlyFnErr(code) {
-  return ({
-    'not-found': 'لا يوجد حساب مسجَّل بهذا الرقم',
-    'permission-denied': 'رقم الهاتف لا يطابق الرقم المسجَّل بهذا الحساب',
-    'resource-exhausted': 'محاولات كثيرة، يرجى الانتظار 15 دقيقة أو التواصل مع المشرف',
-    'invalid-argument': 'الرجاء تعبئة كل الحقول بشكل صحيح',
-    'unavailable': 'تعذّر الاتصال بالخادم، تحقّق من الإنترنت'
-  }[code]) || 'حدث خطأ، حاول مجدداً';
-}
-
-async function verifyForgotIdentity() {
+async function submitForgotRequest() {
   clearErr('fgt-err');
   const nid = document.getElementById('fgt-nid').value.trim();
   const phone = document.getElementById('fgt-phone').value.trim();
@@ -442,43 +405,21 @@ async function verifyForgotIdentity() {
   if (phone.length < 9) { showErr('fgt-err','fgt-err-txt','أدخل رقم هاتف صحيح'); return; }
 
   const btn = document.getElementById('fgtVerifyBtn');
-  btn.disabled = true; btn.textContent = 'جارٍ التحقق...';
+  btn.disabled = true; btn.textContent = 'جارٍ الإرسال...';
   try {
-    const call = fnsClient.httpsCallable('verifyIdentityForReset');
-    const res = await call({ nationalId: nid, phone });
-    _fgtVerifiedNid = nid; _fgtVerifiedPhone = phone;
-    const name = (res.data && res.data.name) ? res.data.name : '';
-    document.getElementById('fgtWelcomeMsg').textContent = name
-      ? `مرحباً ${name}، أدخل كلمة مرور جديدة لحسابك.`
-      : 'تم التحقق من هويتك، أدخل كلمة مرور جديدة لحسابك.';
+    await db.collection('passwordResetRequests').add({
+      nationalId: nid,
+      phone: phone,
+      status: 'pending',
+      requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
     document.getElementById('fgtStep1').style.display = 'none';
-    document.getElementById('fgtStep2').style.display = 'block';
-  } catch (e) {
-    showErr('fgt-err','fgt-err-txt', friendlyFnErr(e.code ? e.code.replace('functions/','') : ''));
-  } finally {
-    btn.disabled = false; btn.textContent = 'تحقّق ←';
-  }
-}
-
-async function saveForgotPassword() {
-  clearErr('fgt-err2');
-  const p1 = document.getElementById('fgt-newpass').value;
-  const p2 = document.getElementById('fgt-newpass2').value;
-  if (p1.length < 6) { showErr('fgt-err2','fgt-err-txt2','كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return; }
-  if (p1 !== p2) { showErr('fgt-err2','fgt-err-txt2','كلمتا المرور غير متطابقتين'); return; }
-  if (!_fgtVerifiedNid) { showErr('fgt-err2','fgt-err-txt2','انتهت صلاحية التحقق، أعد المحاولة من البداية'); return; }
-
-  const btn = document.getElementById('fgtSaveBtn');
-  btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
-  try {
-    const call = fnsClient.httpsCallable('resetPasswordByNationalId');
-    await call({ nationalId: _fgtVerifiedNid, phone: _fgtVerifiedPhone, newPassword: p1 });
-    document.getElementById('fgtStep2').style.display = 'none';
     document.getElementById('fgtStep3').style.display = 'block';
   } catch (e) {
-    showErr('fgt-err2','fgt-err-txt2', friendlyFnErr(e.code ? e.code.replace('functions/','') : ''));
+    console.warn('forgot request err', e);
+    showErr('fgt-err','fgt-err-txt','تعذّر إرسال الطلب، تحقّق من الإنترنت وحاول مجدداً');
   } finally {
-    btn.disabled = false; btn.textContent = 'حفظ كلمة المرور الجديدة';
+    btn.disabled = false; btn.textContent = 'إرسال الطلب للمشرف ←';
   }
 }
 function handleModalClick(e) { if (e.target === document.getElementById('forgotModal')) closeForgot(); }
