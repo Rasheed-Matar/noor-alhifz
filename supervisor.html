@@ -2613,7 +2613,7 @@ function saveStudentEdits(teacherId, localId){
   if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام'); return; }
   if(phone && !/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
 
-  const dupAcrossUsers=allUsers.find(u=>u.id!==teacherId && u.nationalId===nid);
+  const dupAcrossUsers=allUsers.find(u=>u.nationalId===nid && u.id!==teacherId && !(u.role==='student' && u.teacherId===teacherId && u.studentId===localId));
   const dupAcrossStudents=getAllStudents().find(s=>s.id!==localId && s.nationalId===nid);
   if(dupAcrossUsers||dupAcrossStudents){ toast('⚠️ رقم الهوية مستخدم بالفعل لمستخدم آخر'); return; }
 
