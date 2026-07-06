@@ -496,7 +496,7 @@ select.form-input{cursor:pointer;}
     <!-- ═══ REQUESTS ═══ -->
     <div class="page-view" id="page-requests">
       <div class="page-header">
-        <div><div class="page-title">الطلبات المعلّقة</div><div class="page-subtitle">مراجعة طلبات حذف الطلاب المرسلة من المحفّظين</div></div>
+        <div><div class="page-title">الطلبات المعلّقة</div><div class="page-subtitle">مراجعة طلبات حذف الطلاب واستعادة كلمة المرور</div></div>
       </div>
       <div class="card">
         <div class="card-header">
@@ -506,6 +506,18 @@ select.form-input{cursor:pointer;}
           <table>
             <thead><tr><th>الطالب</th><th>المحفظ</th><th>سبب الحذف</th><th>تاريخ الطلب</th><th></th></tr></thead>
             <tbody id="deleteRequestsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-dot gold"></span>طلبات استعادة كلمة المرور</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>رقم الهوية</th><th>الهاتف</th><th>الاسم</th><th>الدور</th><th>تاريخ الطلب</th><th></th></tr></thead>
+            <tbody id="pwResetRequestsTable"></tbody>
           </table>
         </div>
       </div>
@@ -1232,6 +1244,7 @@ const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toStr
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, allUsers=[], unsubUsers=null, unsubData=[];
+let pwResetRequests=[], unsubPwResetRequests=null;
 let unsubIncomingMsgs=null, incomingTeacherMessages=[];
 let currentSupervisorName='المشرف';
 let allExamResultsFull=[], unsubExamResultsFull=null;
@@ -1343,6 +1356,12 @@ function startListening(){
       renderIncomingMessages();
     },e=>console.log('appMessages err',e));
   }
+  if(unsubPwResetRequests) unsubPwResetRequests();
+  unsubPwResetRequests=db.collection('passwordResetRequests').where('status','==','pending').onSnapshot(snap=>{
+    pwResetRequests=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderPwResetRequests();
+    if(typeof renderDashboard==='function') renderDashboard();
+  },e=>console.log('pwResetRequests err',e));
   unsubUsers=db.collection('users').onSnapshot(snap=>{
     const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],deletionRequests:[],teacherAttendance:{},todayAttendance:{}}));
     allUsers=users;
@@ -2151,7 +2170,7 @@ function renderDashboard(){
 
   const navDot=document.getElementById('navNotifDot');
   const reqBadge=document.getElementById('navReqBadge');
-  const totalPending=pendingDeletes.length;
+  const totalPending=pendingDeletes.length+pwResetRequests.length;
   if(totalPending){
     navDot.style.display='block'; reqBadge.style.display='inline-block'; reqBadge.textContent=totalPending;
   } else { navDot.style.display='none'; reqBadge.style.display='none'; }
@@ -2221,6 +2240,71 @@ function renderRequests(){
         </div></td>
       </tr>`).join('');
   }
+}
+
+// ════════════════════════════════════════
+//  PASSWORD RESET REQUESTS (يدوي عبر المشرف — بدون Cloud Functions)
+// ════════════════════════════════════════
+function renderPwResetRequests(){
+  const tb=document.getElementById('pwResetRequestsTable');
+  if(!tb) return;
+  if(!pwResetRequests.length){
+    tb.innerHTML='<tr><td colspan="6"><div class="empty-state">لا توجد طلبات استعادة معلّقة</div></td></tr>';
+    return;
+  }
+  tb.innerHTML=pwResetRequests.map(r=>{
+    const matched=allUsers.find(u=>u.nationalId===r.nationalId);
+    const name=matched?matched.name:'—';
+    const role=matched?(roleLabelAr[matched.role]||matched.role):'⚠️ لا يوجد حساب بهذا الرقم';
+    const dateStr=r.requestedAt&&r.requestedAt.toDate?r.requestedAt.toDate().toLocaleString('ar-EG'):'—';
+    return `
+      <tr>
+        <td style="direction:ltr;text-align:right;">${r.nationalId}</td>
+        <td style="direction:ltr;text-align:right;">${r.phone}</td>
+        <td>${name}</td>
+        <td>${role}</td>
+        <td style="font-size:12px;color:#7a8a7a;">${dateStr}</td>
+        <td><div class="td-action">
+          <button class="td-btn edit" onclick="copyResetEmail('${r.nationalId}')">📋 نسخ البريد</button>
+          <button class="td-btn edit" onclick="window.open('https://console.firebase.google.com/project/noor-alhifz/authentication/users','_blank')">🔗 فتح Console</button>
+          ${matched&&matched.phone?`<button class="td-btn edit" onclick="notifyPwResetViaWA('${r.id}','${matched.phone}','${(matched.name||'').replace(/'/g,"")}')">💬 واتساب</button>`:''}
+          <button class="td-btn del" onclick="resolvePwResetRequest('${r.id}')">✅ تم الحل</button>
+        </div></td>
+      </tr>`;
+  }).join('');
+}
+
+function copyResetEmail(nid){
+  const email=nid+'@noor-alhifz.app';
+  navigator.clipboard.writeText(email).then(()=>{
+    toast('📋 تم نسخ البريد: '+email+' — الصقه بمربع البحث بصفحة Authentication');
+  }).catch(()=>{
+    toast('البريد: '+email,'error');
+  });
+}
+
+function resolvePwResetRequest(reqId){
+  db.collection('passwordResetRequests').doc(reqId).update({
+    status:'resolved',
+    resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>toast('✅ تم إغلاق الطلب')).catch(e=>toast('⚠️ تعذّر التحديث: '+e.message,'error'));
+}
+
+function notifyPwResetViaWA(reqId, phone, name){
+  const newPass=prompt('أدخل كلمة المرور الجديدة اللي عيّنتها لهذا الحساب بـFirebase Console (لإرسالها له عبر واتساب):');
+  if(!newPass) return;
+  const msg=`السلام عليكم ورحمة الله وبركاته 🌿
+
+تم إعادة تعيين كلمة مرور حسابك بنجاح ✅
+
+🔐 *كلمة المرور الجديدة:*
+${newPass}
+
+يُرجى تغييرها فور تسجيل الدخول من الإعدادات.
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+  openWA(phone, msg);
+  resolvePwResetRequest(reqId);
 }
 
 // ════════════════════════════════════════
