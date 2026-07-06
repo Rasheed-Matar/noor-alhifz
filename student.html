@@ -514,7 +514,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       <div class="today-card">
         <div class="today-card-ico att" id="dashAttIco">📋</div>
         <div class="today-card-body">
-          <div class="today-card-lbl">حضور اليوم</div>
+          <div class="today-card-lbl" id="dashAttLbl">حضور اليوم</div>
           <div class="today-card-val" id="dashAttVal">—</div>
           <div class="today-card-sub" id="dashAttSub"></div>
         </div>
@@ -522,7 +522,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       <div class="today-card">
         <div class="today-card-ico hifz">📖</div>
         <div class="today-card-body">
-          <div class="today-card-lbl">الحفظ اليوم</div>
+          <div class="today-card-lbl" id="dashHifzLbl">الحفظ اليوم</div>
           <div class="today-card-val" id="dashHifzVal">—</div>
           <div class="today-card-sub" id="dashHifzSub"></div>
         </div>
@@ -530,7 +530,7 @@ body.page-exit{animation:pageExit .25s ease forwards;}
       <div class="today-card">
         <div class="today-card-ico murajaa">🔄</div>
         <div class="today-card-body">
-          <div class="today-card-lbl">المراجعة اليوم</div>
+          <div class="today-card-lbl" id="dashMurajaaLbl">المراجعة اليوم</div>
           <div class="today-card-val" id="dashMurajaaVal">—</div>
           <div class="today-card-sub" id="dashMurajaaSub"></div>
         </div>
@@ -1427,33 +1427,59 @@ function renderDash(){
   levelEl.textContent = levelTxt;
   levelEl.className = 'today-hero-level '+levelCls;
 
-  // حضور اليوم
-  const attInfo = ATT_LABELS[sc.attStatus];
+  // حضور اليوم — إن لم يُسجَّل حضور اليوم بعد (الحلقة لم تبدأ)، نعرض آخر حضور مُسجَّل فعلياً بدل "لم يُسجَّل بعد"
+  // (يبقى ظاهراً حتى يسجّل المحفّظ حضور اليوم الجديد — نفس مبدأ استمرارية الواجب البيتي)
+  let attStatusForCard = sc.attStatus, attDateForCard = today;
+  if(!attStatusForCard){
+    const attDates = Object.keys(teacherData.attendance||{})
+      .filter(d=>(teacherData.attendance[d]||{})[myStudentId])
+      .sort((a,b)=>new Date(b)-new Date(a));
+    if(attDates.length){ attDateForCard = attDates[0]; attStatusForCard = teacherData.attendance[attDateForCard][myStudentId]; }
+  }
+  const attIsPast = attDateForCard!==today;
+  const attInfo = ATT_LABELS[attStatusForCard];
+  document.getElementById('dashAttLbl').textContent = attStatusForCard ? (attIsPast?`آخر حضور مُسجَّل`:'حضور اليوم') : 'حضور اليوم';
   document.getElementById('dashAttIco').textContent = attInfo ? attInfo.ico : '⬜';
   document.getElementById('dashAttVal').textContent = attInfo ? attInfo.lbl : 'لم يُسجَّل بعد';
   const attSubMap={present:'بارك الله في التزامك 🌿',late:'الحمد لله على حضورك',excused:'نسأل الله لك العافية',absent:'نفتقدك في الحلقة 🤍'};
-  document.getElementById('dashAttSub').textContent = attSubMap[sc.attStatus]||'بانتظار تسجيل المحفّظ';
+  document.getElementById('dashAttSub').textContent = attStatusForCard
+    ? (attSubMap[attStatusForCard]||'') + (attIsPast?` — 📅 ${fmtDate(attDateForCard)}`:'')
+    : 'بانتظار تسجيل المحفّظ';
 
-  // جلسة اليوم — لاستخراج اسم السورة المحفوظة/المراجَعة اليوم
+  // جلسة اليوم — لاستخراج اسم السورة المحفوظة/المراجَعة اليوم؛ وإن لم تُسجَّل جلسة اليوم بعد
+  // (الحلقة لم تبدأ)، نعرض آخر جلسة مُسجَّلة فعلياً بدل "لم يُسجَّل بعد"
+  const sortedSessAll = [...mySess].sort((a,b)=>new Date(b.date)-new Date(a.date));
   const todaySess = mySess.filter(s=>s.date===today);
-  const lastHifzEntry = todaySess.flatMap(s=>s.hifz||[]).slice(-1)[0];
-  const lastMurajaaEntry = todaySess.flatMap(s=>s.murajaa||[]).slice(-1)[0];
+  let lastHifzEntry = todaySess.flatMap(s=>s.hifz||[]).slice(-1)[0];
+  let lastMurajaaEntry = todaySess.flatMap(s=>s.murajaa||[]).slice(-1)[0];
+  let hifzDateForCard = today, murajaaDateForCard = today;
+  if(!lastHifzEntry){
+    const src = sortedSessAll.find(s=>(s.hifz||[]).length);
+    if(src){ lastHifzEntry = src.hifz.slice(-1)[0]; hifzDateForCard = src.date; }
+  }
+  if(!lastMurajaaEntry){
+    const src = sortedSessAll.find(s=>(s.murajaa||[]).length);
+    if(src){ lastMurajaaEntry = src.murajaa.slice(-1)[0]; murajaaDateForCard = src.date; }
+  }
 
   // الحفظ اليوم
+  document.getElementById('dashHifzLbl').textContent = (lastHifzEntry&&hifzDateForCard!==today) ? 'آخر حفظ مُسجَّل' : 'الحفظ اليوم';
   document.getElementById('dashHifzVal').textContent = lastHifzEntry
     ? `${lastHifzEntry.surah} (${lastHifzEntry.from}-${lastHifzEntry.to})`
     : 'لم يُسجَّل بعد';
   document.getElementById('dashHifzSub').textContent = lastHifzEntry
-    ? `📖 ${lastHifzEntry.score||''}`
+    ? `📖 ${lastHifzEntry.score||''}` + (hifzDateForCard!==today?` — 📅 ${fmtDate(hifzDateForCard)}`:'')
     : 'بانتظار تسجيل المحفّظ';
 
   // المراجعة اليوم
+  document.getElementById('dashMurajaaLbl').textContent = (lastMurajaaEntry&&murajaaDateForCard!==today) ? 'آخر مراجعة مُسجَّلة' : 'المراجعة اليوم';
   document.getElementById('dashMurajaaVal').textContent = lastMurajaaEntry
     ? `${lastMurajaaEntry.surah} (${lastMurajaaEntry.from}-${lastMurajaaEntry.to})`
     : 'لم تُسجَّل بعد';
   document.getElementById('dashMurajaaSub').textContent = lastMurajaaEntry
-    ? `🔄 ${lastMurajaaEntry.score||''}`
+    ? `🔄 ${lastMurajaaEntry.score||''}` + (murajaaDateForCard!==today?` — 📅 ${fmtDate(murajaaDateForCard)}`:'')
     : 'بانتظار تسجيل المحفّظ';
+
 
   // الاختبارات
   const pendingExams = allExams.filter(e=>e.status==='pending').length;
@@ -1504,8 +1530,8 @@ function renderDash(){
 
 // ════════════════════════════════════════
 //  الواجب البيتي — صفحة الطالب
-//  نموذج مسطّح: واجب "حالي" واحد فقط لكل طالب (بدون تقييم/نسبة إنجاز)
-//  يُستبدل بالكامل كل مرة يسجّل فيها المحفّظ واجباً جديداً — لا يُعرض أي سجل لأيام سابقة
+//  يعرض واجب "اليوم الحالي" للطالب (قد يحتوي عدة عناصر حفظ/مراجعة أضافها المحفّظ على دفعات في نفس اليوم)
+//  يبقى ظاهراً كما هو (لا يُحذف تلقائياً عند منتصف الليل) حتى يسجّل المحفّظ واجباً جديداً في يوم جديد، فيُستبدل بالكامل حينها
 // ════════════════════════════════════════
 function renderHomeworkCard(){
   const wrap=document.getElementById('hw-card-wrap');
