@@ -868,13 +868,14 @@ let unsubMsgSent = null, sentStudentMessages = [];
 // ════════════════════════════════════════
 function ini(n){return(n||'').trim().charAt(0)||'ط';}
 function TODAY(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-// "اليوم المنطقي" لصفحة الطالب — يبدأ اليوم الجديد الساعة 5 عصراً (موعد الحلقة) وليس منتصف الليل.
-// قبل الساعة 5 عصراً: لا يزال "اليوم" هو يوم الأمس (يوم آخر حلقة فعلية) — فتبقى كل بيانات الحلقة السابقة
-// (حضور/حفظ/مراجعة/تقييم/ترتيب) ظاهرة كما هي دون أي تغيير في الشكل، حتى يسجّل المحفّظ بيانات اليوم الجديد بعد الحلقة.
-function LOGICAL_TODAY(){
+// "اليوم" لأغراض عرض بيانات الحلقة (تقييم/حفظ/مراجعة) — بما إن جلسة الحفظ
+// تبدأ عصراً، لو الطالب فتح صفحته صباحاً (قبل الظهر) قبل انعقاد جلسة اليوم،
+// نستمر بعرض بيانات أمس (آخر جلسة فعلية) بدل يوم جديد فارغ لسا ما انعقدت حلقته.
+// لا تُستخدم هذه الدالة لتسجيل تاريخ فتح الصفحة نفسه (ذلك يبقى بالتاريخ الفعلي دائماً).
+function EFFECTIVE_TODAY(){
   const d=new Date();
-  if(d.getHours()<17) d.setDate(d.getDate()-1);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(d.getHours()<12) d.setDate(d.getDate()-1);
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function fmtDate(iso){
   if(!iso) return '—';
@@ -1005,7 +1006,7 @@ function enterApp(user, userData){
 
   pendingFirstLogin = !!userData.firstLogin;
   myLastOpenDate = userData.lastOpenDate || null;
-  const alreadyOpenedToday = userData.lastOpenDate === LOGICAL_TODAY();
+  const alreadyOpenedToday = userData.lastOpenDate === TODAY();
 
   if(!alreadyOpenedToday){
     // لم يُسجَّل فتحه لصفحته اليوم بعد — أظهر نافذة الصلاة على النبي ﷺ، والضغط عليها هو ما يُثبت الفتح
@@ -1019,7 +1020,7 @@ function enterApp(user, userData){
 // يُستدعى فقط عند ضغط الطالب على نافذة "اللهم صلِّ وسلِّم وبارك على سيدنا محمد"
 function confirmPageOpen(){
   document.getElementById('modal-salawat').classList.remove('open');
-  myLastOpenDate = LOGICAL_TODAY(); // تحديث فوري محلي — يضمن ظهور +10 لحظياً دون انتظار الشبكة
+  myLastOpenDate = TODAY(); // تحديث فوري محلي — يضمن ظهور +10 لحظياً دون انتظار الشبكة
   markPageOpenedToday();
   renderAll();
 
@@ -1035,7 +1036,7 @@ function confirmPageOpen(){
 // ════════════════════════════════════════
 function markPageOpenedToday(){
   if(!myTeacherId||!myStudentId||!currentUser) return;
-  const today = LOGICAL_TODAY();
+  const today = TODAY();
   const nowIso = new Date().toISOString();
 
   // المسار الأساسي المضمون: تحديث مستند المستخدم الخاص بالطالب نفسه
@@ -1418,9 +1419,7 @@ function renderDash(){
   const allExams = getAllMyExams();
 
   // ━━━ تقييم اليوم (الحلقة العلوية) ━━━
-  // ملاحظة: "اليوم" هنا يُحسب بحيث يبدأ اليوم الجديد الساعة 5 عصراً (موعد الحلقة) وليس منتصف الليل —
-  // فتبقى بيانات اليوم السابق (حضور/حفظ/مراجعة/تقييم) كما هي حتى يسجّل المحفّظ بيانات جديدة بعد الحلقة
-  const today = LOGICAL_TODAY();
+  const today = EFFECTIVE_TODAY();
   const sc = computeDailyScore(myStudentId, today);
   const totalMax = evalTotalMax();
   const totalPct = totalMax>0 ? Math.round(sc.total/totalMax*100) : 0;
@@ -1464,7 +1463,6 @@ function renderDash(){
   document.getElementById('dashMurajaaSub').textContent = lastMurajaaEntry
     ? `🔄 ${lastMurajaaEntry.score||''}`
     : 'بانتظار تسجيل المحفّظ';
-
 
   // الاختبارات
   const pendingExams = allExams.filter(e=>e.status==='pending').length;
@@ -1515,8 +1513,8 @@ function renderDash(){
 
 // ════════════════════════════════════════
 //  الواجب البيتي — صفحة الطالب
-//  يعرض واجب "اليوم الحالي" للطالب (قد يحتوي عدة عناصر حفظ/مراجعة أضافها المحفّظ على دفعات في نفس اليوم)
-//  يبقى ظاهراً كما هو (لا يُحذف تلقائياً عند منتصف الليل) حتى يسجّل المحفّظ واجباً جديداً في يوم جديد، فيُستبدل بالكامل حينها
+//  نموذج مسطّح: واجب "حالي" واحد فقط لكل طالب (بدون تقييم/نسبة إنجاز)
+//  يُستبدل بالكامل كل مرة يسجّل فيها المحفّظ واجباً جديداً — لا يُعرض أي سجل لأيام سابقة
 // ════════════════════════════════════════
 function renderHomeworkCard(){
   const wrap=document.getElementById('hw-card-wrap');
@@ -1551,7 +1549,7 @@ function renderHomeworkCard(){
 const HIFZ_DUAS=['بارك الله في حفظك وثبّتك على كتابه ✨','اللهم اجعل القرآن ربيع قلبك 🌿','زادك الله من فضله علماً وحفظاً'];
 function recapSessionHTML(s){
   const dua = HIFZ_DUAS[Math.floor(Math.random()*HIFZ_DUAS.length)];
-  const isToday = s.date===LOGICAL_TODAY();
+  const isToday = s.date===EFFECTIVE_TODAY();
   return `<div class="recap-card">
     <div class="recap-head">
       <div class="recap-date">🗓️ ${fmtDate(s.date)}</div>
@@ -1848,16 +1846,23 @@ function renderExams(){
 // ════════════════════════════════════════
 function buildTodayRanking(){
   const active = teacherData.students.filter(s=>!s.archived);
-  const today = LOGICAL_TODAY();
+  const today = EFFECTIVE_TODAY();
   const ranked = active.map(s=>({id:s.id, name:s.name, ...computeDailyScore(s.id, today)}))
     .sort((a,b)=>b.total-a.total);
   return { active, ranked, today };
 }
 
+// ترتيب "بالتعادل": كل الطلاب المتساوين بالنقاط ياخذوا نفس رقم الترتيب،
+// والرقم التالي يقفز بعدد المتعادلين (مثال: 4 طلاب بالمرتبة 1 → التالي مرتبة 5، مو 2)
+function computeRank(ranked, studentId){
+  const me = ranked.find(r=>r.id===studentId);
+  if(!me) return 0;
+  return ranked.filter(r=>r.total>me.total).length + 1;
+}
+
 function calcMyRank(){
   const { ranked } = buildTodayRanking();
-  const myIdx = ranked.findIndex(r=>r.id===myStudentId);
-  return myIdx>=0 ? myIdx+1 : 0;
+  return computeRank(ranked, myStudentId);
 }
 
 function setRing(pct, elId){
@@ -1871,7 +1876,7 @@ function setRing(pct, elId){
 }
 
 function renderEvalCard(){
-  const today = LOGICAL_TODAY();
+  const today = EFFECTIVE_TODAY();
   const sc = computeDailyScore(myStudentId, today);
   const totalMax = evalTotalMax();
 
@@ -1919,8 +1924,7 @@ async function renderRank(){
   renderEvalCard();
   const { active, ranked } = buildTodayRanking();
 
-  const myIdx = ranked.findIndex(r=>r.id===myStudentId);
-  const myRank = myIdx>=0 ? myIdx+1 : 0;
+  const myRank = computeRank(ranked, myStudentId);
 
   document.getElementById('rank-total').textContent = `من أصل ${active.length} طالب`;
 
