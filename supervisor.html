@@ -1365,6 +1365,7 @@ function startListening(){
   unsubUsers=db.collection('users').onSnapshot(snap=>{
     const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],deletionRequests:[],teacherAttendance:{},todayAttendance:{}}));
     allUsers=users;
+    renderPwResetRequests();
     unsubData.forEach(u=>u()); unsubData=[];
     users.filter(u=>u.status==='approved'&&u.role==='teacher').forEach(user=>{
       // وثيقة المحفّظ الرئيسية الآن صغيرة وثابتة (طلاب+إعدادات+اختبارات+طلبات حذف فقط) —
@@ -2265,6 +2266,7 @@ function renderPwResetRequests(){
         <td>${role}</td>
         <td style="font-size:12px;color:#7a8a7a;">${dateStr}</td>
         <td><div class="td-action">
+          ${matched?`<button class="td-btn edit" onclick="tryAutoResetPassword('${r.id}','${matched.nationalId}','${matched.id}','${matched.phone||r.phone}','${(matched.name||'').replace(/'/g,"")}')">🔑 محاولة تلقائية</button>`:''}
           <button class="td-btn edit" onclick="copyResetEmail('${r.nationalId}')">📋 نسخ البريد</button>
           <button class="td-btn edit" onclick="window.open('https://console.firebase.google.com/project/noor-alhifz/authentication/users','_blank')">🔗 فتح Console</button>
           ${matched&&matched.phone?`<button class="td-btn edit" onclick="notifyPwResetViaWA('${r.id}','${matched.phone}','${(matched.name||'').replace(/'/g,"")}')">💬 واتساب</button>`:''}
@@ -2272,6 +2274,45 @@ function renderPwResetRequests(){
         </div></td>
       </tr>`;
   }).join('');
+}
+
+// محاولة تلقائية: تشتغل فقط إذا كان الحساب لسا يستخدم كلمة المرور الافتراضية
+// (رقم الهوية نفسه) — نفس الحيلة المستخدمة أصلاً بنموذج تعديل بيانات المحفّظ/الطالب
+async function tryAutoResetPassword(reqId, nationalId, authUid, phone, name){
+  const newPass=prompt('أدخل كلمة المرور الجديدة (6 أحرف على الأقل):');
+  if(!newPass) return;
+  if(newPass.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل','error'); return; }
+
+  const email=nidToEmail(nationalId);
+  try{
+    const cred=await secondaryAuth.signInWithEmailAndPassword(email, nationalId);
+    await cred.user.updatePassword(newPass);
+    await secondaryAuth.signOut();
+    await db.collection('users').doc(authUid).update({ firstLogin:true });
+    toast('✅ تم تغيير كلمة المرور تلقائياً بنجاح');
+
+    if(phone && confirm('تم التغيير بنجاح. هل تريد إرسال كلمة المرور الجديدة للمستخدم عبر واتساب الآن؟')){
+      const msg=`السلام عليكم ورحمة الله وبركاته 🌿
+
+تم إعادة تعيين كلمة مرور حسابك بنجاح ✅
+
+🔐 *كلمة المرور الجديدة:*
+${newPass}
+
+يُرجى تغييرها فور تسجيل الدخول من الإعدادات.
+
+مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+      openWA(phone, msg);
+    }
+    resolvePwResetRequest(reqId);
+  }catch(e){
+    try{ await secondaryAuth.signOut(); }catch(_){}
+    if(e.code==='auth/wrong-password' || e.code==='auth/invalid-credential'){
+      toast('⚠️ هذا الحساب غيّر كلمة مروره مسبقاً — استخدم زر "فتح Console" بدلاً من ذلك','error');
+    } else {
+      toast('⚠️ تعذّرت المحاولة التلقائية: '+e.message,'error');
+    }
+  }
 }
 
 function copyResetEmail(nid){
