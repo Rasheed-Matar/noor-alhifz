@@ -1781,8 +1781,9 @@ async function renderDash(){
     topEl.innerHTML=ranked.map(([sid,score],i)=>{
       const st=students.find(x=>x.id===sid);
       if(!st) return '';
+      const rank=ranked.filter(([,s])=>s>score).length+1;
       return `<div class="student-row">
-        <div class="st-rank">${i+1}</div>
+        <div class="st-rank">${rank}</div>
         <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(st.name)}</div>
         <div class="st-info"><div class="st-name">${st.name}</div><div class="st-meta">الجزء ${st.juz||0}</div></div>
         <span class="month-badge badge-ok">${score} إنجاز</span>
@@ -2186,15 +2187,9 @@ function toggleHwBulk(checked){
   if(checked) renderHwBulkStudentsList();
 }
 
-// هل لدى هذا الطالب واجب "حالي" ظاهر الآن؟ (قد يكون من اليوم أو من أمس ولم يُستبدل بعد — يبقى ظاهراً للطالب حتى يُستبدل)
+// هل لدى هذا الطالب واجب "حالي" مُسجَّل الآن؟ (بغض النظر عن تاريخه — النموذج الجديد لا يحتفظ إلا بواجب واحد حالي)
 function hasHomework(studentId){
   return !!homework[studentId];
-}
-
-// هل سُجِّل للطالب واجب اليوم تحديداً؟ (تُستخدم لمتابعة إنجاز اليوم فقط، بخلاف hasHomework التي تشمل ما تبقّى من أمس)
-function hasHomeworkToday(studentId){
-  const r=homework[studentId];
-  return !!r&&r.date===TODAY();
 }
 
 function renderHwBulkStudentsList(){
@@ -2271,10 +2266,8 @@ function renderHwEntries(){
     </div>`).join('');
 }
 
-// نموذج الواجب البيتي لكل طالب (homework[studentId]) يحتفظ بواجب "اليوم الحالي" —
-// ويمكن للمحفّظ إضافة أكثر من واجب حفظ/مراجعة لنفس الطالب في نفس اليوم (تُضاف/تُدمج معاً، لا تُستبدل).
-// عند دخول يوم جديد (تاريخ مختلف عن آخر تسجيل)، يبدأ واجب جديد من الصفر (استبدال كامل) —
-// وتبقى بيانات الأمس ظاهرة لصفحة الطالب حتى تلك اللحظة (لا حذف تلقائي عند منتصف الليل).
+// نموذج الواجب البيتي الآن "مسطّح" — واجب واحد "حالي" فقط لكل طالب (homework[studentId])
+// بلا أي تقييم/نسبة إنجاز، وبلا الاحتفاظ بتاريخ الأيام السابقة — كل حفظ جديد يستبدل القديم بالكامل
 function saveHomework(){
   if(!hwHifzEntries.length&&!hwMurajaaEntries.length){toast('⚠️ أضف حفظاً أو مراجعة على الأقل','error');return;}
   const notes=(document.getElementById('hw-notes')||{}).value||'';
@@ -2289,35 +2282,15 @@ function saveHomework(){
     if(!sid){toast('⚠️ اختر طالباً أولاً','error');return;}
     targets=[sid];
   }
-  const newHifz=hwHifzEntries.map(e=>({...e}));
-  const newMurajaa=hwMurajaaEntries.map(e=>({...e}));
+  const hwData={
+    hifz:hwHifzEntries.map(e=>({...e})),
+    murajaa:hwMurajaaEntries.map(e=>({...e})),
+    notes, date, dateLabel,
+    createdAt:new Date().toISOString()
+  };
+  // استبدال كامل لحقل كل طالب عبر مسار منقّط (dot-path) — يضمن حذف أي بيانات قديمة (كنسبة إنجاز سابقة) بدل دمجها
   const patch={};
-  targets.forEach(studentId=>{
-    const existing=homework[studentId];
-    const sameDay=existing&&existing.date===date;
-    let hwData;
-    if(sameDay){
-      // نفس اليوم: إضافة الواجب الجديد إلى الموجود بدلاً من استبداله
-      hwData={
-        hifz:[...(existing.hifz||[]),...newHifz.map(e=>({...e}))],
-        murajaa:[...(existing.murajaa||[]),...newMurajaa.map(e=>({...e}))],
-        notes: notes? (existing.notes? existing.notes+'\n'+notes : notes) : (existing.notes||''),
-        date, dateLabel,
-        createdAt: existing.createdAt||new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    } else {
-      // يوم جديد أو لا يوجد واجب سابق: بداية جديدة (استبدال كامل)
-      hwData={
-        hifz:newHifz.map(e=>({...e})),
-        murajaa:newMurajaa.map(e=>({...e})),
-        notes, date, dateLabel,
-        createdAt:new Date().toISOString()
-      };
-    }
-    homework[studentId]=hwData;
-    patch['homework.'+studentId]=hwData;
-  });
+  targets.forEach(studentId=>{ homework[studentId]={...hwData}; patch['homework.'+studentId]=hwData; });
   userDocRef.update(patch).catch(e=>console.warn('homework save err',e));
   hwHifzEntries=[]; hwMurajaaEntries=[];
   document.getElementById('hw-notes').value='';
@@ -2358,8 +2331,8 @@ function renderHwTodayStatus(){
   const el=document.getElementById('hw-today-status'); if(!el) return;
   const active=students.filter(s=>!s.archived);
   if(!active.length){ el.innerHTML=''; return; }
-  const doneCount=active.filter(s=>hasHomeworkToday(s.id)).length;
-  const pendingNames=active.filter(s=>!hasHomeworkToday(s.id)).map(s=>s.name);
+  const doneCount=active.filter(s=>hasHomework(s.id)).length;
+  const pendingNames=active.filter(s=>!hasHomework(s.id)).map(s=>s.name);
   el.innerHTML=`
     <span style="font-weight:700;color:var(--gd);">📔 الحالة الآن:</span>
     <span style="font-weight:700;color:var(--em);">${doneCount}/${active.length} طالب لديهم واجب بيتي مُسجَّل</span>
@@ -2367,7 +2340,7 @@ function renderHwTodayStatus(){
   `;
 }
 
-// قائمة الواجب البيتي "الحالي" لكل طالب — يجمع كل ما أُضيف اليوم (قد يحتوي عدة عناصر حفظ/مراجعة)، ويُستبدل بالكامل عند بدء يوم جديد
+// قائمة الواجب البيتي "الحالي" لكل طالب — لا يوجد سجل تاريخي، واجب واحد فقط لكل طالب يُستبدل بالكامل عند كل تسجيل جديد
 function renderHwList(){
   const el=document.getElementById('hw-list'); if(!el) return;
   const filterStudentId=(document.getElementById('hw-filter-student')||{}).value||'';
