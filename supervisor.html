@@ -2253,7 +2253,7 @@ function renderPwResetRequests(){
     return;
   }
   tb.innerHTML=pwResetRequests.map(r=>{
-    const matched=allUsers.find(u=>u.nationalId===r.nationalId);
+    const matched=allUsers.find(u=>String(u.nationalId||'').trim()===String(r.nationalId||'').trim());
     const name=matched?matched.name:'—';
     const role=matched?(roleLabelAr[matched.role]||matched.role):'⚠️ لا يوجد حساب بهذا الرقم';
     const dateStr=r.requestedAt&&r.requestedAt.toDate?r.requestedAt.toDate().toLocaleString('ar-EG'):'—';
