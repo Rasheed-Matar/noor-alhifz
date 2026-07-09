@@ -1714,6 +1714,15 @@ async function saveFirstLoginPassword(){
   try{
     await currentUser.updatePassword(pw);
     await db.collection('users').doc(currentUser.uid).update({ firstLogin:false });
+    // تحديث النسخة المخزّنة محلياً كي لا تُظهر الصفحة النافذة مجدداً عند أي تحميل لاحق لنفس الجلسة
+    try{
+      const cached = sessionStorage.getItem('userCache');
+      if(cached){
+        const cd = JSON.parse(cached);
+        cd.firstLogin = false;
+        sessionStorage.setItem('userCache', JSON.stringify(cd));
+      }
+    }catch(e){}
     cm('mFirstPassword');
     toast('✅ تم تغيير كلمة المرور بنجاح');
   } catch(e){
