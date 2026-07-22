@@ -2162,10 +2162,11 @@ function renderDashboard(){
   const teachers=getTeachers();
   const pendingDeletes=getPendingDeleteRequests();
   const allStudents=getAllStudents();
+  const activeStudentsCount=allStudents.filter(s=>!s.archived).length;
   const weekSessions=weekSessionsCache.length;
 
   document.getElementById('dStatTeachers').textContent=teachers.length;
-  document.getElementById('dStatStudents').textContent=allStudents.length;
+  document.getElementById('dStatStudents').textContent=activeStudentsCount;
   document.getElementById('dStatSessions').textContent=weekSessions;
   document.getElementById('dStatPending').textContent=pendingDeletes.length;
 
@@ -3803,14 +3804,14 @@ function buildTeachersReportPage(teachers, label){
       <td style="text-align:center;font-size:12.5px;">${t.placeOfBirth||'—'}</td>
       <td style="direction:ltr;text-align:center;font-size:12.5px;">${t.phone||'—'}</td>
       <td style="text-align:center;">${t.circle||'حلقة القرآن'}</td>
-      <td style="text-align:center;font-weight:800;color:#1b6b4a;">${(t.students||[]).length}</td>
+      <td style="text-align:center;font-weight:800;color:#1b6b4a;">${(t.students||[]).filter(s=>!s.archived).length}</td>
       <td style="text-align:center;font-size:12.5px;">${t.familyMembersCount!=null?t.familyMembersCount:'—'}</td>
       <td style="text-align:center;font-size:12px;">${joined?fmtDate(joined):'—'}</td>
     </tr>`;
   }).join('');
 
   const emptyRow = teachers.length?'':`<tr><td colspan="10" class="empty-note">لا يوجد محفّظونَ مسجّلونَ بعد</td></tr>`;
-  const totalStudents = teachers.reduce((s,t)=>s+(t.students||[]).length,0);
+  const totalStudents = teachers.reduce((s,t)=>s+(t.students||[]).filter(s=>!s.archived).length,0);
   const circlesCount = new Set(teachers.map(t=>t.circle||'حلقة القرآن')).size;
 
   const metaHTML = `
@@ -3951,7 +3952,7 @@ function downloadDataReportExcel(){
 
   if(type==='teachers'){
     const teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
-    const totalStudents=teachers.reduce((s,t)=>s+(t.students||[]).length,0);
+    const totalStudents=teachers.reduce((s,t)=>s+(t.students||[]).filter(s=>!s.archived).length,0);
     const circles=new Set(teachers.map(t=>t.circle||'حلقة القرآن')).size;
     const xl=buildXlsx({
       title:'تقرير بيانات المحفّظين',subtitle:'جميع المحفّظين المسجّلين',
@@ -3969,7 +3970,7 @@ function downloadDataReportExcel(){
       colWidths:[4,26,14,14,14,14,22,10,12,14],
       rows:teachers.map((t,i)=>{
         const joined=t.createdAt?(t.createdAt.toDate?t.createdAt.toDate():t.createdAt):null;
-        return [i+1,t.name||'—',t.nationalId||'—',fmtDate(t.dob),t.placeOfBirth||'—',t.phone||'—',t.circle||'حلقة القرآن',(t.students||[]).length,t.familyMembersCount??'—',joined?fmtDate(joined):'—'];
+        return [i+1,t.name||'—',t.nationalId||'—',fmtDate(t.dob),t.placeOfBirth||'—',t.phone||'—',t.circle||'حلقة القرآن',(t.students||[]).filter(s=>!s.archived).length,t.familyMembersCount??'—',joined?fmtDate(joined):'—'];
       }),
       totRow:[{v:'الإجمالي',span:7},{v:totalStudents,clr:'1B6B4A',bg:'E8F5ED'},'—','—'],
       filename:'تقرير_بيانات_المحفظين'
