@@ -3191,12 +3191,13 @@ function renderExamJuzOptions(){
 function nominateStudent(){
   const studentId=document.getElementById('exam-student-select').value;
   if(!studentId){toast('⚠️ اختر طالباً','error');return;}
+  const stu=students.find(x=>x.id===studentId);
   const type=document.getElementById('exam-type-select').value;
   const [juzNum,juzName]=document.getElementById('exam-juz-select').value.split('|');
   const notes=document.getElementById('exam-notes').value.trim();
 
   const record={
-    id:uid(), studentId, type, juzNum, juzName, notes,
+    id:uid(), studentId, studentName:stu?stu.name:'', type, juzNum, juzName, notes,
     status:'pending',
     nominatedAt:new Date().toISOString()
   };
@@ -3210,7 +3211,8 @@ function nominateStudent(){
 
 function deleteExam(examId){
   const e=exams.find(x=>x.id===examId);
-  if(e && (e.status==='passed'||e.status==='failed')){
+  if(!e) return;
+  if(e.status==='passed'||e.status==='failed'){
     toast('⚠️ لا يمكن حذف ترشيح تم رصد نتيجته من قبل مختبر الجودة','error');
     return;
   }
@@ -3292,13 +3294,14 @@ function renderExamsList(){
   }
   el.innerHTML=list.map(e=>{
     const s=students.find(x=>x.id===e.studentId);
+    const displayName=(s?s.name:'')||e.studentName||'محذوف';
     const st=examStatusInfo[e.status]||examStatusInfo.pending;
     const date=new Date(e.nominatedAt).toLocaleDateString('ar-EG');
     const graded=e.status==='passed'||e.status==='failed';
     return `<div class="student-row" style="flex-wrap:wrap;">
-      <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(s?s.name:'?')}</div>
+      <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(displayName)}</div>
       <div class="st-info">
-        <div class="st-name">${s?s.name:'محذوف'}</div>
+        <div class="st-name">${displayName}</div>
         <div class="st-meta">${examTypeLabel[e.type]} — الجزء ${e.juzNum} (${e.juzName}) · ${date}${e.score?` · العلامة: ${e.score}`:''}</div>
       </div>
       <span class="month-badge ${st.cls}">${st.label}</span>
@@ -3934,9 +3937,10 @@ function buildExamsTable(studentsList,from,to,examTypeFilter){
     </tr></thead><tbody>`;
   filtered.forEach((e,i)=>{
     const s=students.find(x=>x.id===e.studentId);
+    const displayName=(s?s.name:'')||e.studentName||'محذوف';
     const st=examStatusInfo[e.status]||examStatusInfo.pending;
     html+=`<tr style="background:${i%2?'#f8f5ef':'#fff'};">
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;">${s?s.name:'محذوف'}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;">${displayName}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;direction:ltr;text-align:right;color:#5a7a6a;">${s&&s.parentPhone?s.parentPhone:'—'}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${examTypeLabel[e.type]}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${e.juzNum} — ${e.juzName}</td>
@@ -4023,23 +4027,50 @@ async function exportReportPDF(){
   area.innerHTML=html;
   toast('⏳ جارٍ إنشاء الملف...');
 
+  // انتظار إطارين لضمان اكتمال التخطيط (layout) قبل قياس مواضع الصفوف
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
   html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
-    const imgData=canvas.toDataURL('image/jpeg',0.95);
     const pdf=new jspdf.jsPDF('p','mm','a4');
     const pageWidth=pdf.internal.pageSize.getWidth();
     const pageHeight=pdf.internal.pageSize.getHeight();
     const imgWidth=pageWidth;
-    const imgHeight=canvas.height*imgWidth/canvas.width;
-    let heightLeft=imgHeight, position=0;
+    const scaleFactor=canvas.width/area.offsetWidth; // نسبة تكبير html2canvas (عادة 2)
+    const pageHeightPx=pageHeight*(canvas.width/imgWidth); // ارتفاع صفحة PDF واحدة بوحدة بكسل الصورة
 
-    pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-    heightLeft-=pageHeight;
-    while(heightLeft>0){
-      position=heightLeft-imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-      heightLeft-=pageHeight;
+    // اجمع حدود كل صف جدول (tr) بوحدة بكسل الصورة، لمنع قصّ أي صف عند حدود صفحة
+    const areaTop=area.getBoundingClientRect().top;
+    const rowEdges=Array.from(area.querySelectorAll('tr')).map(r=>{
+      const rc=r.getBoundingClientRect();
+      return {top:(rc.top-areaTop)*scaleFactor, bottom:(rc.bottom-areaTop)*scaleFactor};
+    });
+
+    // احسب مواضع فواصل الصفحات بحيث لا يقع أي فاصل داخل صف جدول (يُدفَع الصف كاملاً للصفحة التالية)
+    const breaks=[0];
+    let cursor=0;
+    while(cursor<canvas.height-1){
+      let next=Math.min(cursor+pageHeightPx, canvas.height);
+      if(next<canvas.height){
+        const straddling=rowEdges.find(e=>e.top<next && e.bottom>next && e.bottom-e.top<pageHeightPx);
+        if(straddling && straddling.top>cursor) next=straddling.top;
+      }
+      breaks.push(next);
+      cursor=next;
     }
+
+    for(let i=1;i<breaks.length;i++){
+      const sliceTop=breaks[i-1], sliceHeightPx=breaks[i]-breaks[i-1];
+      if(sliceHeightPx<=0) continue;
+      if(i>1) pdf.addPage();
+      const pageCanvas=document.createElement('canvas');
+      pageCanvas.width=canvas.width;
+      pageCanvas.height=sliceHeightPx;
+      pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
+      const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.95);
+      const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
+      pdf.addImage(sliceImgData,'JPEG',0,0,imgWidth,sliceImgHeightMM);
+    }
+
     pdf.save(`${_activeReportFilename()}.pdf`);
     area.innerHTML='';
     cm('mPdfPreview');
