@@ -3508,8 +3508,6 @@ function exportSupervisorReportToPDF(html, label, orientation){
           windowHeight:target.scrollHeight
         });
 
-        const imgData=canvas.toDataURL('image/png');
-
         const {jsPDF}=window.jspdf;
         const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4'});
         const pageWidth=pdf.internal.pageSize.getWidth();
@@ -3520,19 +3518,39 @@ function exportSupervisorReportToPDF(html, label, orientation){
         const usableHeight=pageHeight-margin*2;
 
         const imgWidth=usableWidth;
-        const imgHeight=canvas.height*imgWidth/canvas.width;
+        const scaleFactor=canvas.width/target.scrollWidth;
+        const pageHeightPx=usableHeight*(canvas.width/imgWidth);
 
-        let heightLeft=imgHeight;
-        let position=margin;
+        // اجمع حدود كل صف جدول (tr) داخل الإطار، لمنع قصّ أي صف عند حدود صفحة
+        const rowEdges=Array.from(fdoc.querySelectorAll('tr')).map(r=>{
+          const rc=r.getBoundingClientRect();
+          return {top:rc.top*scaleFactor, bottom:rc.bottom*scaleFactor};
+        });
 
-        pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-        heightLeft-=usableHeight;
+        // احسب مواضع فواصل الصفحات بحيث لا يقع أي فاصل داخل صف جدول
+        const breaks=[0];
+        let cursor=0;
+        while(cursor<canvas.height-1){
+          let next=Math.min(cursor+pageHeightPx, canvas.height);
+          if(next<canvas.height){
+            const straddling=rowEdges.find(e=>e.top<next && e.bottom>next && e.bottom-e.top<pageHeightPx);
+            if(straddling && straddling.top>cursor) next=straddling.top;
+          }
+          breaks.push(next);
+          cursor=next;
+        }
 
-        while(heightLeft>0){
-          position=margin-(imgHeight-heightLeft);
-          pdf.addPage();
-          pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-          heightLeft-=usableHeight;
+        for(let i=1;i<breaks.length;i++){
+          const sliceTop=breaks[i-1], sliceHeightPx=breaks[i]-breaks[i-1];
+          if(sliceHeightPx<=0) continue;
+          if(i>1) pdf.addPage();
+          const pageCanvas=document.createElement('canvas');
+          pageCanvas.width=canvas.width;
+          pageCanvas.height=sliceHeightPx;
+          pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
+          const sliceImgData=pageCanvas.toDataURL('image/png');
+          const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
+          pdf.addImage(sliceImgData,'PNG',margin,margin,imgWidth,sliceImgHeightMM);
         }
 
         const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
@@ -4203,24 +4221,41 @@ function exportDataReportToPDF(html, label, orientation){
             windowHeight:target.scrollHeight
           });
 
-          const imgData=canvas.toDataURL('image/png');
           const imgWidth=usableWidth;
-          const imgHeight=canvas.height*imgWidth/canvas.width;
+          const scaleFactor=canvas.width/target.scrollWidth;
+          const pageHeightPx=usableHeight*(canvas.width/imgWidth);
+          const targetTop=target.getBoundingClientRect().top;
 
-          let heightLeft=imgHeight;
-          let position=margin;
+          // اجمع حدود كل صف جدول (tr) داخل هذا القسم، لمنع قصّ أي صف عند حدود صفحة
+          const rowEdges=Array.from(target.querySelectorAll('tr')).map(r=>{
+            const rc=r.getBoundingClientRect();
+            return {top:(rc.top-targetTop)*scaleFactor, bottom:(rc.bottom-targetTop)*scaleFactor};
+          });
 
-          if(!isFirstPdfPage) pdf.addPage();
-          isFirstPdfPage=false;
+          const breaks=[0];
+          let cursor=0;
+          while(cursor<canvas.height-1){
+            let next=Math.min(cursor+pageHeightPx, canvas.height);
+            if(next<canvas.height){
+              const straddling=rowEdges.find(e=>e.top<next && e.bottom>next && e.bottom-e.top<pageHeightPx);
+              if(straddling && straddling.top>cursor) next=straddling.top;
+            }
+            breaks.push(next);
+            cursor=next;
+          }
 
-          pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-          heightLeft-=usableHeight;
-
-          while(heightLeft>0){
-            position=margin-(imgHeight-heightLeft);
-            pdf.addPage();
-            pdf.addImage(imgData,'PNG',margin,position,imgWidth,imgHeight);
-            heightLeft-=usableHeight;
+          for(let i=1;i<breaks.length;i++){
+            const sliceTop=breaks[i-1], sliceHeightPx=breaks[i]-breaks[i-1];
+            if(sliceHeightPx<=0) continue;
+            if(!isFirstPdfPage) pdf.addPage();
+            isFirstPdfPage=false;
+            const pageCanvas=document.createElement('canvas');
+            pageCanvas.width=canvas.width;
+            pageCanvas.height=sliceHeightPx;
+            pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
+            const sliceImgData=pageCanvas.toDataURL('image/png');
+            const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
+            pdf.addImage(sliceImgData,'PNG',margin,margin,imgWidth,sliceImgHeightMM);
           }
         }
 
