@@ -1308,8 +1308,9 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════
-let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false;
+let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false, examResultsUnsub=null;
 let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
+let examResultsAll=[]; // كل محاولات الاختبار (كل النتائج، بما فيها إعادة الاختبار) من مجموعة examResults العامة
 // ═══ مراجع الوثائق الفرعية (subcollections) — كل يوم/جلسة وثيقة مستقلة بحد أقصى 1MB خاص فيها،
 // بدل تجميعها بمصفوفة واحدة تكبر بلا حدود داخل وثيقة المحفّظ الرئيسية ═══
 let attendanceCol=null, dailyEvalCol=null, sessionsCol=null;
@@ -1406,11 +1407,12 @@ function om(id){ document.getElementById(id).classList.add('show'); }
 // ════════════════════════════════════════
 function doLogout(){
   if(fsUnsub){fsUnsub();fsUnsub=null;}
+  if(examResultsUnsub){examResultsUnsub();examResultsUnsub=null;}
   if(attTodayUnsub){attTodayUnsub();attTodayUnsub=null;}
   if(evalTodayUnsub){evalTodayUnsub();evalTodayUnsub=null;}
   if(unsubSupervisorMsgs){unsubSupervisorMsgs.forEach(u=>u());unsubSupervisorMsgs=null;}
   userDocRef=null;attendanceCol=null;dailyEvalCol=null;sessionsCol=null;
-  currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};
+  currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};examResultsAll=[];
   loadedAttendanceDates.clear();loadedEvalDates.clear();loadedSessionStudents.clear();loadedSessionsFullRange=null;
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
@@ -1518,6 +1520,12 @@ function enterApp(user,data){
   loadStudentAuthMap(user.uid);
   loadSupervisorPhone();
   listenSupervisorMessages(user.uid);
+
+  if(examResultsUnsub) examResultsUnsub();
+  examResultsUnsub = db.collection('examResults').where('teacherId','==', user.uid).onSnapshot(snap=>{
+    examResultsAll = snap.docs.map(d=>d.data());
+    renderExamsList();
+  }, e=>console.log('examResults snap err',e));
 
   if(data.firstLogin){
     setTimeout(()=>om('mFirstPassword'), 600);
@@ -3912,14 +3920,15 @@ function buildUnifiedTable(studentsList,from,to,content){
 }
 
 function buildExamsTable(studentsList,from,to,examTypeFilter){
-  let filtered=exams.filter(e=>{
-    if(e.status!=='passed'&&e.status!=='failed') return false; // التقرير يشمل المُنجَز فقط (تم اجتيازه أو رسوبه)
-    const d=new Date(e.gradedAt||e.nominatedAt);
+  // المصدر: كل محاولات الاختبار الفعلية (examResults) — تشمل كل محاولات إعادة الاختبار
+  // والاختبارات المباشرة، فيتطابق العدد مع تقرير مختبر الجودة تماماً
+  let filtered=examResultsAll.filter(r=>{
+    const d=new Date(r.examDate);
     if(d<from||d>to) return false;
-    if(examTypeFilter!=='all'&&e.type!==examTypeFilter) return false;
-    if(studentsList){ const ids=studentsList.map(s=>s.id); if(!ids.includes(e.studentId)) return false; }
+    if(examTypeFilter!=='all'&&r.type!==examTypeFilter) return false;
+    if(studentsList){ const ids=studentsList.map(s=>s.id); if(!ids.includes(r.studentId)) return false; }
     return true;
-  }).reverse();
+  }).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
 
   if(!filtered.length){
     return '<div style="padding:14px;color:#9ab0a6;font-size:13px;">لا توجد اختبارات منجزة في هذه المدة</div>';
@@ -3935,17 +3944,17 @@ function buildExamsTable(studentsList,from,to,examTypeFilter){
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">العلامة</th>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">النتيجة</th>
     </tr></thead><tbody>`;
-  filtered.forEach((e,i)=>{
-    const s=students.find(x=>x.id===e.studentId);
-    const displayName=(s?s.name:'')||e.studentName||'محذوف';
-    const st=examStatusInfo[e.status]||examStatusInfo.pending;
+  filtered.forEach((r,i)=>{
+    const s=students.find(x=>x.id===r.studentId);
+    const displayName=(s?s.name:'')||r.studentName||'محذوف';
+    const st=r.passed?examStatusInfo.passed:examStatusInfo.failed;
     html+=`<tr style="background:${i%2?'#f8f5ef':'#fff'};">
       <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;">${displayName}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;direction:ltr;text-align:right;color:#5a7a6a;">${s&&s.parentPhone?s.parentPhone:'—'}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${examTypeLabel[e.type]}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${e.juzNum} — ${e.juzName}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${new Date(e.gradedAt||e.nominatedAt).toLocaleDateString('ar-EG')}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${e.score||'—'}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${examTypeLabel[r.type]}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${r.juzNum} — ${r.juzName}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;">${r.totalScore}%</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${st.label}</td>
     </tr>`;
   });
@@ -4034,9 +4043,11 @@ async function exportReportPDF(){
     const pdf=new jspdf.jsPDF('p','mm','a4');
     const pageWidth=pdf.internal.pageSize.getWidth();
     const pageHeight=pdf.internal.pageSize.getHeight();
-    const imgWidth=pageWidth;
+    const marginMM=10; // هامش موحّد على كل صفحات التقرير (أعلى/أسفل/يمين/يسار)
+    const imgWidth=pageWidth-(marginMM*2);
+    const usablePageHeight=pageHeight-(marginMM*2);
     const scaleFactor=canvas.width/area.offsetWidth; // نسبة تكبير html2canvas (عادة 2)
-    const pageHeightPx=pageHeight*(canvas.width/imgWidth); // ارتفاع صفحة PDF واحدة بوحدة بكسل الصورة
+    const pageHeightPx=usablePageHeight*(canvas.width/imgWidth); // ارتفاع المساحة القابلة للاستخدام داخل صفحة واحدة، بوحدة بكسل الصورة
 
     // اجمع حدود كل صف جدول (tr) بوحدة بكسل الصورة، لمنع قصّ أي صف عند حدود صفحة
     const areaTop=area.getBoundingClientRect().top;
@@ -4068,7 +4079,7 @@ async function exportReportPDF(){
       pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
       const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.95);
       const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
-      pdf.addImage(sliceImgData,'JPEG',0,0,imgWidth,sliceImgHeightMM);
+      pdf.addImage(sliceImgData,'JPEG',marginMM,marginMM,imgWidth,sliceImgHeightMM);
     }
 
     pdf.save(`${_activeReportFilename()}.pdf`);
