@@ -3937,7 +3937,6 @@ function buildExamsTable(studentsList,from,to,examTypeFilter){
   let html=`<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:14px;">
     <thead><tr>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الطالب</th>
-      <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">رقم الجوال</th>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">نوع الاختبار</th>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الجزء</th>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">تاريخ الاختبار</th>
@@ -3949,8 +3948,7 @@ function buildExamsTable(studentsList,from,to,examTypeFilter){
     const displayName=(s?s.name:'')||r.studentName||'محذوف';
     const st=r.passed?examStatusInfo.passed:examStatusInfo.failed;
     html+=`<tr style="background:${i%2?'#f8f5ef':'#fff'};">
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;">${displayName}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;direction:ltr;text-align:right;color:#5a7a6a;">${s&&s.parentPhone?s.parentPhone:'—'}</td>
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:700;color:#1a1a2e;">${displayName}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${examTypeLabel[r.type]}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${r.juzNum} — ${r.juzName}</td>
       <td style="padding:7px 10px;border:1px solid #e0e8e4;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
@@ -4040,7 +4038,7 @@ async function exportReportPDF(){
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
 
   html2canvas(area,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
-    const pdf=new jspdf.jsPDF('p','mm','a4');
+    const pdf=new jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
     const pageWidth=pdf.internal.pageSize.getWidth();
     const pageHeight=pdf.internal.pageSize.getHeight();
     const marginMM=10; // هامش موحّد على كل صفحات التقرير (أعلى/أسفل/يمين/يسار)
@@ -4077,7 +4075,7 @@ async function exportReportPDF(){
       pageCanvas.width=canvas.width;
       pageCanvas.height=sliceHeightPx;
       pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
-      const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.95);
+      const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.82);
       const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
       pdf.addImage(sliceImgData,'JPEG',marginMM,marginMM,imgWidth,sliceImgHeightMM);
     }
