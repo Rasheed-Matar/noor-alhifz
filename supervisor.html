@@ -3499,7 +3499,7 @@ function exportSupervisorReportToPDF(html, label, orientation){
 
         const target=fdoc.body;
         const canvas=await html2canvas(target,{
-          scale:3,
+          scale:2,
           useCORS:true,
           backgroundColor:'#ffffff',
           width:target.scrollWidth,
@@ -3509,7 +3509,7 @@ function exportSupervisorReportToPDF(html, label, orientation){
         });
 
         const {jsPDF}=window.jspdf;
-        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4'});
+        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4',compress:true});
         const pageWidth=pdf.internal.pageSize.getWidth();
         const pageHeight=pdf.internal.pageSize.getHeight();
 
@@ -3548,9 +3548,9 @@ function exportSupervisorReportToPDF(html, label, orientation){
           pageCanvas.width=canvas.width;
           pageCanvas.height=sliceHeightPx;
           pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
-          const sliceImgData=pageCanvas.toDataURL('image/png');
+          const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.82);
           const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
-          pdf.addImage(sliceImgData,'PNG',margin,margin,imgWidth,sliceImgHeightMM);
+          pdf.addImage(sliceImgData,'JPEG',margin,margin,imgWidth,sliceImgHeightMM);
         }
 
         const safeLabel=(label||'تقرير').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
@@ -4201,7 +4201,7 @@ function exportDataReportToPDF(html, label, orientation){
         if(!pages.length) pages=[fdoc.body];
 
         const {jsPDF}=window.jspdf;
-        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4'});
+        const pdf=new jsPDF({orientation: orientation==='portrait'?'portrait':'landscape',unit:'mm',format:'a4',compress:true});
         const pageWidth=pdf.internal.pageSize.getWidth();
         const pageHeight=pdf.internal.pageSize.getHeight();
         const margin=12;
@@ -4212,7 +4212,7 @@ function exportDataReportToPDF(html, label, orientation){
 
         for(const target of pages){
           const canvas=await html2canvas(target,{
-            scale:3,
+            scale:2,
             useCORS:true,
             backgroundColor:'#ffffff',
             width:target.scrollWidth,
@@ -4253,9 +4253,9 @@ function exportDataReportToPDF(html, label, orientation){
             pageCanvas.width=canvas.width;
             pageCanvas.height=sliceHeightPx;
             pageCanvas.getContext('2d').drawImage(canvas,0,sliceTop,canvas.width,sliceHeightPx,0,0,canvas.width,sliceHeightPx);
-            const sliceImgData=pageCanvas.toDataURL('image/png');
+            const sliceImgData=pageCanvas.toDataURL('image/jpeg',0.82);
             const sliceImgHeightMM=sliceHeightPx*imgWidth/canvas.width;
-            pdf.addImage(sliceImgData,'PNG',margin,margin,imgWidth,sliceImgHeightMM);
+            pdf.addImage(sliceImgData,'JPEG',margin,margin,imgWidth,sliceImgHeightMM);
           }
         }
 
