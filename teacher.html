@@ -3856,8 +3856,7 @@ function buildUnifiedTable(studentsList,from,to,content){
   const showProgress=(content==='progress'||content==='both');
   const showAttendance=(content==='attendance'||content==='both');
 
-  let cols=`<th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الطالب</th>
-    <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">رقم الجوال</th>`;
+  let cols=`<th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الطالب</th>`;
   if(showProgress){
     cols+=`<th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">الحفظ الجديد</th>
       <th style="padding:8px;background:#0a3d2b;color:#f0d060;border:1px solid #e0e8e4;">المراجعة</th>`;
@@ -3876,8 +3875,7 @@ function buildUnifiedTable(studentsList,from,to,content){
   studentsList.forEach((s,i)=>{
     const rowBg=i%2?'#f8f5ef':'#fff';
     let row=`<tr style="background:${rowBg};">
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;vertical-align:top;">${s.name}</td>
-      <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;direction:ltr;text-align:right;color:#5a7a6a;">${s.parentPhone||'—'}</td>`;
+      <td style="padding:7px 10px;border:1px solid #e0e8e4;font-weight:600;vertical-align:top;">${s.name}</td>`;
 
     if(showProgress){
       const stdSess=sessions.filter(x=>x.studentId===s.id&&new Date(x.createdAt)>=from&&new Date(x.createdAt)<=to);
