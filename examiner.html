@@ -1524,14 +1524,14 @@ function buildPDFHTML(results, label, typeFilterLabel){
 
   const rows=results.map((r,i)=>`
     <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
-      <td style="text-align:center;color:#888;font-size:13px;">${i+1}</td>
-      <td><b>${r.studentName}</b></td>
-      <td>${r.teacherName}</td>
-      <td style="text-align:center;">${typeLabel[r.type]||r.type}</td>
-      <td style="text-align:center;">الجزء ${r.juzNum}</td>
+      <td style="text-align:center;color:#1a1a2e;font-size:14px;font-weight:700;">${i+1}</td>
+      <td style="font-size:14px;font-weight:700;color:#1a1a2e;">${r.studentName}</td>
+      <td style="font-size:14px;font-weight:700;color:#1a1a2e;">${r.teacherName}</td>
+      <td style="text-align:center;font-size:14px;font-weight:700;color:#1a1a2e;">${typeLabel[r.type]||r.type}</td>
+      <td style="text-align:center;font-size:14px;font-weight:700;color:#1a1a2e;">الجزء ${r.juzNum}</td>
       <td style="text-align:center;font-weight:800;font-size:17px;color:#1b6b4a;">${r.totalScore}%</td>
       <td style="text-align:center;color:${r.passed?'#1b6b4a':'#c0392b'};font-weight:700;">${r.passed?'ناجحٌ ✓':'لم ينجح ✕'}</td>
-      <td style="text-align:center;font-size:13.5px;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
+      <td style="text-align:center;font-size:14px;font-weight:700;color:#1a1a2e;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
     </tr>`).join('');
 
   const emptyRow = results.length?'':`<tr><td colspan="8" style="text-align:center;padding:30px;color:#999;">لا توجد نتائج في هذه الفترة</td></tr>`;
