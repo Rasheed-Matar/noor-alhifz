@@ -804,28 +804,19 @@ select.form-input{cursor:pointer;}
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header"><div class="card-title">إفادة جديدة</div></div>
         <div class="card-body">
-          <div style="display:flex;gap:14px;flex-wrap:wrap;">
-            <div class="form-group" style="flex:1;min-width:180px;">
-              <label class="form-label">المحفّظ</label>
-              <select class="form-input" id="certTeacherFilter" onchange="populateCertStudents()">
-                <option value="">— كل المحفّظين —</option>
-              </select>
-            </div>
-            <div class="form-group" style="flex:1;min-width:180px;">
-              <label class="form-label">عرض</label>
-              <select class="form-input" id="certStudentScope" onchange="populateCertStudents()">
-                <option value="withCert">الطلاب الذين لديهم شهادات (اختبار ناجح) فقط</option>
-                <option value="all">كل الطلاب</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="form-label">المحفّظ</label>
+            <select class="form-input" id="certTeacherFilter" onchange="populateCertStudents()">
+              <option value="">— اختر المحفّظ —</option>
+            </select>
           </div>
 
           <div class="form-group" style="margin-top:14px;">
             <label class="form-label">الطالب</label>
-            <select class="form-input" id="certStudentSelect" onchange="onCertStudentPick()">
-              <option value="">— اختر الطالب —</option>
+            <select class="form-input" id="certStudentSelect" onchange="onCertStudentPick()" disabled>
+              <option value="">— اختر المحفّظ أولًا —</option>
             </select>
-            <div id="certScopeNote" style="font-size:12px;color:var(--ink2);margin-top:4px;">تظهر هنا فقط أسماء الطلاب الذين لديهم اختبار واحد ناجح على الأقل</div>
+            <div id="certScopeNote" style="font-size:12px;color:var(--ink2);margin-top:4px;">تظهر هنا فقط أسماء طلاب هذا المحفّظ الذين لديهم اختبار واحد ناجح على الأقل</div>
           </div>
 
           <div id="certExamsWrap" style="display:none;margin-top:14px;">
@@ -3328,33 +3319,32 @@ function populateCertTeacherFilter(){
   const sel=document.getElementById('certTeacherFilter');
   const prev=sel.value;
   const teachers=getTeachers().slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
-  sel.innerHTML='<option value="">— كل المحفّظين —</option>'+teachers.map(t=>`<option value="${certEsc(t.name)}">${certEsc(t.name)}</option>`).join('');
+  sel.innerHTML='<option value="">— اختر المحفّظ —</option>'+teachers.map(t=>`<option value="${certEsc(t.name)}">${certEsc(t.name)}</option>`).join('');
   if(prev && [...sel.options].some(o=>o.value===prev)){ sel.value=prev; }
 }
 
 function populateCertStudents(){
   populateCertTeacherFilter();
   const teacherFilter=document.getElementById('certTeacherFilter').value;
-  const scope=document.getElementById('certStudentScope').value;
-  let list;
-  if(scope==='all'){
-    list=getAllStudents()
-      .filter(s=>!teacherFilter || s.teacherName===teacherFilter)
-      .map(s=>({studentId:s.id, studentName:s.name, teacherName:s.teacherName,
-        hasCert: allExamResultsFull.some(r=>r.studentId===s.id && r.passed)}));
-    document.getElementById('certScopeNote').textContent='تُعرض كل الطلاب — الطلاب الذين ليس لديهم اختبار ناجح بعد يظهرون بعلامة (بدون شهادات)';
-  } else {
-    const map=new Map();
-    allExamResultsFull.filter(r=>r.passed && r.studentId && (!teacherFilter || r.teacherName===teacherFilter)).forEach(r=>{
-      if(!map.has(r.studentId)) map.set(r.studentId,{studentId:r.studentId,studentName:r.studentName,teacherName:r.teacherName,hasCert:true});
-    });
-    list=[...map.values()];
-    document.getElementById('certScopeNote').textContent='تظهر هنا فقط أسماء الطلاب الذين لديهم اختبار واحد ناجح على الأقل';
-  }
-  list.sort((a,b)=>(a.studentName||'').localeCompare(b.studentName||'','ar'));
   const sel=document.getElementById('certStudentSelect');
   const prev=sel.value;
-  sel.innerHTML='<option value="">— اختر الطالب —</option>'+list.map(s=>`<option value="${s.studentId}">${certEsc(s.studentName)} (${certEsc(s.teacherName)})${s.hasCert?'':' — بدون شهادات'}</option>`).join('');
+
+  if(!teacherFilter){
+    sel.innerHTML='<option value="">— اختر المحفّظ أولًا —</option>';
+    sel.disabled=true;
+    document.getElementById('certScopeNote').textContent='تظهر هنا فقط أسماء طلاب هذا المحفّظ الذين لديهم اختبار واحد ناجح على الأقل';
+    document.getElementById('certExamsWrap').style.display='none';
+    return;
+  }
+
+  const map=new Map();
+  allExamResultsFull.filter(r=>r.passed && r.studentId && r.teacherName===teacherFilter).forEach(r=>{
+    if(!map.has(r.studentId)) map.set(r.studentId,{studentId:r.studentId,studentName:r.studentName,teacherName:r.teacherName});
+  });
+  const list=[...map.values()].sort((a,b)=>(a.studentName||'').localeCompare(b.studentName||'','ar'));
+
+  sel.disabled=false;
+  sel.innerHTML='<option value="">— اختر الطالب —</option>'+list.map(s=>`<option value="${s.studentId}">${certEsc(s.studentName)}</option>`).join('');
   if(prev && [...sel.options].some(o=>o.value===prev)){ sel.value=prev; }
   else { onCertStudentPick(); }
 }
@@ -3365,7 +3355,7 @@ function onCertStudentPick(){
   document.getElementById('certStatusNote').textContent='';
   if(!sid){ wrap.style.display='none'; return; }
   wrap.style.display='';
-  const exams=allExamResultsFull.filter(r=>r.studentId===sid && r.passed).sort((a,b)=>(b.juzNum||0)-(a.juzNum||0));
+  const exams=allExamResultsFull.filter(r=>r.studentId===sid && r.passed).sort((a,b)=>juzRangeMax(b.juzNum)-juzRangeMax(a.juzNum));
   const list=document.getElementById('certExamsList');
   list.innerHTML=exams.map(r=>`
     <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;">
@@ -3383,6 +3373,10 @@ function onCertStudentPick(){
 
 function openCertificateFromResult(studentId){
   showPage('certificates');
+  const r=allExamResultsFull.find(x=>x.studentId===studentId && x.passed);
+  if(!r) return;
+  populateCertTeacherFilter();
+  document.getElementById('certTeacherFilter').value=r.teacherName||'';
   populateCertStudents();
   const sel=document.getElementById('certStudentSelect');
   if([...sel.options].some(o=>o.value===studentId)){
@@ -3398,20 +3392,23 @@ function getSelectedCertExams(){
   return allExamResultsFull.filter(r=>r.studentId===sid && ids.includes(r.id));
 }
 
+// juzNum قد يكون رقمًا مفردًا (اختبار متفرّق، مثل "24") أو مدى (اختبار مجتمع، مثل "28-30")
+function juzRangeParts(juzNum){
+  const nums=String(juzNum==null?'':juzNum).split('-').map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  return nums.length ? nums : [0];
+}
+function juzRangeMax(juzNum){ return Math.max(...juzRangeParts(juzNum)); }
+
 function computeCertData(){
   const exams=getSelectedCertExams();
   if(!exams.length) return null;
   const sid=document.getElementById('certStudentSelect').value;
   const student=getAllStudents().find(s=>s.id===sid)||{};
-  const juzNums=exams.map(e=>Number(e.juzNum)).sort((a,b)=>a-b);
-  let juzLabel;
-  if(juzNums.length===1){
-    juzLabel='الجزء '+juzNums[0];
-  } else {
-    const min=juzNums[0], max=juzNums[juzNums.length-1];
-    const contiguous=(max-min+1)===juzNums.length;
-    juzLabel = contiguous ? (max+'-'+min) : juzNums.slice().reverse().join('، ');
-  }
+  let allNums=[];
+  exams.forEach(e=>{ allNums=allNums.concat(juzRangeParts(e.juzNum)); });
+  const uniqueNums=[...new Set(allNums)].sort((a,b)=>a-b);
+  const min=uniqueNums[0], max=uniqueNums[uniqueNums.length-1];
+  const juzLabel = (min===max) ? String(max) : (max+'-'+min);
   const avgScore=Math.round(exams.reduce((s,e)=>s+Number(e.totalScore||0),0)/exams.length);
   const latestDate=exams.reduce((max,e)=>new Date(e.examDate)>new Date(max)?e.examDate:max, exams[0].examDate);
   return {
