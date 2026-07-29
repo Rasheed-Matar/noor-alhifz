@@ -361,11 +361,21 @@ select.form-input{cursor:pointer;}
 .cert-wrap .cert-spacer{flex:1;min-height:8px;display:flex;align-items:center;justify-content:center;}
 .cert-wrap .sign-row{display:flex;align-items:flex-end;justify-content:space-around;width:100%;padding:8px 20px 0;}
 .cert-wrap .sign-block{width:220px;text-align:center;}
-.cert-wrap .sign-name{font-family:'Reem Kufi',sans-serif;font-size:17px;color:#065695;padding-bottom:4px;border-bottom:1.3px solid #b8b198;min-height:24px;}
+.cert-wrap .sign-name{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:23px;color:#065695;padding-bottom:6px;border-bottom:1.3px solid #b8b198;min-height:30px;}
 .cert-wrap .sign-label{font-size:11px;color:#8a8370;margin-top:4px;font-weight:600;}
 .cert-wrap .stamp-block{width:140px;text-align:center;}
 .cert-wrap .stamp-block img{width:100px;height:100px;object-fit:contain;}
 .cert-wrap .stamp-label{font-size:11px;color:#8a8370;margin-top:0;font-weight:600;}
+#modal-cert-zoom{padding:0;}
+#modal-cert-zoom .cert-zoom-shell{width:96vw;height:92vh;max-width:1400px;background:linear-gradient(160deg,#0f1a14,#1c2b22);border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55);display:flex;flex-direction:column;animation:modalIn .35s cubic-bezier(.22,.68,0,1.2) both;}
+.cert-zoom-toolbar{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;flex-shrink:0;}
+.cert-zoom-btn{width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s ease,transform .2s ease;}
+.cert-zoom-btn:hover{background:rgba(255,255,255,.24);transform:scale(1.1);}
+.cert-zoom-close{background:rgba(200,70,70,.35);margin-inline-start:8px;}
+.cert-zoom-close:hover{background:rgba(200,70,70,.55);}
+.cert-zoom-level{color:#f2ede1;font-family:'Tajawal',sans-serif;font-size:13px;min-width:50px;text-align:center;}
+.cert-zoom-viewport{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:36px;}
+.cert-zoom-stage{transition:transform .32s cubic-bezier(.22,.68,0,1.2);transform-origin:center center;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -835,6 +845,7 @@ select.form-input{cursor:pointer;}
 
             <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
               <button class="btn-save" onclick="downloadCertificatePDF()" id="certDownloadBtn">⬇️ تحميل الإفادة PDF</button>
+              <button class="btn-cancel-modal" onclick="openCertZoom()" id="certZoomOpenBtn">🔍 تكبير الشهادة</button>
             </div>
             <div id="certStatusNote" style="margin-top:8px;font-size:13px;color:var(--gold3);"></div>
           </div>
@@ -861,6 +872,22 @@ select.form-input{cursor:pointer;}
     </div>
 
   </main>
+</div>
+
+<!-- MODAL: Certificate Zoom -->
+<div class="modal-overlay" id="modal-cert-zoom">
+  <div class="cert-zoom-shell">
+    <div class="cert-zoom-toolbar">
+      <button class="cert-zoom-btn" onclick="certZoomChange(-0.15)" title="تصغير">−</button>
+      <span class="cert-zoom-level" id="certZoomLevelLabel">100%</span>
+      <button class="cert-zoom-btn" onclick="certZoomChange(0.15)" title="تكبير">+</button>
+      <button class="cert-zoom-btn" onclick="certZoomReset()" title="إعادة الضبط">↺</button>
+      <button class="cert-zoom-btn cert-zoom-close" onclick="closeCertZoom()" title="إغلاق">✕</button>
+    </div>
+    <div class="cert-zoom-viewport" id="certZoomViewport">
+      <div class="cert-zoom-stage" id="certZoomStage"></div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: Add Examiner -->
@@ -3329,25 +3356,27 @@ function populateCertStudents(){
     return;
   }
 
-  const map=new Map();
-  allExamResultsFull.filter(r=>r.passed && r.studentId && r.teacherName===teacherFilter).forEach(r=>{
-    if(!map.has(r.studentId)) map.set(r.studentId,{studentId:r.studentId,studentName:r.studentName,teacherName:r.teacherName});
+  // التجميع بالاسم (وليس studentId) حتى لا يتكرر اسم الطالب لو كانت له سجلات اختبار بمعرّفات مختلفة
+  const names=new Set();
+  allExamResultsFull.filter(r=>r.passed && r.studentName && r.teacherName===teacherFilter).forEach(r=>{
+    names.add(r.studentName);
   });
-  const list=[...map.values()].sort((a,b)=>(a.studentName||'').localeCompare(b.studentName||'','ar'));
+  const list=[...names].sort((a,b)=>(a||'').localeCompare(b||'','ar'));
 
   sel.disabled=false;
-  sel.innerHTML='<option value="">— اختر الطالب —</option>'+list.map(s=>`<option value="${s.studentId}">${certEsc(s.studentName)}</option>`).join('');
+  sel.innerHTML='<option value="">— اختر الطالب —</option>'+list.map(name=>`<option value="${certEsc(name)}">${certEsc(name)}</option>`).join('');
   if(prev && [...sel.options].some(o=>o.value===prev)){ sel.value=prev; }
   else { onCertStudentPick(); }
 }
 
 function onCertStudentPick(){
-  const sid=document.getElementById('certStudentSelect').value;
+  const sname=document.getElementById('certStudentSelect').value;
+  const teacherFilter=document.getElementById('certTeacherFilter').value;
   const wrap=document.getElementById('certExamsWrap');
   document.getElementById('certStatusNote').textContent='';
-  if(!sid){ wrap.style.display='none'; return; }
+  if(!sname){ wrap.style.display='none'; return; }
   wrap.style.display='';
-  const exams=allExamResultsFull.filter(r=>r.studentId===sid && r.passed).sort((a,b)=>juzRangeMax(b.juzNum)-juzRangeMax(a.juzNum));
+  const exams=allExamResultsFull.filter(r=>r.passed && r.studentName===sname && r.teacherName===teacherFilter).sort((a,b)=>juzRangeMax(b.juzNum)-juzRangeMax(a.juzNum));
   const sel=document.getElementById('certExamSelect');
   if(exams.length){
     sel.disabled=false;
@@ -3368,8 +3397,8 @@ function openCertificateFromResult(studentId){
   document.getElementById('certTeacherFilter').value=r.teacherName||'';
   populateCertStudents();
   const sel=document.getElementById('certStudentSelect');
-  if([...sel.options].some(o=>o.value===studentId)){
-    sel.value=studentId;
+  if([...sel.options].some(o=>o.value===r.studentName)){
+    sel.value=r.studentName;
     onCertStudentPick();
     const examSel=document.getElementById('certExamSelect');
     if([...examSel.options].some(o=>o.value===r.id)){ examSel.value=r.id; renderCertPreview(); }
@@ -3378,10 +3407,11 @@ function openCertificateFromResult(studentId){
 }
 
 function getSelectedCertExam(){
-  const sid=document.getElementById('certStudentSelect').value;
+  const sname=document.getElementById('certStudentSelect').value;
+  const teacherFilter=document.getElementById('certTeacherFilter').value;
   const eid=document.getElementById('certExamSelect').value;
-  if(!sid||!eid) return null;
-  return allExamResultsFull.find(r=>r.studentId===sid && r.id===eid) || null;
+  if(!sname||!eid) return null;
+  return allExamResultsFull.find(r=>r.studentName===sname && r.teacherName===teacherFilter && r.id===eid) || null;
 }
 
 // juzNum قد يكون رقمًا مفردًا (اختبار متفرّق، مثل "24") أو مدى (اختبار مجتمع، مثل "28-30")
@@ -3394,8 +3424,7 @@ function juzRangeMax(juzNum){ return Math.max(...juzRangeParts(juzNum)); }
 function computeCertData(){
   const exam=getSelectedCertExam();
   if(!exam) return null;
-  const sid=document.getElementById('certStudentSelect').value;
-  const student=getAllStudents().find(s=>s.id===sid)||{};
+  const student=getAllStudents().find(s=>s.name===exam.studentName && s.teacherName===exam.teacherName)||{};
   const nums=juzRangeParts(exam.juzNum).sort((a,b)=>a-b);
   const min=nums[0], max=nums[nums.length-1];
   const juzLabel = (min===max) ? String(max) : (max+'-'+min);
@@ -3412,7 +3441,7 @@ function computeCertData(){
     supervisorName: (document.getElementById('certSupervisorName').value||currentSupervisorName||'').trim(),
     issueDate: new Date().toISOString().slice(0,10),
     examResultIds: [exam.id],
-    studentId: sid
+    studentId: exam.studentId
   };
 }
 
@@ -3465,14 +3494,14 @@ function buildCertHTML(data, serial){
       <div class="cert-title-underline"></div>
 
       <div class="cert-body">
-        <div class="line">تشهد إدارة مركز الكتاب لتعليم القرآن الكريم والسُّنة النبوية بالنصيرات بأنّ الطالب/</div>
+        <div class="line">تشهد إدارة مركز الكتاب لتعليم القرآن الكريم والسُّنة النبوية بأنّ الطالب/</div>
         <div class="name-line">${certEsc(data.studentName)}</div>
         <div class="line">المولد في/ <b>${certEsc(data.placeOfBirth||'—')}</b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
         <div class="line">قد أتم حفظ وتثبيت الأجزاء/ <b>${certEsc(data.juzLabel)}</b></div>
         <div class="line">وقد اجتاز لجنة اختبار مختصة وحصل على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
       </div>
 
-      <div class="closing">وإننا إذ نمنحه هذه الإفادة نستودعه التقوى، راجين له مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل.</div>
+      <div class="closing">◇ وإننا إذ نمنحه هذه الإفادة نستودعه التقوى، راجين له مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
 
       <div class="cert-spacer"></div>
 
@@ -3515,6 +3544,54 @@ function renderCertPreview(){
 }
 
 window.addEventListener('resize', ()=>{ const pg=document.getElementById('page-certificates'); if(pg && pg.classList.contains('active')) fitCertPreview(); });
+
+let certZoomLevel=1;
+let certZoomFitLevel=1;
+const CERT_BASE_W=1122, CERT_BASE_H=793;
+
+function computeCertFitScale(){
+  const viewport=document.getElementById('certZoomViewport');
+  if(!viewport) return 1;
+  const availW=viewport.clientWidth-40 || (window.innerWidth*0.9);
+  const availH=viewport.clientHeight-40 || (window.innerHeight*0.8);
+  const scaleW=availW/CERT_BASE_W;
+  const scaleH=availH/CERT_BASE_H;
+  return Math.max(0.4, Math.min(scaleW, scaleH));
+}
+
+function openCertZoom(){
+  const data=computeCertData();
+  if(!data) return;
+  const stage=document.getElementById('certZoomStage');
+  stage.innerHTML=buildCertHTML(data,'سيُحدَّد رقم الإفادة تلقائيًا عند التحميل');
+  om('modal-cert-zoom');
+  // احسب مقياس التكبير الحقيقي الذي يملأ الشاشة بشكل جميل ومتناسق لكل عناصر الشهادة
+  requestAnimationFrame(()=>{
+    certZoomFitLevel=computeCertFitScale();
+    certZoomLevel=certZoomFitLevel;
+    applyCertZoom();
+  });
+}
+function closeCertZoom(){ closeModal('modal-cert-zoom'); }
+function certZoomChange(delta){
+  certZoomLevel=Math.min(3.2, Math.max(0.3, +(certZoomLevel+delta).toFixed(2)));
+  applyCertZoom();
+}
+function certZoomReset(){ certZoomLevel=certZoomFitLevel; applyCertZoom(); }
+function applyCertZoom(){
+  const stage=document.getElementById('certZoomStage');
+  if(stage){
+    stage.style.width=CERT_BASE_W+'px';
+    stage.style.height=CERT_BASE_H+'px';
+    stage.style.transform='scale('+certZoomLevel+')';
+  }
+  const label=document.getElementById('certZoomLevelLabel');
+  if(label) label.textContent=Math.round(certZoomLevel*100)+'%';
+}
+window.addEventListener('resize', ()=>{
+  const zm=document.getElementById('modal-cert-zoom');
+  if(zm && zm.classList.contains('open')){ certZoomFitLevel=computeCertFitScale(); }
+});
 
 async function getNextCertSerial(){
   const year=new Date().getFullYear();
