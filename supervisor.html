@@ -804,39 +804,31 @@ select.form-input{cursor:pointer;}
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header"><div class="card-title">إفادة جديدة</div></div>
         <div class="card-body">
-          <div class="form-group">
-            <label class="form-label">المحفّظ</label>
-            <select class="form-input" id="certTeacherFilter" onchange="populateCertStudents()">
-              <option value="">— اختر المحفّظ —</option>
-            </select>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label class="form-label">المحفّظ</label>
+              <select class="form-input" id="certTeacherFilter" onchange="populateCertStudents()">
+                <option value="">— اختر المحفّظ —</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:200px;">
+              <label class="form-label">الطالب</label>
+              <select class="form-input" id="certStudentSelect" onchange="onCertStudentPick()" disabled>
+                <option value="">— اختر المحفّظ أولًا —</option>
+              </select>
+            </div>
           </div>
+          <div id="certScopeNote" style="font-size:12px;color:var(--ink2);margin-top:4px;">تظهر هنا فقط أسماء طلاب هذا المحفّظ الذين لديهم اختبار واحد ناجح على الأقل</div>
 
-          <div class="form-group" style="margin-top:14px;">
-            <label class="form-label">الطالب</label>
-            <select class="form-input" id="certStudentSelect" onchange="onCertStudentPick()" disabled>
-              <option value="">— اختر المحفّظ أولًا —</option>
-            </select>
-            <div id="certScopeNote" style="font-size:12px;color:var(--ink2);margin-top:4px;">تظهر هنا فقط أسماء طلاب هذا المحفّظ الذين لديهم اختبار واحد ناجح على الأقل</div>
-          </div>
-
-          <div id="certExamsWrap" style="display:none;margin-top:14px;">
-            <label class="form-label">الاختبارات الناجحة — اختر ما تريد تضمينه في الإفادة</label>
-            <div id="certExamsList" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
-
-            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;">
-              <div class="form-group" style="flex:1;min-width:200px;">
-                <label class="form-label-s">اسم المشرف الموقّع</label>
-                <input class="form-inp-s" id="certSupervisorName" style="width:100%;margin-top:6px;" oninput="renderCertPreview()">
-              </div>
-              <div class="form-group" style="flex:1;min-width:180px;">
-                <label class="form-label-s">تاريخ الإصدار</label>
-                <input class="form-inp-s" type="date" id="certIssueDate" style="width:100%;margin-top:6px;" onchange="renderCertPreview()">
-              </div>
+          <div id="certExamsWrap" style="display:none;margin-top:16px;">
+            <div class="form-group">
+              <label class="form-label">الإفادة (الاختبار الناجح المراد طباعته)</label>
+              <select class="form-input" id="certExamSelect" onchange="renderCertPreview()"></select>
             </div>
 
-            <div style="margin-top:8px;">
-              <label class="form-label-s">اسم المحفّظ (قابل للتعديل عند الحاجة)</label>
-              <input class="form-inp-s" id="certTeacherName" style="width:100%;margin-top:6px;" oninput="renderCertPreview()">
+            <div class="form-group" style="margin-top:14px;max-width:340px;">
+              <label class="form-label-s">اسم المشرف الموقّع</label>
+              <input class="form-inp-s" id="certSupervisorName" style="width:100%;margin-top:6px;" oninput="renderCertPreview()">
             </div>
 
             <div id="certPreviewBox" style="margin-top:20px;overflow-x:auto;background:#dfe3e8;border-radius:12px;padding:16px;"></div>
@@ -3356,17 +3348,14 @@ function onCertStudentPick(){
   if(!sid){ wrap.style.display='none'; return; }
   wrap.style.display='';
   const exams=allExamResultsFull.filter(r=>r.studentId===sid && r.passed).sort((a,b)=>juzRangeMax(b.juzNum)-juzRangeMax(a.juzNum));
-  const list=document.getElementById('certExamsList');
-  list.innerHTML=exams.map(r=>`
-    <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;">
-      <input type="checkbox" class="cert-exam-chk" value="${r.id}" checked onchange="renderCertPreview()">
-      <span>الجزء ${r.juzNum} ${r.juzName?'— '+certEsc(r.juzName):''} — العلامة ${r.totalScore}% — بتاريخ ${fmtDateLatin(r.examDate)}</span>
-    </label>
-  `).join('') || '<div style="font-size:13px;color:#aaa;">لا توجد اختبارات ناجحة لهذا الطالب</div>';
+  const sel=document.getElementById('certExamSelect');
   if(exams.length){
+    sel.disabled=false;
+    sel.innerHTML=exams.map(r=>`<option value="${r.id}">الجزء ${r.juzNum}${r.juzName?' — '+certEsc(r.juzName):''} — العلامة ${r.totalScore}% — بتاريخ ${fmtDateLatin(r.examDate)}</option>`).join('');
     document.getElementById('certSupervisorName').value=currentSupervisorName;
-    document.getElementById('certTeacherName').value=exams[0].teacherName||'';
-    document.getElementById('certIssueDate').value=new Date().toISOString().slice(0,10);
+  } else {
+    sel.disabled=true;
+    sel.innerHTML='<option value="">لا توجد اختبارات ناجحة لهذا الطالب</option>';
   }
   renderCertPreview();
 }
@@ -3382,14 +3371,17 @@ function openCertificateFromResult(studentId){
   if([...sel.options].some(o=>o.value===studentId)){
     sel.value=studentId;
     onCertStudentPick();
+    const examSel=document.getElementById('certExamSelect');
+    if([...examSel.options].some(o=>o.value===r.id)){ examSel.value=r.id; renderCertPreview(); }
     document.getElementById('page-certificates').scrollIntoView({behavior:'smooth',block:'start'});
   }
 }
 
-function getSelectedCertExams(){
+function getSelectedCertExam(){
   const sid=document.getElementById('certStudentSelect').value;
-  const ids=[...document.querySelectorAll('.cert-exam-chk:checked')].map(c=>c.value);
-  return allExamResultsFull.filter(r=>r.studentId===sid && ids.includes(r.id));
+  const eid=document.getElementById('certExamSelect').value;
+  if(!sid||!eid) return null;
+  return allExamResultsFull.find(r=>r.studentId===sid && r.id===eid) || null;
 }
 
 // juzNum قد يكون رقمًا مفردًا (اختبار متفرّق، مثل "24") أو مدى (اختبار مجتمع، مثل "28-30")
@@ -3400,29 +3392,26 @@ function juzRangeParts(juzNum){
 function juzRangeMax(juzNum){ return Math.max(...juzRangeParts(juzNum)); }
 
 function computeCertData(){
-  const exams=getSelectedCertExams();
-  if(!exams.length) return null;
+  const exam=getSelectedCertExam();
+  if(!exam) return null;
   const sid=document.getElementById('certStudentSelect').value;
   const student=getAllStudents().find(s=>s.id===sid)||{};
-  let allNums=[];
-  exams.forEach(e=>{ allNums=allNums.concat(juzRangeParts(e.juzNum)); });
-  const uniqueNums=[...new Set(allNums)].sort((a,b)=>a-b);
-  const min=uniqueNums[0], max=uniqueNums[uniqueNums.length-1];
+  const nums=juzRangeParts(exam.juzNum).sort((a,b)=>a-b);
+  const min=nums[0], max=nums[nums.length-1];
   const juzLabel = (min===max) ? String(max) : (max+'-'+min);
-  const avgScore=Math.round(exams.reduce((s,e)=>s+Number(e.totalScore||0),0)/exams.length);
-  const latestDate=exams.reduce((max,e)=>new Date(e.examDate)>new Date(max)?e.examDate:max, exams[0].examDate);
+  const score=Math.round(Number(exam.totalScore||0));
   return {
-    studentName: exams[0].studentName,
-    teacherName: (document.getElementById('certTeacherName').value||exams[0].teacherName||'').trim(),
+    studentName: exam.studentName,
+    teacherName: exam.teacherName||'',
     dob: student.dob||'',
     placeOfBirth: student.placeOfBirth||'',
     juzLabel,
-    avgScore,
-    gradeLabel: gradeLabelFromScore(avgScore),
-    examDate: latestDate,
+    avgScore: score,
+    gradeLabel: gradeLabelFromScore(score),
+    examDate: exam.examDate,
     supervisorName: (document.getElementById('certSupervisorName').value||currentSupervisorName||'').trim(),
-    issueDate: document.getElementById('certIssueDate').value || new Date().toISOString().slice(0,10),
-    examResultIds: exams.map(e=>e.id),
+    issueDate: new Date().toISOString().slice(0,10),
+    examResultIds: [exam.id],
     studentId: sid
   };
 }
