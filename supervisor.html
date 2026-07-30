@@ -3517,6 +3517,7 @@ function buildCertHTML(data, serial, verifyUrl){
         </div>
         <div class="id-block">
           <div class="qr-box">${qrContent}</div>
+          ${!verifyUrl ? '<div class="id-line" style="color:#b03a3a;font-size:9.5px;">معاينة — يُفعَّل QR عند التحميل</div>' : ''}
           <div class="id-line">التاريخ: <b>${fmtDateLatin(data.issueDate)}</b></div>
           <div class="id-line">رقم الإفادة: <b>${certEsc(serial)}</b></div>
         </div>
@@ -3641,6 +3642,18 @@ async function getNextCertSerial(){
   return 'NH-'+year+'-'+String(num).padStart(5,'0');
 }
 
+async function findExistingCertForExam(examId){
+  try{
+    const snap=await db.collection('certificates').where('examResultIds','array-contains',examId).limit(1).get();
+    if(snap.empty) return null;
+    const doc=snap.docs[0];
+    return {id:doc.id, ...doc.data()};
+  }catch(e){
+    console.error('findExistingCertForExam failed', e);
+    return null;
+  }
+}
+
 async function downloadCertificatePDF(){
   const data=computeCertData();
   if(!data){ toast('⚠️ اختر طالبًا واختبارًا واحدًا على الأقل'); return; }
@@ -3649,8 +3662,11 @@ async function downloadCertificatePDF(){
   btn.disabled=true; btn.textContent='⏳ جارٍ التحضير...';
   noteEl.textContent='';
   try{
-    const serial=await getNextCertSerial();
-    const verifyId=genVerifyId();
+    const examId=data.examResultIds[0];
+    const existing=await findExistingCertForExam(examId);
+    const isReuse=!!existing;
+    const serial=isReuse ? existing.serial : await getNextCertSerial();
+    const verifyId=isReuse ? existing.verifyId : genVerifyId();
     const verifyUrl=new URL('verify.html', window.location.href).href+'?id='+verifyId;
     const box=document.getElementById('certPreviewBox');
     box.innerHTML=buildCertHTML(data, serial, verifyUrl);
@@ -3671,30 +3687,39 @@ async function downloadCertificatePDF(){
     const safeLabel=(data.studentName||'إفادة').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
     pdf.save('إفادة_'+safeLabel+'_'+serial+'.pdf');
 
-    await db.collection('certificates').doc(verifyId).set({
-      verifyId,
-      serial,
-      studentId: data.studentId,
-      studentName: data.studentName,
-      nationalId: data.nationalId,
-      teacherName: data.teacherName,
-      supervisorName: data.supervisorName,
-      juzLabel: data.juzLabel,
-      juzWord: data.juzWord,
-      avgScore: data.avgScore,
-      gradeLabel: data.gradeLabel,
-      examDate: data.examDate,
-      dob: data.dob,
-      placeOfBirth: data.placeOfBirth,
-      examResultIds: data.examResultIds,
-      issueDate: data.issueDate,
-      createdAt: new Date().toISOString(),
-      createdBy: currentSupervisorName
-    });
+    if(isReuse){
+      // نفس الاختبار = نفس الشهادة ونفس QR في كل مرة، فقط نحدّث بيانات آخر تنزيل دون تغيير المعرّف/الرقم
+      await db.collection('certificates').doc(verifyId).set({
+        lastDownloadedAt: new Date().toISOString(),
+        lastDownloadedBy: currentSupervisorName,
+        supervisorName: data.supervisorName
+      },{merge:true});
+    } else {
+      await db.collection('certificates').doc(verifyId).set({
+        verifyId,
+        serial,
+        studentId: data.studentId,
+        studentName: data.studentName,
+        nationalId: data.nationalId,
+        teacherName: data.teacherName,
+        supervisorName: data.supervisorName,
+        juzLabel: data.juzLabel,
+        juzWord: data.juzWord,
+        avgScore: data.avgScore,
+        gradeLabel: data.gradeLabel,
+        examDate: data.examDate,
+        dob: data.dob,
+        placeOfBirth: data.placeOfBirth,
+        examResultIds: data.examResultIds,
+        issueDate: data.issueDate,
+        createdAt: new Date().toISOString(),
+        createdBy: currentSupervisorName
+      });
+    }
 
     fitCertPreview();
     noteEl.style.color='var(--em)';
-    noteEl.textContent='✅ تم إصدار الإفادة برقم '+serial+' وتحميلها بنجاح — يمكن التحقق منها عبر مسح رمز QR';
+    noteEl.textContent=(isReuse ? '✅ تمت إعادة تحميل الإفادة رقم ' : '✅ تم إصدار الإفادة برقم ')+serial+(isReuse ? ' (نفس رمز QR السابق)' : ' وتحميلها بنجاح — يمكن التحقق منها عبر مسح رمز QR');
   } catch(e){
     noteEl.style.color='#c0392b';
     noteEl.textContent='⚠️ حدث خطأ أثناء إصدار الإفادة: '+e.message;
