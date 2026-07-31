@@ -3449,7 +3449,8 @@ function computeCertData(){
     supervisorName: (document.getElementById('certSupervisorName').value||currentSupervisorName||'').trim(),
     issueDate: new Date().toISOString().slice(0,10),
     examResultIds: [exam.id],
-    studentId: exam.studentId
+    studentId: exam.studentId,
+    teacherId: exam.teacherId||''
   };
 }
 
@@ -3529,7 +3530,7 @@ function buildCertHTML(data, serial, verifyUrl){
       <div class="cert-body">
         <div class="line">تشهد إدارة مركز الكتاب لتعليم القرآن الكريم والسُّنة النبوية بأنّ الطالب/</div>
         <div class="name-line">${certEsc(data.studentName)}</div>
-        <div class="line">المولد في/ <b>${certEsc(data.placeOfBirth||'—')}</b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
+        <div class="line">المولود في/ <b>${certEsc(data.placeOfBirth||'—')}         </b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
         <div class="line">قد أتم حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
         <div class="line">وقد اجتاز لجنة اختبار مختصة وحصل على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
       </div>
@@ -3549,7 +3550,7 @@ function buildCertHTML(data, serial, verifyUrl){
         </div>
         <div class="sign-block">
           <div class="sign-name">${certEsc(data.supervisorName)}</div>
-          <div class="sign-label">المشرف العام</div>
+          <div class="sign-label">المشرف الميداني</div>
         </div>
       </div>
     </div>
@@ -3702,6 +3703,7 @@ async function downloadCertificatePDF(){
         studentName: data.studentName,
         nationalId: data.nationalId,
         teacherName: data.teacherName,
+        teacherId: data.teacherId,
         supervisorName: data.supervisorName,
         juzLabel: data.juzLabel,
         juzWord: data.juzWord,
@@ -3713,7 +3715,8 @@ async function downloadCertificatePDF(){
         examResultIds: data.examResultIds,
         issueDate: data.issueDate,
         createdAt: new Date().toISOString(),
-        createdBy: currentSupervisorName
+        createdBy: currentSupervisorName,
+        createdByRole: 'admin'
       });
     }
 
