@@ -3643,16 +3643,26 @@ async function getNextCertSerial(){
   return 'NH-'+year+'-'+String(num).padStart(5,'0');
 }
 
-async function findExistingCertForExam(examId){
+async function getCertByExamId(examId){
+  // المسار الأساسي الموثوق: معرّف وثيقة الشهادة = معرّف الاختبار نفسه، فالبحث "get" مباشر
+  // وليس استعلام (list)، وهذا مسموح دائمًا لأي مستخدم بحسب قواعد الأمان (allow get: if true)
+  try{
+    const doc=await db.collection('certificates').doc(examId).get();
+    if(doc.exists) return {id:doc.id, ...doc.data()};
+  }catch(e){
+    console.error('getCertByExamId (by id) failed', e);
+  }
+  // مسار احتياطي فقط لشهادات قديمة صدرت قبل هذا التحديث بمعرّف عشوائي منفصل عن معرّف الاختبار
   try{
     const snap=await db.collection('certificates').where('examResultIds','array-contains',examId).limit(1).get();
-    if(snap.empty) return null;
-    const doc=snap.docs[0];
-    return {id:doc.id, ...doc.data()};
+    if(!snap.empty){
+      const d=snap.docs[0];
+      return {id:d.id, ...d.data()};
+    }
   }catch(e){
-    console.error('findExistingCertForExam failed', e);
-    return null;
+    console.error('getCertByExamId (legacy search) failed', e);
   }
+  return null;
 }
 
 async function downloadCertificatePDF(){
@@ -3664,10 +3674,11 @@ async function downloadCertificatePDF(){
   noteEl.textContent='';
   try{
     const examId=data.examResultIds[0];
-    const existing=await findExistingCertForExam(examId);
+    const existing=await getCertByExamId(examId);
     const isReuse=!!existing;
     const serial=isReuse ? existing.serial : await getNextCertSerial();
-    const verifyId=isReuse ? existing.verifyId : genVerifyId();
+    const docId=isReuse ? existing.id : examId;
+    const verifyId=isReuse ? (existing.verifyId||existing.id) : examId;
     const verifyUrl=new URL('verify.html', window.location.href).href+'?id='+verifyId;
     const box=document.getElementById('certPreviewBox');
     box.innerHTML=buildCertHTML(data, serial, verifyUrl);
@@ -3690,13 +3701,13 @@ async function downloadCertificatePDF(){
 
     if(isReuse){
       // نفس الاختبار = نفس الشهادة ونفس QR في كل مرة، فقط نحدّث بيانات آخر تنزيل دون تغيير المعرّف/الرقم
-      await db.collection('certificates').doc(verifyId).set({
+      await db.collection('certificates').doc(docId).set({
         lastDownloadedAt: new Date().toISOString(),
         lastDownloadedBy: currentSupervisorName,
         supervisorName: data.supervisorName
       },{merge:true});
     } else {
-      await db.collection('certificates').doc(verifyId).set({
+      await db.collection('certificates').doc(docId).set({
         verifyId,
         serial,
         studentId: data.studentId,
