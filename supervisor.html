@@ -784,10 +784,6 @@ select.form-input{cursor:pointer;}
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header"><div class="card-title"><span class="card-title-dot green"></span>عدد صفحات الحفظ هذا الأسبوع لكل محفظ</div></div>
-        <div style="padding:18px;display:flex;flex-direction:column;gap:14px;" id="weeklyBars"></div>
-      </div>
     </div>
 
     <!-- ═══ SETTINGS ═══ -->
@@ -3200,28 +3196,7 @@ function markMsgRead(id){
 //  STATS
 // ════════════════════════════════════════
 function renderStats(){
-  renderWeeklyBars();
   renderDailyMonitoring();
-}
-
-function renderWeeklyBars(){
-  const teachers=getTeachers();
-  const data=teachers.map(t=>{
-    const pages=weekSessionsCache.filter(s=>s.teacherId===t.id)
-      .reduce((a,s)=>a+(s.hifz||[]).length+(s.murajaa||[]).length,0);
-    return {name:t.name,pages};
-  }).sort((a,b)=>b.pages-a.pages);
-  const max=Math.max(1,...data.map(d=>d.pages));
-  const el=document.getElementById('weeklyBars');
-  if(!data.length){ el.innerHTML='<div class="empty-state">لا توجد بيانات كافية</div>'; return; }
-  el.innerHTML=data.map(d=>`
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span style="width:140px;font-size:13px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</span>
-      <div style="flex:1;background:#eee;border-radius:8px;height:10px;overflow:hidden;">
-        <div style="width:${(d.pages/max*100).toFixed(0)}%;height:100%;background:linear-gradient(90deg,var(--em),var(--em2));border-radius:8px;transition:width .6s ease;"></div>
-      </div>
-      <span style="font-size:13px;font-weight:600;color:var(--ink);width:40px;text-align:left;">${d.pages}</span>
-    </div>`).join('');
 }
 
 // ════════════════════════════════════════
