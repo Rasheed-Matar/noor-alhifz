@@ -738,8 +738,52 @@ select.form-input{cursor:pointer;}
     <!-- ═══ STATS ═══ -->
     <div class="page-view" id="page-stats">
       <div class="page-header">
-        <div><div class="page-title">الإحصائيات</div><div class="page-subtitle">أداء المحفظين والحلقات</div></div>
+        <div><div class="page-title">الإحصائيات</div><div class="page-subtitle">أداء المحفظين والحلقات، ومتابعة تفاعلهم اليومي</div></div>
       </div>
+
+      <!-- ملخص تفاعل اليوم المُختار -->
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="stat-num" id="monStatActive">0</div>
+          <div class="stat-label">محفّظون تفاعلوا اليوم</div>
+        </div>
+        <div class="stat-card coral">
+          <div class="stat-icon coral"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div class="stat-num" id="monStatInactive">0</div>
+          <div class="stat-label">لم يبدأوا التفاعل بعد</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-icon gold"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
+          <div class="stat-num" id="monStatPages">0</div>
+          <div class="stat-label">صفحات حفظ ومراجعة</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div class="stat-num" id="monStatNominations">0</div>
+          <div class="stat-label">ترشيحات اختبار</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-dot green"></span>متابعة التفاعل اليومي للمحفظين</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="filter-sel" id="monDateSelect" onchange="onStatsDateChange()" style="padding:8px 12px;min-width:130px;"></select>
+            <button class="card-action" onclick="onStatsDateChange()">تحديث</button>
+          </div>
+        </div>
+        <div style="padding:10px 18px 0;font-size:12px;color:var(--ink2);">
+          يعرض الجدول ما سجّله كل محفّظ من حضور، حفظ، مراجعة، تقييمات، وترشيحات اختبار في اليوم المُختار. المحفّظون الذين لم يسجّلوا أي نشاط بعد يظهرون باللون الأحمر مع خيار إرسال تذكير مباشرة.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>المحفّظ</th><th>الحضور</th><th>الحفظ</th><th>المراجعة</th><th>تقييمات</th><th>ترشيحات اختبار</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="dailyMonitoringTable"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header"><div class="card-title"><span class="card-title-dot green"></span>عدد صفحات الحفظ هذا الأسبوع لكل محفظ</div></div>
         <div style="padding:18px;display:flex;flex-direction:column;gap:14px;" id="weeklyBars"></div>
@@ -1499,6 +1543,7 @@ function startListening(){
           allUsers[idx].students=d.students||[];
           allUsers[idx].deletionRequests=d.deletionRequests||[];
           allUsers[idx].teacherAttendance=d.teacherAttendance||{};
+          allUsers[idx].exams=d.exams||[]; // ترشيحات الاختبارات — تُستخدم في متابعة التفاعل اليومي
         }
         renderEverything();
       },e=>console.log('userdata err',e));
@@ -2280,6 +2325,10 @@ function showPage(page){
   if(page==='dashboard'||page==='teachers'||page==='stats'){
     refreshTodayAttendance();
     refreshWeekSessions();
+  }
+  if(page==='stats'){
+    buildMonDateOptions();
+    refreshDailyMonitoring(monSelectedDate);
   }
   if(page==='certificates'){
     populateCertStudents();
@@ -3151,6 +3200,11 @@ function markMsgRead(id){
 //  STATS
 // ════════════════════════════════════════
 function renderStats(){
+  renderWeeklyBars();
+  renderDailyMonitoring();
+}
+
+function renderWeeklyBars(){
   const teachers=getTeachers();
   const data=teachers.map(t=>{
     const pages=weekSessionsCache.filter(s=>s.teacherId===t.id)
@@ -3168,6 +3222,143 @@ function renderStats(){
       </div>
       <span style="font-size:13px;font-weight:600;color:var(--ink);width:40px;text-align:left;">${d.pages}</span>
     </div>`).join('');
+}
+
+// ════════════════════════════════════════
+//  متابعة التفاعل اليومي للمحفظين
+//  (حضور + حفظ/مراجعة + تقييمات + ترشيحات اختبار) لكل يوم من آخر ٧ أيام
+// ════════════════════════════════════════
+let monSelectedDate=todayISO();
+
+function dateOffsetISO(n){
+  const d=new Date(); d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function buildMonDateOptions(){
+  const sel=document.getElementById('monDateSelect');
+  if(!sel || sel.dataset.built==='1') return;
+  const opts=[];
+  for(let i=0;i<7;i++){
+    const iso=dateOffsetISO(-i);
+    let label;
+    if(i===0) label='اليوم — '+iso;
+    else if(i===1) label='أمس — '+iso;
+    else label=new Date(iso).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'numeric'});
+    opts.push(`<option value="${iso}" ${iso===monSelectedDate?'selected':''}>${label}</option>`);
+  }
+  sel.innerHTML=opts.join('');
+  sel.dataset.built='1';
+}
+
+function onStatsDateChange(){
+  const sel=document.getElementById('monDateSelect');
+  monSelectedDate=sel.value||todayISO();
+  refreshDailyMonitoring(monSelectedDate);
+}
+
+// جلب وثيقة حضور اليوم المُختار + وثيقة تقييمات اليوم المُختار لكل محفّظ دفعة واحدة
+let _refreshingDailyMonitoring=false;
+async function refreshDailyMonitoring(date){
+  if(_refreshingDailyMonitoring) return;
+  _refreshingDailyMonitoring=true;
+  try{
+    const teachers=getTeachers();
+    await Promise.all(teachers.map(async t=>{
+      try{
+        const [attDoc,evalDoc]=await Promise.all([
+          db.collection('userdata').doc(t.id).collection('attendance').doc(date).get(),
+          db.collection('userdata').doc(t.id).collection('dailyEval').doc(date).get()
+        ]);
+        const idx=allUsers.findIndex(x=>x.id===t.id);
+        if(idx>=0){
+          allUsers[idx].monAttendance=attDoc.exists?(attDoc.data()||{}):{};
+          allUsers[idx].monEval=evalDoc.exists?(evalDoc.data()||{}):{};
+        }
+      }catch(e){ console.warn('daily monitoring fetch err', t.id, e); }
+    }));
+    renderDailyMonitoring();
+  } finally { _refreshingDailyMonitoring=false; }
+}
+
+function renderDailyMonitoring(){
+  const tb=document.getElementById('dailyMonitoringTable');
+  if(!tb) return; // الصفحة لم تُبنَ بعد
+  const teachers=getTeachers();
+  const date=monSelectedDate;
+
+  const rows=teachers.map(t=>{
+    const attMap=t.monAttendance||{};
+    const attCount=Object.keys(attMap).length;
+    const activeStudents=(t.students||[]).filter(s=>!s.archived).length;
+
+    const daySessions=weekSessionsCache.filter(s=>s.teacherId===t.id && s.date===date);
+    // عدد الطلاب الذين عبّأ لهم المحفّظ حفظاً/مراجعة اليوم، مقابل إجمالي طلابه (وليس مجموع الصفحات)
+    const hifzFilled=daySessions.filter(s=>(s.hifz||[]).length>0).length;
+    const murajaaFilled=daySessions.filter(s=>(s.murajaa||[]).length>0).length;
+    const hifzPages=daySessions.reduce((a,s)=>a+(s.hifz||[]).length,0);
+    const murajaaPages=daySessions.reduce((a,s)=>a+(s.murajaa||[]).length,0);
+
+    const evalMap=t.monEval||{};
+    const evalCount=Object.keys(evalMap).length;
+
+    const nominationsToday=(t.exams||[]).filter(e=>(e.nominatedAt||'').slice(0,10)===date).length;
+
+    const isActive=attCount>0 || hifzFilled>0 || murajaaFilled>0 || evalCount>0 || nominationsToday>0;
+
+    return {t, attCount, activeStudents, hifzFilled, murajaaFilled, hifzPages, murajaaPages, evalCount, nominationsToday, isActive};
+  }).sort((a,b)=> (a.isActive===b.isActive) ? (b.hifzPages+b.murajaaPages)-(a.hifzPages+a.murajaaPages) : (a.isActive?1:-1));
+
+  // ملخص أعلى الصفحة
+  const activeCount=rows.filter(r=>r.isActive).length;
+  const inactiveCount=rows.length-activeCount;
+  const totalPages=rows.reduce((a,r)=>a+r.hifzPages+r.murajaaPages,0);
+  const totalNominations=rows.reduce((a,r)=>a+r.nominationsToday,0);
+  const setTxt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  setTxt('monStatActive',activeCount);
+  setTxt('monStatInactive',inactiveCount);
+  setTxt('monStatPages',totalPages);
+  setTxt('monStatNominations',totalNominations);
+
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="8"><div class="empty-state">لا يوجد محفظون نشطون بعد</div></td></tr>';
+    return;
+  }
+
+  tb.innerHTML=rows.map(r=>{
+    const t=r.t;
+    const fillBadge=(filled,pages)=> filled>0
+      ? `<span class="badge badge-green">${filled}/${r.activeStudents}</span>${pages>filled?` <span style="font-size:11px;color:var(--ink2);">(${pages} صفحة)</span>`:''}`
+      : `<span class="badge badge-red">لم يُسجَّل</span>`;
+    const attBadge = r.attCount>0
+      ? `<span class="badge badge-green">${r.attCount}/${r.activeStudents}</span>`
+      : `<span class="badge badge-red">لم يُسجَّل</span>`;
+    const statusBadge = r.isActive
+      ? `<span class="badge badge-green">✓ نشط اليوم</span>`
+      : `<span class="badge badge-red">لم يبدأ بعد</span>`;
+    const reminderBtn = r.isActive
+      ? ''
+      : `<button class="td-btn msg" onclick="event.stopPropagation();sendActivityReminder('${t.id}')">تذكير</button>`;
+    return `<tr onclick="openTeacherDetail('${t.id}')" style="${r.isActive?'':'background:#fdf3f2;'}cursor:pointer;">
+      <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div><div class="teacher-id">${t.circle||'—'}</div></div></div></td>
+      <td>${attBadge}</td>
+      <td>${fillBadge(r.hifzFilled,r.hifzPages)}</td>
+      <td>${fillBadge(r.murajaaFilled,r.murajaaPages)}</td>
+      <td>${r.evalCount}</td>
+      <td>${r.nominationsToday}</td>
+      <td>${statusBadge}</td>
+      <td><div class="td-action" onclick="event.stopPropagation()">${reminderBtn}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+// تذكير سريع عبر واتساب لمحفّظ لم يسجّل أي تفاعل في اليوم المُختار
+function sendActivityReminder(uid){
+  const t=allUsers.find(x=>x.id===uid); if(!t){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  if(!t.phone){ toast('⚠️ لا يوجد رقم هاتف لهذا المحفظ'); return; }
+  const dateLabel=monSelectedDate===todayISO()?'اليوم':monSelectedDate;
+  const msg=`السلام عليكم ${t.name}،\nنلاحظ أنه لم يتم تسجيل أي حضور أو حفظ أو مراجعة لحلقتكم ${dateLabel} حتى الآن.\nنرجو تحديث صفحتكم في أقرب وقت. بارك الله فيكم 🌿`;
+  openWA(t.phone,msg);
 }
 
 ['modal-confirm','modal-detail','modal-add-examiner','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
