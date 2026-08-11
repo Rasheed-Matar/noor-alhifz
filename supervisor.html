@@ -2224,9 +2224,6 @@ function saveNewStudentAdmin(){
     juz, notes, archived: false, addedAt: new Date().toISOString()
   };
 
-  const currentStudents = (teacherObj&&teacherObj.students)||[];
-  const updatedStudents = [...currentStudents, newStudent];
-
   const btn = event.target;
   btn.textContent='⏳ جارٍ الإضافة...'; btn.disabled=true;
 
@@ -2245,7 +2242,16 @@ function saveNewStudentAdmin(){
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }).then(()=>{
-      return db.collection('userdata').doc(teacherId).set({students: updatedStudents},{merge:true});
+      // نقرأ قائمة طلاب المحفّظ الحالية مباشرةً من الخادم داخل Transaction بدل الاعتماد
+      // على النسخة المخزّنة محلياً في allUsers (والتي قد لا تكون قد تحدّثت بعد من مستمع
+      // userdata عند فتح الصفحة للتو)، فالاعتماد على النسخة المحلية القديمة قد يؤدي لكتابة
+      // مصفوفة ناقصة تمحو الطالب الجديد (أو طلاباً آخرين) بدل إضافته فعلياً
+      const teacherRef = db.collection('userdata').doc(teacherId);
+      return db.runTransaction(async tx=>{
+        const snap = await tx.get(teacherRef);
+        const currentStudents = (snap.exists && snap.data().students) || [];
+        tx.set(teacherRef, {students: [...currentStudents, newStudent]}, {merge:true});
+      });
     });
   }).then(()=>{
     toast('✅ تم إضافة الطالب — كلمة المرور الافتراضية: رقم الهوية');
@@ -3307,10 +3313,19 @@ function getTeacherCircle(teacherName){
 function getStudentDetails(studentName,teacherName){
   return getAllStudents().find(s=>s.name===studentName&&s.teacherName===teacherName)||{};
 }
+// يحوّل قيمة تاريخ (نص "YYYY-MM-DD" أو أي صيغة أخرى) إلى Date محلي دون المرور بتوقيت UTC،
+// لتفادي مشكلة new Date('YYYY-MM-DD') الشهيرة التي تُفسَّر كمنتصف ليل UTC، فإذا عُرضت
+// لاحقاً بتوقيت محلي مختلف قد "يطرح" العرض يوماً كاملاً من التاريخ الفعلي المخزَّن
+function parseLocalDateStr(v){
+  if(!v) return null;
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
 function fmtDate(v){
-  if(!v) return '—';
-  const d=new Date(v);
-  return isNaN(d) ? '—' : d.toLocaleDateString('ar-EG');
+  const d = parseLocalDateStr(v);
+  return d ? d.toLocaleDateString('ar-EG') : '—';
 }
 
 // ════════════════════════════════════════
@@ -3323,9 +3338,8 @@ function certEsc(s){
 }
 
 function fmtDateLatin(v){
-  if(!v) return '—';
-  const d=new Date(v);
-  return isNaN(d) ? '—' : d.toLocaleDateString('en-GB');
+  const d = parseLocalDateStr(v);
+  return d ? d.toLocaleDateString('en-GB') : '—';
 }
 
 function gradeLabelFromScore(score){
@@ -4880,13 +4894,15 @@ function buildMasterHeaderMap(sampleRow){
 
 function excelValueToISODate(v){
   if(!v) return '';
-  if(v instanceof Date) return isNaN(v.getTime()) ? '' : v.toISOString().slice(0,10);
+  // نبني السلسلة من مكوّنات التاريخ المحلية (سنة/شهر/يوم) بدل toISOString()
+  // التي تحوّل إلى UTC وقد "تطرح" يوماً كاملاً بحسب توقيت جهاز التشغيل
+  if(v instanceof Date) return isNaN(v.getTime()) ? '' : `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
   const s=String(v).trim();
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if(m){ const [,d,mo,y]=m; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
   const d2=new Date(s);
-  if(!isNaN(d2.getTime())) return d2.toISOString().slice(0,10);
+  if(!isNaN(d2.getTime())) return `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
   return '';
 }
 
