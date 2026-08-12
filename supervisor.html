@@ -117,6 +117,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .report-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(27,107,74,.4);text-decoration:none;}
 .report-btn svg{flex-shrink:0;}
 
+/* منتقي التاريخ المخصّص لبطاقة متابعة التفاعل اليومي */
+.mon-datepicker{position:relative;display:inline-block;}
+.mon-datepicker-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:11px;background:#fff;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;transition:all .15s;min-width:170px;justify-content:space-between;}
+.mon-datepicker-btn:hover{border-color:var(--em2);box-shadow:0 2px 8px rgba(27,107,74,.1);}
+.mon-datepicker-btn.open{border-color:var(--em);box-shadow:0 0 0 3px rgba(26,107,74,.12);}
+.mon-datepicker-btn .mdp-left{display:flex;align-items:center;gap:8px;}
+.mon-datepicker-btn .mdp-chevron{transition:transform .2s;color:var(--ink2);}
+.mon-datepicker-btn.open .mdp-chevron{transform:rotate(180deg);}
+.mon-datepicker-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(27,107,74,.18);min-width:230px;padding:6px;display:none;}
+.mon-datepicker-panel.open{display:block;animation:mdpFade .15s ease;}
+@keyframes mdpFade{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.mdp-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--ink);transition:background .12s;}
+.mdp-option:hover{background:var(--bg);}
+.mdp-option.selected{background:var(--em);color:#fff;font-weight:700;}
+.mdp-option .mdp-label{display:flex;flex-direction:column;gap:1px;}
+.mdp-option .mdp-sub{font-size:11px;color:var(--ink2);}
+.mdp-option.selected .mdp-sub{color:rgba(255,255,255,.75);}
+.mdp-option .mdp-check{width:16px;height:16px;flex-shrink:0;opacity:0;}
+.mdp-option.selected .mdp-check{opacity:1;}
+
 .table-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;}
 thead th{padding:10px 14px;font-size:12px;color:#7a8a7a;font-weight:500;text-align:right;background:rgba(27,107,74,.03);border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -769,7 +789,16 @@ select.form-input{cursor:pointer;}
         <div class="card-header">
           <div class="card-title"><span class="card-title-dot green"></span>متابعة التفاعل اليومي للمحفظين</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <select class="filter-sel" id="monDateSelect" onchange="onStatsDateChange()" style="padding:8px 12px;min-width:130px;"></select>
+            <div class="mon-datepicker" id="monDatePicker">
+              <button type="button" class="mon-datepicker-btn" id="monDatePickerBtn" onclick="toggleMonDatePicker()">
+                <span class="mdp-left">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span id="monDatePickerLabel">اليوم</span>
+                </span>
+                <svg class="mdp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="mon-datepicker-panel" id="monDatePickerPanel"></div>
+            </div>
             <button class="card-action" onclick="onStatsDateChange()">تحديث</button>
           </div>
         </div>
@@ -3211,27 +3240,62 @@ function renderStats(){
 //  (حضور + حفظ/مراجعة + تقييمات + ترشيحات اختبار) لكل يوم من آخر ٧ أيام
 // ════════════════════════════════════════
 let monSelectedDate=todayISO();
+const MON_DATE_OPTIONS_COUNT=7;
 
 function dateOffsetISO(n){
   const d=new Date(); d.setDate(d.getDate()+n);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function buildMonDateOptions(){
-  const sel=document.getElementById('monDateSelect');
-  if(!sel || sel.dataset.built==='1') return;
-  const opts=[];
-  for(let i=0;i<7;i++){
-    const iso=dateOffsetISO(-i);
-    let label;
-    if(i===0) label='اليوم — '+iso;
-    else if(i===1) label='أمس — '+iso;
-    else label=new Date(iso).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'numeric'});
-    opts.push(`<option value="${iso}" ${iso===monSelectedDate?'selected':''}>${label}</option>`);
-  }
-  sel.innerHTML=opts.join('');
-  sel.dataset.built='1';
+function monDateLabel(iso, i){
+  if(i===0) return 'اليوم';
+  if(i===1) return 'أمس';
+  const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d=m?new Date(+m[1],+m[2]-1,+m[3]):new Date(iso);
+  return d.toLocaleDateString('ar-EG',{weekday:'long'});
 }
+
+function buildMonDateOptions(){
+  const panel=document.getElementById('monDatePickerPanel');
+  if(!panel) return;
+  panel.innerHTML='';
+  for(let i=0;i<MON_DATE_OPTIONS_COUNT;i++){
+    const iso=dateOffsetISO(-i);
+    const label=monDateLabel(iso,i);
+    const selected=iso===monSelectedDate;
+    const opt=document.createElement('div');
+    opt.className='mdp-option'+(selected?' selected':'');
+    opt.onclick=()=>selectMonDate(iso);
+    opt.innerHTML=`
+      <span class="mdp-label"><span>${label}</span><span class="mdp-sub">${iso}</span></span>
+      <svg class="mdp-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+    panel.appendChild(opt);
+  }
+  const btnLbl=document.getElementById('monDatePickerLabel');
+  if(btnLbl) btnLbl.textContent = monSelectedDate===todayISO() ? 'اليوم — '+monSelectedDate
+    : (monSelectedDate===dateOffsetISO(-1) ? 'أمس — '+monSelectedDate : monSelectedDate);
+}
+
+function toggleMonDatePicker(forceClose){
+  const panel=document.getElementById('monDatePickerPanel');
+  const btn=document.getElementById('monDatePickerBtn');
+  if(!panel||!btn) return;
+  const shouldOpen = forceClose===true ? false : !panel.classList.contains('open');
+  panel.classList.toggle('open', shouldOpen);
+  btn.classList.toggle('open', shouldOpen);
+}
+
+function selectMonDate(iso){
+  monSelectedDate=iso;
+  buildMonDateOptions();
+  toggleMonDatePicker(true);
+  refreshDailyMonitoring(monSelectedDate);
+}
+
+document.addEventListener('click', e=>{
+  const wrap=document.getElementById('monDatePicker');
+  if(wrap && !wrap.contains(e.target)) toggleMonDatePicker(true);
+});
 
 // مستمعات حيّة على بيانات اليوم المختار (حضور + تقييم + جلسات) لكل محفّظ —
 // تُبنى من جديد عند فتح تبويب الإحصائيات أو تغيير التاريخ، وتُلغى قبل إعادة البناء
@@ -3242,8 +3306,6 @@ function buildMonDateOptions(){
 let monUnsubs=[];
 
 function onStatsDateChange(){
-  const sel=document.getElementById('monDateSelect');
-  monSelectedDate=sel.value||todayISO();
   refreshDailyMonitoring(monSelectedDate);
 }
 
@@ -3339,8 +3401,8 @@ function renderDailyMonitoring(){
       <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div><div class="teacher-id">${t.circle||'—'}</div></div></div></td>
       <td>${attBadge}</td>
       <td>${hifzMurajaaBadge}</td>
-      <td>${r.evalCount}</td>
-      <td>${r.nominationsToday}</td>
+      <td>${r.evalCount>0?`<span class="badge badge-green">${r.evalCount}</span>`:`<span class="badge badge-red">لم يُسجَّل</span>`}</td>
+      <td>${r.nominationsToday>0?`<span class="badge badge-green">${r.nominationsToday}</span>`:`<span class="badge badge-red">لا يوجد</span>`}</td>
       <td>${statusBadge}</td>
       <td><div class="td-action" onclick="event.stopPropagation()">${reminderBtn}</div></td>
     </tr>`;
