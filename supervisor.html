@@ -778,7 +778,7 @@ select.form-input{cursor:pointer;}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>المحفّظ</th><th>الحضور</th><th>الحفظ</th><th>المراجعة</th><th>تقييمات</th><th>ترشيحات اختبار</th><th>الحالة</th><th></th></tr></thead>
+            <thead><tr><th>المحفّظ</th><th>الحضور</th><th>الحفظ والمراجعة</th><th>تقييمات</th><th>ترشيحات اختبار</th><th>الحالة</th><th></th></tr></thead>
             <tbody id="dailyMonitoringTable"></tbody>
           </table>
         </div>
@@ -1575,9 +1575,11 @@ async function refreshTodayAttendance(){
 }
 
 // ═══════════════════════════════════════════════════════════
-//  جلسات هذا الأسبوع عبر كل المحفّظين: استعلام واحد فقط عبر
-//  collectionGroup على كل المجموعات الفرعية "sessions" مهما كان محفّظها،
-//  بدل مستمع منفصل على كل محفّظ (حل نمط N+1 الأصلي جذرياً لهذه البيانات)
+//  جلسات هذا الأسبوع عبر كل المحفّظين: نجلبها مباشرة من مجموعة
+//  "sessions" الفرعية لكل محفّظ على حدة (بدل collectionGroup الذي
+//  يحتاج فهرساً مركّباً خاصاً على مستوى "Collection Group" قد لا يكون
+//  منشأً في Firestore، فيفشل الاستعلام بصمت ويُبقي كل الأرقام صفراً) —
+//  استعلام ضمن مجموعة واحدة على حقل مُفهرَس تلقائياً، لا يحتاج أي إعداد إضافي
 // ═══════════════════════════════════════════════════════════
 let weekSessionsCache=[]; // [{...record, teacherId}]
 let _refreshingWeekSessions=false;
@@ -1586,13 +1588,18 @@ async function refreshWeekSessions(){
   _refreshingWeekSessions=true;
   try{
     const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
-    const weekAgoStr=weekAgo.toISOString().slice(0,10);
+    const weekAgoStr=`${weekAgo.getFullYear()}-${String(weekAgo.getMonth()+1).padStart(2,'0')}-${String(weekAgo.getDate()).padStart(2,'0')}`;
     const todayStr=todayISO();
-    const snap=await db.collectionGroup('sessions').where('date','>=',weekAgoStr).where('date','<=',todayStr).get();
-    weekSessionsCache=snap.docs.map(doc=>({...doc.data(), teacherId:doc.ref.parent.parent.id}));
+    const teachers=getTeachers();
+    const results=await Promise.all(teachers.map(async t=>{
+      try{
+        const snap=await db.collection('userdata').doc(t.id).collection('sessions')
+          .where('date','>=',weekAgoStr).where('date','<=',todayStr).get();
+        return snap.docs.map(doc=>({...doc.data(), teacherId:t.id}));
+      }catch(e){ console.warn('week sessions fetch err', t.id, e); return []; }
+    }));
+    weekSessionsCache=results.flat();
     renderEverything();
-  }catch(e){
-    console.warn('week sessions collectionGroup err (تحتاج فهرس Firestore على الأغلب، راجع رابط الخطأ بالـ console)', e);
   } finally { _refreshingWeekSessions=false; }
 }
 
@@ -3226,38 +3233,51 @@ function buildMonDateOptions(){
   sel.dataset.built='1';
 }
 
+// مستمعات حيّة على بيانات اليوم المختار (حضور + تقييم + جلسات) لكل محفّظ —
+// تُبنى من جديد عند فتح تبويب الإحصائيات أو تغيير التاريخ، وتُلغى قبل إعادة البناء
+// كي لا تتراكم مستمعات يتيمة. استبدلت هنا الاعتماد على collectionGroup('sessions')
+// (الذي يحتاج فهرساً مركّباً على مستوى "Collection Group" قد لا يكون منشأً في Firestore،
+// فيفشل بصمت ويُبقي الحفظ/المراجعة دائماً "لم يُسجَّل") بجلبٍ مباشر لكل محفّظ على حدة،
+// بنفس أسلوب الحضور والتقييم الموثوق أصلاً — استعلام بسيط ضمن مجموعة واحدة لا يحتاج فهرساً خاصاً
+let monUnsubs=[];
+
 function onStatsDateChange(){
   const sel=document.getElementById('monDateSelect');
   monSelectedDate=sel.value||todayISO();
   refreshDailyMonitoring(monSelectedDate);
 }
 
-// جلب وثيقة حضور اليوم المُختار + وثيقة تقييمات اليوم المُختار لكل محفّظ دفعة واحدة
-let _refreshingDailyMonitoring=false;
-async function refreshDailyMonitoring(date){
-  if(_refreshingDailyMonitoring) return;
-  _refreshingDailyMonitoring=true;
-  try{
-    const teachers=getTeachers();
-    await Promise.all(teachers.map(async t=>{
-      try{
-        const [attDoc,evalDoc]=await Promise.all([
-          db.collection('userdata').doc(t.id).collection('attendance').doc(date).get(),
-          db.collection('userdata').doc(t.id).collection('dailyEval').doc(date).get()
-        ]);
-        const idx=allUsers.findIndex(x=>x.id===t.id);
-        if(idx>=0){
-          allUsers[idx].monAttendance=attDoc.exists?(attDoc.data()||{}):{};
-          allUsers[idx].monEval=evalDoc.exists?(evalDoc.data()||{}):{};
-        }
-      }catch(e){ console.warn('daily monitoring fetch err', t.id, e); }
-    }));
-    renderDailyMonitoring();
-  } finally { _refreshingDailyMonitoring=false; }
+function refreshDailyMonitoring(date){
+  monUnsubs.forEach(u=>u());
+  monUnsubs=[];
+  const teachers=getTeachers();
+  teachers.forEach(t=>{
+    const idx0=allUsers.findIndex(x=>x.id===t.id);
+    if(idx0>=0){ allUsers[idx0].monAttendance={}; allUsers[idx0].monEval={}; allUsers[idx0].monSessions=[]; }
+
+    const u1=db.collection('userdata').doc(t.id).collection('attendance').doc(date).onSnapshot(doc=>{
+      const idx=allUsers.findIndex(x=>x.id===t.id);
+      if(idx>=0){ allUsers[idx].monAttendance=doc.exists?(doc.data()||{}):{}; renderDailyMonitoring(); }
+    },e=>console.warn('daily monitoring — attendance listen err', t.id, e));
+
+    const u2=db.collection('userdata').doc(t.id).collection('dailyEval').doc(date).onSnapshot(doc=>{
+      const idx=allUsers.findIndex(x=>x.id===t.id);
+      if(idx>=0){ allUsers[idx].monEval=doc.exists?(doc.data()||{}):{}; renderDailyMonitoring(); }
+    },e=>console.warn('daily monitoring — eval listen err', t.id, e));
+
+    const u3=db.collection('userdata').doc(t.id).collection('sessions').where('date','==',date).onSnapshot(snap=>{
+      const idx=allUsers.findIndex(x=>x.id===t.id);
+      if(idx>=0){ allUsers[idx].monSessions=snap.docs.map(d=>d.data()); renderDailyMonitoring(); }
+    },e=>console.warn('daily monitoring — sessions listen err', t.id, e));
+
+    monUnsubs.push(u1,u2,u3);
+  });
+  renderDailyMonitoring();
 }
 
 function renderDailyMonitoring(){
   const tb=document.getElementById('dailyMonitoringTable');
+
   if(!tb) return; // الصفحة لم تُبنَ بعد
   const teachers=getTeachers();
   const date=monSelectedDate;
@@ -3267,10 +3287,10 @@ function renderDailyMonitoring(){
     const attCount=Object.keys(attMap).length;
     const activeStudents=(t.students||[]).filter(s=>!s.archived).length;
 
-    const daySessions=weekSessionsCache.filter(s=>s.teacherId===t.id && s.date===date);
-    // عدد الطلاب الذين عبّأ لهم المحفّظ حفظاً/مراجعة اليوم، مقابل إجمالي طلابه (وليس مجموع الصفحات)
-    const hifzFilled=daySessions.filter(s=>(s.hifz||[]).length>0).length;
-    const murajaaFilled=daySessions.filter(s=>(s.murajaa||[]).length>0).length;
+    const daySessions=t.monSessions||[];
+    // عدد الطلاب الذين سجّل لهم المحفّظ حفظاً أو مراجعة اليوم (خانة موحّدة)، وليس مجموع الحدثين
+    // منفصلَين — كي لا يُحسَب الطالب مرتين لو سُجِّل له الاثنان معاً
+    const hifzMurajaaFilled=daySessions.filter(s=>(s.hifz||[]).length>0 || (s.murajaa||[]).length>0).length;
     const hifzPages=daySessions.reduce((a,s)=>a+(s.hifz||[]).length,0);
     const murajaaPages=daySessions.reduce((a,s)=>a+(s.murajaa||[]).length,0);
 
@@ -3279,9 +3299,9 @@ function renderDailyMonitoring(){
 
     const nominationsToday=(t.exams||[]).filter(e=>(e.nominatedAt||'').slice(0,10)===date).length;
 
-    const isActive=attCount>0 || hifzFilled>0 || murajaaFilled>0 || evalCount>0 || nominationsToday>0;
+    const isActive=attCount>0 || hifzMurajaaFilled>0 || evalCount>0 || nominationsToday>0;
 
-    return {t, attCount, activeStudents, hifzFilled, murajaaFilled, hifzPages, murajaaPages, evalCount, nominationsToday, isActive};
+    return {t, attCount, activeStudents, hifzMurajaaFilled, hifzPages, murajaaPages, evalCount, nominationsToday, isActive};
   }).sort((a,b)=> (a.isActive===b.isActive) ? (b.hifzPages+b.murajaaPages)-(a.hifzPages+a.murajaaPages) : (a.isActive?1:-1));
 
   // ملخص أعلى الصفحة
@@ -3296,14 +3316,15 @@ function renderDailyMonitoring(){
   setTxt('monStatNominations',totalNominations);
 
   if(!rows.length){
-    tb.innerHTML='<tr><td colspan="8"><div class="empty-state">لا يوجد محفظون نشطون بعد</div></td></tr>';
+    tb.innerHTML='<tr><td colspan="7"><div class="empty-state">لا يوجد محفظون نشطون بعد</div></td></tr>';
     return;
   }
 
   tb.innerHTML=rows.map(r=>{
     const t=r.t;
-    const fillBadge=(filled,pages)=> filled>0
-      ? `<span class="badge badge-green">${filled}/${r.activeStudents}</span>${pages>filled?` <span style="font-size:11px;color:var(--ink2);">(${pages} صفحة)</span>`:''}`
+    const hifzMurajaaBadge = r.hifzMurajaaFilled>0
+      ? `<span class="badge badge-green">${r.hifzMurajaaFilled}/${r.activeStudents}</span>
+         <span style="font-size:11px;color:var(--ink2);">${[r.hifzPages?`${r.hifzPages} حفظ`:'', r.murajaaPages?`${r.murajaaPages} مراجعة`:''].filter(Boolean).join(' + ')}</span>`
       : `<span class="badge badge-red">لم يُسجَّل</span>`;
     const attBadge = r.attCount>0
       ? `<span class="badge badge-green">${r.attCount}/${r.activeStudents}</span>`
@@ -3317,8 +3338,7 @@ function renderDailyMonitoring(){
     return `<tr onclick="openTeacherDetail('${t.id}')" style="${r.isActive?'':'background:#fdf3f2;'}cursor:pointer;">
       <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div><div class="teacher-id">${t.circle||'—'}</div></div></div></td>
       <td>${attBadge}</td>
-      <td>${fillBadge(r.hifzFilled,r.hifzPages)}</td>
-      <td>${fillBadge(r.murajaaFilled,r.murajaaPages)}</td>
+      <td>${hifzMurajaaBadge}</td>
       <td>${r.evalCount}</td>
       <td>${r.nominationsToday}</td>
       <td>${statusBadge}</td>
