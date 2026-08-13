@@ -757,7 +757,14 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
           </div>
           <input type="text" id="student-search" placeholder="بحث..." oninput="debouncedRenderStudentsList()" style="height:32px;border:1px solid var(--bdr);border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit;width:160px;">
         </div>
-        <div class="panel-body" id="students-full-list"></div>
+        <div class="panel-body">
+          <button class="btn-submit-modal" style="margin-bottom:12px;" onclick="openAddStudentRequestModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            إضافة طالب جديد
+          </button>
+          <div id="add-student-requests-list"></div>
+          <div id="students-full-list"></div>
+        </div>
       </div>
     </div>
 
@@ -1216,6 +1223,50 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 </div>
 
 <!-- MODAL: DELETE STUDENT REQUEST -->
+<!-- MODAL: طلب إضافة طالب جديد (بانتظار موافقة المشرف) -->
+<div class="modal-bg" id="mAddStudentRequest">
+  <div class="modal">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        طلب إضافة طالب جديد
+      </div>
+      <button class="modal-close" onclick="cm('mAddStudentRequest')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12.5px;background:var(--ambb);color:var(--amb);padding:8px 10px;border-radius:8px;margin-bottom:12px;line-height:1.6;">
+        سيُرسَل هذا الطلب إلى المشرف لمراجعته. لن يُضاف الطالب فعلياً ولن يُنشأ حسابه إلا بعد موافقة المشرف.
+      </div>
+      <div class="mf"><label>الاسم الرباعي *</label>
+        <div class="name-grid4">
+          <input id="asr-fname" placeholder="الاسم الأول">
+          <input id="asr-father" placeholder="اسم الأب">
+          <input id="asr-grand" placeholder="اسم الجد">
+          <input id="asr-family" placeholder="العائلة">
+        </div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>رقم هوية الطالب *</label><input id="asr-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+        <div class="mf"><label>تاريخ الميلاد *</label><input id="asr-dob" type="date"></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>مكان الميلاد *</label><input id="asr-pob" placeholder="مثال: نابلس"></div>
+        <div class="mf"><label>الجنس *</label><select id="asr-gender"><option>ذكر</option><option>أنثى</option></select></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>الجزء الحالي</label><input id="asr-juz" type="number" value="0" min="0" max="30"></div>
+        <div class="mf"><label>رقم جوال الطالب (واتساب) *</label><input id="asr-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+      </div>
+      <div class="mf"><label>ملاحظات (اختياري)</label><textarea id="asr-notes" rows="2"></textarea></div>
+      <button class="btn-submit-modal" onclick="submitAddStudentRequest()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        إرسال الطلب للمشرف
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="mDeleteRequest">
   <div class="modal">
     <div class="gold-top"></div>
@@ -1406,7 +1457,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 //  STATE
 // ════════════════════════════════════════
 let currentUser=null, userDocRef=null, fsUnsub=null, suppressSave=false, examResultsUnsub=null;
-let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], dailyEval={}, pageOpens={}, homework={};
+let students=[], sessions=[], attendance={}, exams=[], deletionRequests=[], addStudentRequests=[], dailyEval={}, pageOpens={}, homework={};
 let examResultsAll=[]; // كل محاولات الاختبار (كل النتائج، بما فيها إعادة الاختبار) من مجموعة examResults العامة
 // ═══ مراجع الوثائق الفرعية (subcollections) — كل يوم/جلسة وثيقة مستقلة بحد أقصى 1MB خاص فيها،
 // بدل تجميعها بمصفوفة واحدة تكبر بلا حدود داخل وثيقة المحفّظ الرئيسية ═══
@@ -1510,7 +1561,7 @@ function doLogout(){
   if(evalTodayUnsub){evalTodayUnsub();evalTodayUnsub=null;}
   if(unsubSupervisorMsgs){unsubSupervisorMsgs.forEach(u=>u());unsubSupervisorMsgs=null;}
   userDocRef=null;attendanceCol=null;dailyEvalCol=null;sessionsCol=null;
-  currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};examResultsAll=[];
+  currentUser=null;students=[];sessions=[];attendance={};exams=[];deletionRequests=[];addStudentRequests=[];dailyEval={};pageOpens={};homework={};evalConfig={...DEFAULT_EVAL_CONFIG};examResultsAll=[];
   loadedAttendanceDates.clear();loadedEvalDates.clear();loadedSessionStudents.clear();loadedSessionsFullRange=null;
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
@@ -1633,7 +1684,7 @@ function enterApp(user,data){
     if(snap.exists){
       suppressSave=true;
       const d=snap.data();
-      students=d.students||[]; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; pageOpens=d.pageOpens||{}; homework=d.homework||{};
+      students=d.students||[]; exams=d.exams||[]; deletionRequests=d.deletionRequests||[]; addStudentRequests=d.addStudentRequests||[]; pageOpens=d.pageOpens||{}; homework=d.homework||{};
       evalConfig={...DEFAULT_EVAL_CONFIG, ...(d.evalConfig||{})};
 
       const migrated = await migrateLegacyIfNeeded(d);
@@ -1649,7 +1700,7 @@ function enterApp(user,data){
       suppressSave=false;
       _checkDocSizeWarning(d);
     } else {
-      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];dailyEval={};pageOpens={};homework={};
+      students=[];sessions=[];attendance={};exams=[];deletionRequests=[];addStudentRequests=[];dailyEval={};pageOpens={};homework={};
       evalConfig={...DEFAULT_EVAL_CONFIG};
       renderAll();
     }
@@ -1744,6 +1795,9 @@ function saveExams(){
 }
 function saveStudentsAndDeletionRequests(){
   saveField({students, deletionRequests});
+}
+function saveAddStudentRequests(){
+  saveField({addStudentRequests});
 }
 // إنذار مبكر قبل الوصول لحد Firestore الصارم لحجم الوثيقة (1 ميجابايت):
 // نقيس حجم الوثيقة تقريبياً عند كل تحديث، ونُنبّه المحفّظ إذا اقترب من الحد
@@ -3017,6 +3071,7 @@ function debouncedRenderStudentsList(){
 }
 
 function renderStudentsList(){
+  renderAddStudentRequestsList();
   const q=(document.getElementById('student-search').value||'').toLowerCase();
   const list=students.filter(s=>!q||s.name.toLowerCase().includes(q));
   const el=document.getElementById('students-full-list');
@@ -3275,6 +3330,109 @@ function cancelDeleteRequest(studentId){
   saveStudentsAndDeletionRequests(); renderAll(); cm('mStudentDetail');
   toast('↩️ تم إلغاء طلب الحذف');
 }
+
+// ════════════════════════════════════════
+//  طلب إضافة طالب جديد (بانتظار موافقة المشرف)
+// ════════════════════════════════════════
+function openAddStudentRequestModal(){
+  ['asr-fname','asr-father','asr-grand','asr-family','asr-nid','asr-dob','asr-pob','asr-phone','asr-notes'].forEach(id=>{
+    document.getElementById(id).value='';
+    clearFieldError(id);
+  });
+  document.getElementById('asr-juz').value='0';
+  document.getElementById('asr-gender').value='ذكر';
+  document.getElementById('asr-dob').max = TODAY();
+  om('mAddStudentRequest');
+}
+
+function submitAddStudentRequest(){
+  const fname  = document.getElementById('asr-fname').value.trim();
+  const father = document.getElementById('asr-father').value.trim();
+  const grand  = document.getElementById('asr-grand').value.trim();
+  const family = document.getElementById('asr-family').value.trim();
+  const nid    = document.getElementById('asr-nid').value.trim();
+  const dob    = document.getElementById('asr-dob').value;
+  const pob    = document.getElementById('asr-pob').value.trim();
+  const gender = document.getElementById('asr-gender').value;
+  const juz    = parseInt(document.getElementById('asr-juz').value)||0;
+  const phone  = document.getElementById('asr-phone').value.trim();
+  const notes  = document.getElementById('asr-notes').value.trim();
+
+  const fieldIds=['asr-fname','asr-father','asr-grand','asr-family','asr-nid','asr-dob','asr-pob','asr-phone'];
+  clearFieldErrors(fieldIds);
+  let ok=true;
+  const nameParts={'asr-fname':fname,'asr-father':father,'asr-grand':grand,'asr-family':family};
+  Object.keys(nameParts).forEach(id=>{
+    const v=nameParts[id];
+    if(!v){ setFieldError(id,'مطلوب'); ok=false; }
+    else if(!isValidNamePart(v)){ setFieldError(id,'أحرف عربية فقط'); ok=false; }
+  });
+  if(!isValidNationalIdVal(nid)){ setFieldError('asr-nid','رقم الهوية يجب أن يكون 9 أرقام'); ok=false; }
+  else if(students.some(s=>s.nationalId===nid)){ setFieldError('asr-nid','هذا الرقم مسجّل بالفعل لأحد طلابك'); ok=false; }
+  if(!isValidPastDate(dob)){ setFieldError('asr-dob','أدخل تاريخ ميلاد صحيحاً'); ok=false; }
+  if(!pob){ setFieldError('asr-pob','مطلوب'); ok=false; }
+  if(!isValidPSPhone(phone)){ setFieldError('asr-phone','يجب أن يبدأ بـ05 ويتكوّن من 10 أرقام'); ok=false; }
+  if(!ok){ toast('⚠️ راجع الحقول المُعلَّمة بالأحمر','error'); return; }
+
+  if((addStudentRequests||[]).some(r=>r.status==='pending' && r.nationalId===nid)){
+    toast('⚠️ يوجد طلب معلَّق بالفعل بنفس رقم الهوية','error'); return;
+  }
+
+  addStudentRequests.push({
+    id: uid(),
+    firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+    name: buildFullName(fname,father,grand,family),
+    nationalId: nid, dob, placeOfBirth: pob, gender,
+    parentPhone: phone, juz, notes,
+    status:'pending', requestedAt:new Date().toISOString(), resolvedAt:null, rejectionReason:null
+  });
+  saveAddStudentRequests();
+  renderStudentsList();
+  cm('mAddStudentRequest');
+  toast('✅ تم إرسال الطلب إلى المشرف، بانتظار الموافقة');
+}
+
+function cancelAddStudentRequest(requestId){
+  if(!confirm('إلغاء طلب إضافة هذا الطالب؟')) return;
+  addStudentRequests = addStudentRequests.filter(r=>r.id!==requestId);
+  saveAddStudentRequests();
+  renderStudentsList();
+  toast('↩️ تم إلغاء الطلب');
+}
+
+function renderAddStudentRequestsList(){
+  const el=document.getElementById('add-student-requests-list');
+  if(!el) return;
+  // نعرض المعلَّقة دائماً، والمرفوضة لآخر ٧ أيام فقط كي لا تتراكم القائمة إلى الأبد
+  const weekAgo=new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const list=(addStudentRequests||[]).filter(r=>
+    r.status==='pending' || (r.status==='rejected' && new Date(r.requestedAt) >= weekAgo)
+  ).sort((a,b)=>new Date(b.requestedAt)-new Date(a.requestedAt));
+
+  if(!list.length){ el.innerHTML=''; return; }
+
+  el.innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px;">طلبات إضافة قيد المتابعة</div>` +
+    list.map(r=>{
+      const statusBadge = r.status==='pending'
+        ? `<span class="month-badge badge-warn">⏳ قيد المراجعة</span>`
+        : `<span class="month-badge badge-bad">✕ مرفوض</span>`;
+      return `<div class="student-row" style="align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          <div class="st-avatar" style="background:var(--go);color:var(--gd);">${ini(r.name)}</div>
+          <div class="st-info">
+            <div class="st-name">${r.name}</div>
+            <div class="st-meta">${r.status==='rejected' && r.rejectionReason ? 'سبب الرفض: '+r.rejectionReason : 'أُرسل بانتظار موافقة المشرف'}</div>
+          </div>
+        </div>
+        ${statusBadge}
+        ${r.status==='pending'?`<button class="att-wa-btn" title="إلغاء الطلب" onclick="cancelAddStudentRequest('${r.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>`:''}
+      </div>`;
+    }).join('') + `<div style="height:1px;background:var(--bdr);margin:10px 0 12px;"></div>`;
+}
+
+
 
 // ════════════════════════════════════════
 //  PROGRESS / REPORTS
