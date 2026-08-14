@@ -365,6 +365,34 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .score-pill-num{font-size:20px;font-weight:800;color:var(--gd)}
 .score-pill-lbl{font-size:10px;color:var(--txm)}
 
+/* ═══ معالج التسجيل الصوتي ═══ */
+.vw-steps{display:flex;justify-content:center;gap:6px;margin-bottom:1rem;}
+.vw-step-dot{width:8px;height:8px;border-radius:50%;background:var(--bdr);transition:all .2s;}
+.vw-step-dot.done{background:var(--go);}
+.vw-step-dot.active{background:var(--gd);width:20px;border-radius:5px;}
+.vw-mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:1.2rem 0;}
+.vw-mic-btn{width:84px;height:84px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--gd),#0a5c3f);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(10,61,43,.3);transition:transform .15s;}
+.vw-mic-btn:active{transform:scale(.94);}
+.vw-mic-btn.listening{animation:vwPulse 1.2s ease-in-out infinite;background:linear-gradient(135deg,#e63946,#c1121f);}
+@keyframes vwPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.45);}50%{box-shadow:0 0 0 16px rgba(230,57,70,0);}}
+.vw-mic-hint{font-size:12.5px;color:var(--txm);text-align:center;min-height:16px;}
+.vw-transcript{font-size:13px;color:var(--ink);background:var(--cream);border-radius:8px;padding:8px 12px;text-align:center;min-height:18px;width:100%;}
+.vw-candidates{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:6px;}
+.vw-candidate{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid var(--bdr);border-radius:10px;cursor:pointer;transition:all .15s;background:#fff;}
+.vw-candidate:hover{border-color:var(--gd);background:#fffdf0;}
+.vw-candidate-score{font-size:10.5px;color:var(--txm);}
+.vw-type-row{display:flex;gap:10px;width:100%;}
+.vw-type-btn{flex:1;padding:14px;border-radius:12px;border:1.5px solid var(--bdr);background:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;}
+.vw-type-btn:active{transform:scale(.96);}
+.vw-type-btn.hifz{color:var(--gd);}
+.vw-type-btn.murajaa{color:#2563eb;}
+.vw-num-input{width:100%;text-align:center;font-size:22px;font-weight:800;padding:12px;border:1.5px solid var(--bdr);border-radius:10px;font-family:inherit;}
+.vw-summary{background:var(--cream);border-radius:12px;padding:14px;text-align:center;width:100%;}
+.vw-summary-name{font-size:15px;font-weight:700;color:var(--ink);}
+.vw-summary-detail{font-size:13px;color:var(--txm);margin-top:4px;}
+.vw-summary-pages{font-size:12px;color:var(--gd);font-weight:700;margin-top:6px;}
+.vw-manual-link{font-size:11.5px;color:var(--txm);text-decoration:underline;cursor:pointer;margin-top:2px;}
+
 .tab-row{display:flex;gap:6px;margin-bottom:1rem;background:var(--cream);border-radius:10px;padding:5px}
 .tab-btn{flex:1;padding:.5rem;border-radius:7px;font-size:12.5px;font-weight:600;font-family:inherit;border:none;background:transparent;color:var(--txm);cursor:pointer;transition:all .2s}
 .tab-btn.active{background:var(--gd);color:var(--gld)}
@@ -626,6 +654,10 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
         <button class="qbtn qbtn-outline" onclick="openAddStudentRequestModal()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           إضافة طالب جديد
+        </button>
+        <button class="qbtn qbtn-outline" id="voiceRecordQbtn" style="display:none;" onclick="openVoiceWizard()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          تسجيل صوتي
         </button>
       </div>
 
@@ -1272,6 +1304,24 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
   </div>
 </div>
 
+<!-- MODAL: معالج التسجيل الصوتي للحفظ/المراجعة -->
+<div class="modal-bg" id="mVoiceWizard">
+  <div class="modal">
+    <div class="gold-top"></div>
+    <div class="modal-hd">
+      <div class="modal-hd-t">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        تسجيل صوتي
+      </div>
+      <button class="modal-close" onclick="closeVoiceWizard()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="vw-steps" id="vw-steps"></div>
+      <div id="vw-step-content"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="mDeleteRequest">
   <div class="modal">
     <div class="gold-top"></div>
@@ -1429,6 +1479,112 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 // ════════════════════════════════════════
 //  SURAHS DATA (لائحة السور وعدد آياتها)
 // ════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  أدوات التسجيل الصوتي: تطبيع/مطابقة النصوص العربية + تحويل
+//  الأرقام المنطوقة بالعربي إلى أرقام صحيحة (تُستخدم بمعالج
+//  التسجيل الصوتي للحفظ والمراجعة)
+// ═══════════════════════════════════════════════════════════
+function normalizeArabic(s){
+  return (s||'')
+    .replace(/[\u064B-\u0652\u0670\u0640]/g,'')
+    .replace(/[إأآٱ]/g,'ا')
+    .replace(/ى/g,'ي').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .replace(/ة/g,'ه')
+    .replace(/[^\u0600-\u06FF0-9 ]/g,'')
+    .replace(/\s+/g,' ').trim();
+}
+
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m) return n; if(!n) return m;
+  const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// نسبة تشابه 0-100 بين نصّين عربيين (بعد التطبيع) — تُستخدم لمطابقة اسم الطالب/السورة المنطوق
+function arabicSimilarity(a,b){
+  const na=normalizeArabic(a), nb=normalizeArabic(b);
+  if(!na||!nb) return 0;
+  if(na===nb) return 100;
+  if(na.includes(nb)||nb.includes(na)) return 90;
+  const ta=na.split(' '), tb=nb.split(' ');
+  const common=ta.filter(t=>tb.includes(t)).length;
+  const tokenScore = common/Math.max(ta.length,tb.length) * 100;
+  const dist=levenshtein(na,nb);
+  const levScore = (1 - dist/Math.max(na.length,nb.length)) * 100;
+  return Math.max(tokenScore, levScore);
+}
+
+const _RAW_UNITS={'صفر':0,'واحد':1,'واحدة':1,'اثنان':2,'اثنين':2,'اثنتان':2,'اثنتين':2,
+  'ثلاثة':3,'ثلاث':3,'أربعة':4,'اربعة':4,'أربع':4,'اربع':4,'خمسة':5,'خمس':5,
+  'ستة':6,'ست':6,'سبعة':7,'سبع':7,'ثمانية':8,'ثماني':8,'ثمان':8,'تسعة':9,'تسع':9};
+const _RAW_TEENS={'عشرة':10,'أحد عشر':11,'احد عشر':11,'إحدى عشر':11,'احدى عشر':11,
+  'اثنا عشر':12,'اثني عشر':12,'اثنا عشرة':12,'اثنتا عشرة':12,
+  'ثلاثة عشر':13,'ثلاث عشرة':13,'أربعة عشر':14,'اربعة عشر':14,'أربع عشرة':14,'اربع عشرة':14,
+  'خمسة عشر':15,'خمس عشرة':15,'ستة عشر':16,'ست عشرة':16,
+  'سبعة عشر':17,'سبع عشرة':17,'ثمانية عشر':18,'ثماني عشرة':18,
+  'تسعة عشر':19,'تسع عشرة':19};
+const _RAW_TENS={'عشرون':20,'عشرين':20,'ثلاثون':30,'ثلاثين':30,'أربعون':40,'اربعون':40,'أربعين':40,'اربعين':40,
+  'خمسون':50,'خمسين':50,'ستون':60,'ستين':60,'سبعون':70,'سبعين':70,
+  'ثمانون':80,'ثمانين':80,'تسعون':90,'تسعين':90};
+const _RAW_HUNDREDS={'مائة':100,'مئة':100,'مائتان':200,'مئتان':200,'مائتين':200,'مئتين':200,
+  'ثلاثمائة':300,'ثلاثمئة':300,'أربعمائة':400,'اربعمائة':400,'أربعمئة':400,'اربعمئة':400};
+
+function _buildNormalized(dict){
+  const out={};
+  for(const k of Object.keys(dict)) out[normalizeArabic(k)]=dict[k];
+  return out;
+}
+const _NUM_UNITS=_buildNormalized(_RAW_UNITS), _NUM_TEENS=_buildNormalized(_RAW_TEENS),
+      _NUM_TENS=_buildNormalized(_RAW_TENS), _NUM_HUNDREDS=_buildNormalized(_RAW_HUNDREDS);
+
+function _stripWaw(tok){ return tok.length>1 && tok[0]==='و' ? tok.slice(1) : tok; }
+
+// يحوّل نصاً عربياً منطوقاً (رقماً أو كلمات) إلى عدد صحيح، أو null إن تعذّر الفهم.
+// يدعم حتى ٢٨٦ (أقصى عدد آيات بسورة بالقرآن — سورة البقرة)
+function parseArabicNumber(text){
+  if(!text) return null;
+  const digitMatch = text.match(/\d+/);
+  if(digitMatch) return parseInt(digitMatch[0]);
+
+  let s = normalizeArabic(text);
+  s = s.split(' ').filter(w=>w!=='ايه' && w!=='الايه' && w!=='رقم').join(' ').trim();
+  if(!s) return null;
+
+  if(_NUM_HUNDREDS[s]!==undefined) return _NUM_HUNDREDS[s];
+  if(_NUM_TEENS[s]!==undefined) return _NUM_TEENS[s];
+  if(_NUM_TENS[s]!==undefined) return _NUM_TENS[s];
+  if(_NUM_UNITS[s]!==undefined) return _NUM_UNITS[s];
+
+  let tokens = s.split(' ').filter(Boolean).map(_stripWaw);
+  let total = 0, found=false;
+
+  for(const key of Object.keys(_NUM_HUNDREDS)){
+    const wTokens = key.split(' ');
+    if(tokens.length>=wTokens.length && tokens.slice(0,wTokens.length).join(' ')===wTokens.join(' ')){
+      total+=_NUM_HUNDREDS[key]; found=true; tokens=tokens.slice(wTokens.length); break;
+    }
+  }
+
+  if(tokens.length){
+    const rest = tokens.join(' ');
+    if(_NUM_TEENS[rest]!==undefined){ total+=_NUM_TEENS[rest]; found=true; }
+    else if(_NUM_TENS[rest]!==undefined){ total+=_NUM_TENS[rest]; found=true; }
+    else if(_NUM_UNITS[rest]!==undefined){ total+=_NUM_UNITS[rest]; found=true; }
+    else if(tokens.length===2 && _NUM_TENS[tokens[1]]!==undefined && _NUM_UNITS[tokens[0]]!==undefined){
+      total += _NUM_TENS[tokens[1]] + _NUM_UNITS[tokens[0]]; found=true;
+    } else if(tokens.length===1 && _NUM_UNITS[tokens[0]]!==undefined){
+      total += _NUM_UNITS[tokens[0]]; found=true;
+    }
+  }
+
+  return found ? total : null;
+}
+
 const SURAHS=[{"num":1,"name":"الفاتحة","ayahs":7},{"num":2,"name":"البقرة","ayahs":286},{"num":3,"name":"آل عمران","ayahs":200},{"num":4,"name":"النساء","ayahs":176},{"num":5,"name":"المائدة","ayahs":120},{"num":6,"name":"الأنعام","ayahs":165},{"num":7,"name":"الأعراف","ayahs":206},{"num":8,"name":"الأنفال","ayahs":75},{"num":9,"name":"التوبة","ayahs":129},{"num":10,"name":"يونس","ayahs":109},{"num":11,"name":"هود","ayahs":123},{"num":12,"name":"يوسف","ayahs":111},{"num":13,"name":"الرعد","ayahs":43},{"num":14,"name":"إبراهيم","ayahs":52},{"num":15,"name":"الحجر","ayahs":99},{"num":16,"name":"النحل","ayahs":128},{"num":17,"name":"الإسراء","ayahs":111},{"num":18,"name":"الكهف","ayahs":110},{"num":19,"name":"مريم","ayahs":98},{"num":20,"name":"طه","ayahs":135},{"num":21,"name":"الأنبياء","ayahs":112},{"num":22,"name":"الحج","ayahs":78},{"num":23,"name":"المؤمنون","ayahs":118},{"num":24,"name":"النور","ayahs":64},{"num":25,"name":"الفرقان","ayahs":77},{"num":26,"name":"الشعراء","ayahs":227},{"num":27,"name":"النمل","ayahs":93},{"num":28,"name":"القصص","ayahs":88},{"num":29,"name":"العنكبوت","ayahs":69},{"num":30,"name":"الروم","ayahs":60},{"num":31,"name":"لقمان","ayahs":34},{"num":32,"name":"السجدة","ayahs":30},{"num":33,"name":"الأحزاب","ayahs":73},{"num":34,"name":"سبأ","ayahs":54},{"num":35,"name":"فاطر","ayahs":45},{"num":36,"name":"يس","ayahs":83},{"num":37,"name":"الصافات","ayahs":182},{"num":38,"name":"ص","ayahs":88},{"num":39,"name":"الزمر","ayahs":75},{"num":40,"name":"غافر","ayahs":85},{"num":41,"name":"فصلت","ayahs":54},{"num":42,"name":"الشورى","ayahs":53},{"num":43,"name":"الزخرف","ayahs":89},{"num":44,"name":"الدخان","ayahs":59},{"num":45,"name":"الجاثية","ayahs":37},{"num":46,"name":"الأحقاف","ayahs":35},{"num":47,"name":"محمد","ayahs":38},{"num":48,"name":"الفتح","ayahs":29},{"num":49,"name":"الحجرات","ayahs":18},{"num":50,"name":"ق","ayahs":45},{"num":51,"name":"الذاريات","ayahs":60},{"num":52,"name":"الطور","ayahs":49},{"num":53,"name":"النجم","ayahs":62},{"num":54,"name":"القمر","ayahs":55},{"num":55,"name":"الرحمن","ayahs":78},{"num":56,"name":"الواقعة","ayahs":96},{"num":57,"name":"الحديد","ayahs":29},{"num":58,"name":"المجادلة","ayahs":22},{"num":59,"name":"الحشر","ayahs":24},{"num":60,"name":"الممتحنة","ayahs":13},{"num":61,"name":"الصف","ayahs":14},{"num":62,"name":"الجمعة","ayahs":11},{"num":63,"name":"المنافقون","ayahs":11},{"num":64,"name":"التغابن","ayahs":18},{"num":65,"name":"الطلاق","ayahs":12},{"num":66,"name":"التحريم","ayahs":12},{"num":67,"name":"الملك","ayahs":30},{"num":68,"name":"القلم","ayahs":52},{"num":69,"name":"الحاقة","ayahs":52},{"num":70,"name":"المعارج","ayahs":44},{"num":71,"name":"نوح","ayahs":28},{"num":72,"name":"الجن","ayahs":28},{"num":73,"name":"المزمل","ayahs":20},{"num":74,"name":"المدثر","ayahs":56},{"num":75,"name":"القيامة","ayahs":40},{"num":76,"name":"الإنسان","ayahs":31},{"num":77,"name":"المرسلات","ayahs":50},{"num":78,"name":"النبأ","ayahs":40},{"num":79,"name":"النازعات","ayahs":46},{"num":80,"name":"عبس","ayahs":42},{"num":81,"name":"التكوير","ayahs":29},{"num":82,"name":"الانفطار","ayahs":19},{"num":83,"name":"المطففين","ayahs":36},{"num":84,"name":"الانشقاق","ayahs":25},{"num":85,"name":"البروج","ayahs":22},{"num":86,"name":"الطارق","ayahs":17},{"num":87,"name":"الأعلى","ayahs":19},{"num":88,"name":"الغاشية","ayahs":26},{"num":89,"name":"الفجر","ayahs":30},{"num":90,"name":"البلد","ayahs":20},{"num":91,"name":"الشمس","ayahs":15},{"num":92,"name":"الليل","ayahs":21},{"num":93,"name":"الضحى","ayahs":11},{"num":94,"name":"الشرح","ayahs":8},{"num":95,"name":"التين","ayahs":8},{"num":96,"name":"العلق","ayahs":19},{"num":97,"name":"القدر","ayahs":5},{"num":98,"name":"البينة","ayahs":8},{"num":99,"name":"الزلزلة","ayahs":8},{"num":100,"name":"العاديات","ayahs":11},{"num":101,"name":"القارعة","ayahs":11},{"num":102,"name":"التكاثر","ayahs":8},{"num":103,"name":"العصر","ayahs":3},{"num":104,"name":"الهمزة","ayahs":9},{"num":105,"name":"الفيل","ayahs":5},{"num":106,"name":"قريش","ayahs":4},{"num":107,"name":"الماعون","ayahs":7},{"num":108,"name":"الكوثر","ayahs":3},{"num":109,"name":"الكافرون","ayahs":6},{"num":110,"name":"النصر","ayahs":3},{"num":111,"name":"المسد","ayahs":5},{"num":112,"name":"الإخلاص","ayahs":4},{"num":113,"name":"الفلق","ayahs":5},{"num":114,"name":"الناس","ayahs":6}];
 
 // ════════════════════════════════════════
@@ -3437,6 +3593,292 @@ function renderAddStudentRequestsList(){
         </button>`:''}
       </div>`;
     }).join('') + `<div style="height:1px;background:var(--bdr);margin:10px 0 12px;"></div>`;
+}
+
+// ════════════════════════════════════════
+//  التسجيل الصوتي للحفظ والمراجعة
+//  الخطوات: اسم الطالب → حفظ/مراجعة → السورة → من آية → إلى آية → تأكيد وإضافة
+//  ملاحظة أمان: إنهاء وحفظ الجلسة يبقى دائماً بضغطة زر يدوية صريحة (ليس بالصوت)
+//  لتفادي أي حفظ غير مقصود لبيانات حقيقية بسبب سوء فهم صوتي
+// ════════════════════════════════════════
+const SpeechRecCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(SpeechRecCtor){
+    const btn=document.getElementById('voiceRecordQbtn');
+    if(btn) btn.style.display='';
+  }
+});
+
+let vwState = {step:null, studentId:null, studentName:null, type:null, surahNum:null, surahName:null, from:null, to:null};
+let vwRecognition = null;
+let vwListening = false;
+const VW_STEPS=['name','type','surah','from','to','confirm'];
+
+function openVoiceWizard(){
+  if(!SpeechRecCtor){ toast('⚠️ متصفحك لا يدعم التسجيل الصوتي، جرّب Chrome على الأندرويد','error'); return; }
+  vwState = {step:'name', studentId:null, studentName:null, type:null, surahNum:null, surahName:null, from:null, to:null};
+  om('mVoiceWizard');
+  renderVoiceStep();
+}
+
+function closeVoiceWizard(){
+  if(vwRecognition){ try{ vwRecognition.stop(); }catch(e){} }
+  vwListening=false;
+  cm('mVoiceWizard');
+}
+
+function renderVoiceStepDots(){
+  const idx=VW_STEPS.indexOf(vwState.step);
+  const dots=document.getElementById('vw-steps');
+  if(dots) dots.innerHTML = VW_STEPS.map((s,i)=>
+    `<div class="vw-step-dot ${i<idx?'done':''} ${i===idx?'active':''}"></div>`).join('');
+}
+
+function micButtonSvg(){
+  return `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`;
+}
+
+function startListening(onResult){
+  if(vwListening) return;
+  let rec;
+  try{ rec = new SpeechRecCtor(); }catch(e){ toast('⚠️ تعذّر تشغيل الميكروفون','error'); return; }
+  rec.lang='ar-SA';
+  rec.interimResults=false;
+  rec.maxAlternatives=1;
+  vwRecognition = rec;
+  vwListening=true;
+  updateMicUI(true);
+  rec.onresult = (e)=>{
+    const text = e.results[0][0].transcript;
+    vwListening=false;
+    updateMicUI(false);
+    onResult(text);
+  };
+  rec.onerror = ()=>{
+    vwListening=false;
+    updateMicUI(false);
+    toast('⚠️ لم أسمع بوضوح، حاول ثانيةً أو استخدم الإدخال اليدوي','error');
+  };
+  rec.onend = ()=>{ vwListening=false; updateMicUI(false); };
+  try{ rec.start(); }catch(e){ vwListening=false; updateMicUI(false); }
+}
+
+function updateMicUI(listening){
+  const btn=document.getElementById('vw-mic-btn');
+  if(btn) btn.classList.toggle('listening', listening);
+  const h=document.getElementById('vw-mic-hint');
+  if(h) h.textContent = listening ? '🔴 يستمع الآن... تكلّم' : 'اضغط للتسجيل';
+}
+
+function renderVoiceStep(){
+  renderVoiceStepDots();
+  const el=document.getElementById('vw-step-content');
+  if(!el) return;
+  if(vwState.step==='name') renderVwNameStep(el);
+  else if(vwState.step==='type') renderVwTypeStep(el);
+  else if(vwState.step==='surah') renderVwSurahStep(el);
+  else if(vwState.step==='from') renderVwNumberStep(el,'from');
+  else if(vwState.step==='to') renderVwNumberStep(el,'to');
+  else if(vwState.step==='confirm') renderVwConfirmStep(el);
+}
+
+// ── الخطوة ١: اسم الطالب ──
+function renderVwNameStep(el){
+  el.innerHTML=`
+    <div class="vw-mic-wrap">
+      <div style="font-size:14px;font-weight:700;">قل اسم الطالب</div>
+      <button class="vw-mic-btn" id="vw-mic-btn" onclick="vwListenName()">${micButtonSvg()}</button>
+      <div class="vw-mic-hint" id="vw-mic-hint">اضغط للتسجيل</div>
+      <div id="vw-name-results" style="width:100%;"></div>
+      <div class="vw-manual-link" onclick="vwShowManualStudentPicker()">أو اختر من القائمة يدوياً</div>
+    </div>`;
+}
+
+function vwListenName(){
+  startListening(text=>{
+    const box=document.getElementById('vw-name-results');
+    box.innerHTML = `<div class="vw-transcript">سمعت: "${escHtml(text)}"</div>`;
+    const active=students.filter(s=>!s.archived);
+    const scored = active.map(s=>{
+      const candidates=[s.name, `${s.firstName||''} ${s.familyName||''}`.trim(),
+        `${s.firstName||''} ${s.fatherName||''} ${s.familyName||''}`.trim(),
+        `${s.firstName||''} ${s.fatherName||''} ${s.grandfatherName||''} ${s.familyName||''}`.trim()]
+        .filter(Boolean);
+      const best=Math.max(0,...candidates.map(c=>arabicSimilarity(text,c)));
+      return {s, score:best};
+    }).sort((a,b)=>b.score-a.score).slice(0,3).filter(x=>x.score>30);
+    if(!scored.length){
+      box.innerHTML += `<div style="font-size:12.5px;color:var(--red);margin-top:6px;">لم أجد طالباً مطابقاً، جرّب ثانيةً أو اختر يدوياً</div>`;
+      return;
+    }
+    box.innerHTML += `<div class="vw-candidates">` + scored.map(x=>
+      `<div class="vw-candidate" onclick="vwSelectStudent('${x.s.id}')">
+        <span>${x.s.name}</span><span class="vw-candidate-score">${Math.round(x.score)}%</span>
+      </div>`).join('') + `</div>`;
+  });
+}
+
+function vwShowManualStudentPicker(){
+  const active=students.filter(s=>!s.archived);
+  const el=document.getElementById('vw-name-results');
+  el.innerHTML = `<div class="vw-candidates" style="max-height:220px;overflow-y:auto;">` +
+    active.map(s=>`<div class="vw-candidate" onclick="vwSelectStudent('${s.id}')"><span>${s.name}</span></div>`).join('') +
+    `</div>`;
+}
+
+async function vwSelectStudent(id){
+  const s=students.find(x=>x.id===id); if(!s) return;
+  vwState.studentId=id; vwState.studentName=s.name;
+  const el=document.getElementById('vw-step-content');
+  el.innerHTML = `<div style="text-align:center;padding:2rem 0;color:var(--txm);">⏳ جارٍ تحميل بيانات ${escHtml(s.name)}...</div>`;
+  await selectSessStudent(id);
+  // نضمن أن أي إدخال قادم من المعالج الصوتي "جديد" دائماً، لا يُعدَّل فوقه إدخال
+  // سابق كان قد فُتح تلقائياً للتعديل عند تحميل جلسة اليوم لهذا الطالب
+  cancelHifzEdit(); cancelMurajaaEdit();
+  vwState.step='type';
+  renderVoiceStep();
+}
+
+// ── الخطوة ٢: حفظ أم مراجعة ──
+function renderVwTypeStep(el){
+  el.innerHTML=`
+    <div class="vw-mic-wrap">
+      <div style="font-size:13px;color:var(--txm);">الطالب: <strong style="color:var(--ink);">${escHtml(vwState.studentName)}</strong></div>
+      <div style="font-size:14px;font-weight:700;">قل "حفظ" أو "مراجعة"</div>
+      <button class="vw-mic-btn" id="vw-mic-btn" onclick="vwListenType()">${micButtonSvg()}</button>
+      <div class="vw-mic-hint" id="vw-mic-hint">اضغط للتسجيل</div>
+      <div id="vw-type-transcript" style="width:100%;"></div>
+      <div class="vw-type-row">
+        <button class="vw-type-btn hifz" onclick="vwSetType('hifz')">📖 حفظ جديد</button>
+        <button class="vw-type-btn murajaa" onclick="vwSetType('murajaa')">🔄 مراجعة</button>
+      </div>
+    </div>`;
+}
+
+function vwListenType(){
+  startListening(text=>{
+    document.getElementById('vw-type-transcript').innerHTML = `<div class="vw-transcript">سمعت: "${escHtml(text)}"</div>`;
+    const hifzScore=arabicSimilarity(text,'حفظ'), murajaaScore=arabicSimilarity(text,'مراجعة');
+    if(hifzScore>=60 && hifzScore>=murajaaScore) vwSetType('hifz');
+    else if(murajaaScore>=60) vwSetType('murajaa');
+    else toast('⚠️ لم أفهم، قل "حفظ" أو "مراجعة" أو اضغط الزر مباشرة','error');
+  });
+}
+
+function vwSetType(type){
+  vwState.type=type;
+  vwState.step='surah';
+  renderVoiceStep();
+}
+
+// ── الخطوة ٣: اسم السورة ──
+function renderVwSurahStep(el){
+  el.innerHTML=`
+    <div class="vw-mic-wrap">
+      <div style="font-size:13px;color:var(--txm);">${vwState.type==='hifz'?'📖 حفظ جديد':'🔄 مراجعة'} — ${escHtml(vwState.studentName)}</div>
+      <div style="font-size:14px;font-weight:700;">قل اسم السورة</div>
+      <button class="vw-mic-btn" id="vw-mic-btn" onclick="vwListenSurah()">${micButtonSvg()}</button>
+      <div class="vw-mic-hint" id="vw-mic-hint">اضغط للتسجيل</div>
+      <div id="vw-surah-results" style="width:100%;"></div>
+    </div>`;
+}
+
+function vwListenSurah(){
+  startListening(text=>{
+    const box=document.getElementById('vw-surah-results');
+    box.innerHTML = `<div class="vw-transcript">سمعت: "${escHtml(text)}"</div>`;
+    const scored = SURAHS.map(s=>({s, score:arabicSimilarity(text, s.name)}))
+      .sort((a,b)=>b.score-a.score).slice(0,3).filter(x=>x.score>30);
+    if(!scored.length){
+      box.innerHTML += `<div style="font-size:12.5px;color:var(--red);margin-top:6px;">لم أجد سورة مطابقة، جرّب ثانيةً</div>`;
+      return;
+    }
+    box.innerHTML += `<div class="vw-candidates">` + scored.map(x=>
+      `<div class="vw-candidate" onclick="vwSetSurah(${x.s.num})">
+        <span>${x.s.num}. ${x.s.name}</span><span class="vw-candidate-score">${Math.round(x.score)}%</span>
+      </div>`).join('') + `</div>`;
+  });
+}
+
+function vwSetSurah(num){
+  const s=SURAHS.find(x=>x.num===num); if(!s) return;
+  vwState.surahNum=num; vwState.surahName=s.name; vwState.surahAyahs=s.ayahs;
+  vwState.step='from';
+  renderVoiceStep();
+}
+
+// ── الخطوتان ٤/٥: من آية / إلى آية ──
+function renderVwNumberStep(el, which){
+  const label = which==='from' ? 'من آية' : 'إلى آية';
+  el.innerHTML=`
+    <div class="vw-mic-wrap">
+      <div style="font-size:13px;color:var(--txm);">سورة ${escHtml(vwState.surahName)}${which==='to'?` (من آية ${vwState.from})`:''}</div>
+      <div style="font-size:14px;font-weight:700;">قل ${label}</div>
+      <button class="vw-mic-btn" id="vw-mic-btn" onclick="vwListenNumber('${which}')">${micButtonSvg()}</button>
+      <div class="vw-mic-hint" id="vw-mic-hint">اضغط للتسجيل</div>
+      <input type="number" class="vw-num-input" id="vw-num-input" min="1" max="${vwState.surahAyahs||286}" value="${which==='to'?(vwState.from||1):1}">
+      <button class="btn-submit-modal" onclick="vwConfirmNumber('${which}')">التالي</button>
+    </div>`;
+}
+
+function vwListenNumber(which){
+  startListening(text=>{
+    const n = parseArabicNumber(text);
+    if(n!==null && n>=1) document.getElementById('vw-num-input').value = n;
+    else toast('⚠️ لم أفهم الرقم، عدّله يدوياً بالحقل أدناه','error');
+  });
+}
+
+function vwConfirmNumber(which){
+  const max=vwState.surahAyahs||286;
+  let v = parseInt(document.getElementById('vw-num-input').value)||1;
+  if(v<1) v=1; if(v>max) v=max;
+  vwState[which]=v;
+  if(which==='from'){ vwState.step='to'; renderVoiceStep(); }
+  else { if(vwState.to<vwState.from) vwState.to=vwState.from; vwState.step='confirm'; renderVoiceStep(); }
+}
+
+// ── الخطوة ٦: تأكيد وإضافة ──
+function renderVwConfirmStep(el){
+  const span = (typeof computeQuranSpan==='function') ? computeQuranSpan(vwState.surahNum, vwState.from, vwState.to) : null;
+  const spanTxt = span && typeof formatQuranSpan==='function' ? formatQuranSpan(span) : '';
+  el.innerHTML=`
+    <div class="vw-summary">
+      <div class="vw-summary-name">${escHtml(vwState.studentName)}</div>
+      <div class="vw-summary-detail">${vwState.type==='hifz'?'📖 حفظ جديد':'🔄 مراجعة'} — سورة ${escHtml(vwState.surahName)} (${vwState.from}-${vwState.to})</div>
+      ${spanTxt?`<div class="vw-summary-pages">${spanTxt}</div>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
+      <button class="btn-submit-modal" onclick="vwAddEntry()">✅ إضافة هذا الإدخال</button>
+      <button class="qbtn qbtn-outline" style="justify-content:center;" onclick="vwState.step='surah';renderVoiceStep();">🔁 تعديل السورة/الآيات</button>
+    </div>`;
+}
+
+function vwAddEntry(){
+  // نملأ الحقول الفعلية بنموذج تسجيل الجلسة (المخفي خلف نافذة المعالج) ثم نستدعي
+  // نفس دالة الإضافة المستخدمة يدوياً تماماً — لا يوجد منطق حفظ مزدوج بالتطبيق
+  const surahVal = `${vwState.surahNum}|${vwState.surahName}|${vwState.surahAyahs||286}`;
+  if(vwState.type==='hifz'){
+    sessTab('hifz');
+    document.getElementById('hifz-surah').value = surahVal;
+    document.getElementById('hifz-from').value = vwState.from;
+    document.getElementById('hifz-to').value = vwState.to;
+    addHifzEntry();
+  } else {
+    sessTab('murajaa');
+    document.getElementById('muraj-surah').value = surahVal;
+    document.getElementById('muraj-from').value = vwState.from;
+    document.getElementById('muraj-to').value = vwState.to;
+    addMurajaaEntry();
+  }
+  toast('✅ تمت الإضافة — يمكنك تسجيل المزيد أو إغلاق النافذة وحفظ الجلسة يدوياً');
+  vwState.surahNum=null; vwState.surahName=null; vwState.surahAyahs=null; vwState.from=null; vwState.to=null;
+  vwState.step='type';
+  renderVoiceStep();
+}
+
+function escHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 
