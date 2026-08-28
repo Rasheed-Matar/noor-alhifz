@@ -4122,10 +4122,19 @@ function buildThanksMessage(s,text){
   return msg;
 }
 
+// يوم استحقاق الواجب البيتي هو اليوم التالي ليوم إدخاله، وبما أن الجمعة إجازة يُتخطّى إلى السبت
+function hwDueDateLabel(entryDateStr){
+  const d=parseLocalDateStr(entryDateStr);
+  if(!d) return '';
+  const due=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);
+  if(due.getDay()===5) due.setDate(due.getDate()+1);
+  return due.toLocaleDateString('ar-SA',{weekday:'long',day:'numeric',month:'long'});
+}
+
 function buildHomeworkMessage(s,r){
   let msg=`السلام عليكم ورحمة الله وبركاته ${EMO.leaf}\n`;
   msg+=`الواجب البيتي الحالي للطالب/ة *${shortName(s.name)}* ${EMO.clip}\n`;
-  msg+=`${EMO.calendar} ${r.dateLabel||r.date}\n`;
+  msg+=`${EMO.calendar} ${hwDueDateLabel(r.date)||r.dateLabel||r.date}\n`;
   if(r.hifz&&r.hifz.length){
     msg+=`\n${EMO.book} حفظ جديد:\n`;
     r.hifz.forEach(h=>{ msg+=`• ${h.surah} (آية ${h.from}-${h.to})\n`; });
