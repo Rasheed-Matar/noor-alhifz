@@ -1009,6 +1009,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
             <div class="mf" id="msg-type-wrap"><label>نوع الرسالة</label>
               <select id="msg-type" onchange="msgTypeChanged()">
                 <option value="daily">إنجاز اليوم والحضور</option>
+                <option value="homework">الواجب البيتي</option>
                 <option value="examNom">ترشيح اختبار</option>
                 <option value="examResult">نتيجة اختبار</option>
                 <option value="thanks">شكر وتقدير</option>
@@ -2701,6 +2702,9 @@ function renderHwList(){
           <div class="hw-name">${s.name}</div>
           <div class="hw-meta">📅 آخر تحديث: ${r.dateLabel||r.date}</div>
         </div>
+        ${s.parentPhone?`<button class="att-wa-btn" title="إرسال الواجب البيتي لولي الأمر عبر واتساب" onclick="sendHomeworkMessage('${s.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#16a34a"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.84.5 3.56 1.36 5.03L2 22l5.25-1.38a9.9 9.9 0 004.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2z"/></svg>
+        </button>`:''}
         <button class="modal-close" style="color:var(--red);font-size:18px;" onclick="deleteHomework('${s.id}')" title="حذف الواجب الحالي">×</button>
       </div>
       ${(hifzPills||muraPills)?`<div class="hw-entries">${hifzPills}${muraPills}</div>`:''}
@@ -4068,11 +4072,13 @@ function applyMsgFieldVisibility(){
   document.getElementById('msg-broadcast-wrap').style.display=(isSup||type==='broadcast')?'block':'none';
   document.getElementById('msg-broadcast-label').textContent=isSup?'نص الرسالة إلى المشرف *':'نص التعميم / الإعلان *';
   const noteEl=document.getElementById('msg-auto-note');
-  if(!isSup&&(type==='examNom'||type==='examResult')){
+  if(!isSup&&(type==='examNom'||type==='examResult'||type==='homework')){
     noteEl.style.display='block';
     noteEl.textContent=type==='examNom'
       ?'سيتم تلقائياً جلب آخر ترشيح اختبار "بانتظار الاختبار" لكل طالب ضمن من تم اختيارهم.'
-      :'سيتم تلقائياً جلب آخر نتيجة اختبار "منجزة" (ناجح / لم ينجح) لكل طالب ضمن من تم اختيارهم.';
+      :type==='examResult'
+      ?'سيتم تلقائياً جلب آخر نتيجة اختبار "منجزة" (ناجح / لم ينجح) لكل طالب ضمن من تم اختيارهم.'
+      :'سيتم تلقائياً جلب الواجب البيتي الحالي المُسجَّل لكل طالب ضمن من تم اختيارهم.';
   } else {
     noteEl.style.display='none';
   }
@@ -4114,6 +4120,32 @@ function buildThanksMessage(s,text){
   msg+=`${text}\n\n`;
   msg+=`بارك الله فيكم — مركز الكتاب لتعليم القرآن الكريم والسنة النبوية`;
   return msg;
+}
+
+function buildHomeworkMessage(s,r){
+  let msg=`السلام عليكم ورحمة الله وبركاته ${EMO.leaf}\n`;
+  msg+=`الواجب البيتي الحالي للطالب/ة *${shortName(s.name)}* ${EMO.clip}\n`;
+  msg+=`${EMO.calendar} ${r.dateLabel||r.date}\n`;
+  if(r.hifz&&r.hifz.length){
+    msg+=`\n${EMO.book} حفظ جديد:\n`;
+    r.hifz.forEach(h=>{ msg+=`• ${h.surah} (آية ${h.from}-${h.to})\n`; });
+  }
+  if(r.murajaa&&r.murajaa.length){
+    msg+=`\n${EMO.refresh} مراجعة:\n`;
+    r.murajaa.forEach(m=>{ msg+=`• ${m.surah} (آية ${m.from}-${m.to})\n`; });
+  }
+  if(r.notes){
+    msg+=`\n${EMO.memo} ملاحظات المحفّظ:\n${r.notes}\n`;
+  }
+  msg+=`\nنرجو متابعة الطالب/ة في المذاكرة حتى الموعد القادم ${EMO.pray}\nبارك الله فيكم — مركز الكتاب لتعليم القرآن الكريم والسنة النبوية`;
+  return msg;
+}
+function sendHomeworkMessage(studentId){
+  const s=students.find(x=>x.id===studentId);
+  const r=homework[studentId];
+  if(!s||!r) return;
+  if(!s.parentPhone){ toast('⚠️ لا يوجد رقم هاتف لولي الأمر','error'); return; }
+  openWhatsApp(s.parentPhone,buildHomeworkMessage(s,r));
 }
 
 function buildBroadcastMessage(s,text){
@@ -4187,6 +4219,9 @@ async function buildMessageQueue(){
         notes:daySess.map(x=>x.notes).filter(Boolean).join(' | ')
       };
       msg=buildSessionReportMessage(record);
+    } else if(type==='homework'){
+      const r=homework[s.id];
+      if(r) msg=buildHomeworkMessage(s,r);
     } else if(type==='examNom'){
       const e=[...exams].reverse().find(x=>x.studentId===s.id&&x.status==='pending');
       if(e) msg=buildExamNominationMessage(e);
@@ -4209,7 +4244,7 @@ async function buildMessageQueue(){
   if(!queue.length){
     const reason=skippedNoPhone&&!skippedNoData
       ?(channel==='app'?'لا يوجد حساب دخول مفعّل للطلاب ضمن الفئة المختارة':'لا يوجد رقم جوال مسجّل لدى الفئة المختارة')
-      :skippedNoData?'لا توجد بيانات مطابقة لنوع الرسالة المختار (مثلاً: لا يوجد ترشيح/نتيجة اختبار بعد)'
+      :skippedNoData?'لا توجد بيانات مطابقة لنوع الرسالة المختار (مثلاً: لا يوجد ترشيح/نتيجة اختبار، أو لا يوجد واجب بيتي مُسجَّل بعد)'
       :'لا توجد رسائل لإرسالها';
     toast('⚠️ '+reason,'error');
   }
