@@ -5075,7 +5075,8 @@ function computeCertData(){
   const juzWord = isRange ? 'الأجزاء' : 'الجزء';
   const score=Math.round(Number(exam.totalScore||0));
   return {
-    studentName: exam.studentName,
+    // نُفضّل الاسم الحالي المُحدَّث للطالب (عبر المعرّف الثابت) على الاسم المُجمَّد وقت الاختبار
+    studentName: student.name || exam.studentName,
     teacherName: window._teacherName || exam.teacherName || '',
     dob: student.dob||'',
     placeOfBirth: student.placeOfBirth||'',
@@ -5297,6 +5298,8 @@ async function downloadCertificatePDF(){
         lastDownloadedAt: new Date().toISOString(),
         lastDownloadedBy: window._teacherName||'',
         supervisorName: data.supervisorName,
+        studentName: data.studentName,
+        teacherName: data.teacherName,
         dob: data.dob,
         placeOfBirth: data.placeOfBirth,
         nationalId: data.nationalId
