@@ -3897,6 +3897,7 @@ function computeCertData(){
   const student=getAllStudents().find(s=>s.id===exam.studentId && s.teacherId===exam.teacherId)
     || getAllStudents().find(s=>s.name===exam.studentName && s.teacherName===exam.teacherName)
     || {};
+  const teacher=getTeachers().find(t=>t.id===exam.teacherId);
   const nums=juzRangeParts(exam.juzNum).sort((a,b)=>a-b);
   const min=nums[0], max=nums[nums.length-1];
   const isRange = min!==max;
@@ -3904,8 +3905,10 @@ function computeCertData(){
   const juzWord = isRange ? 'الأجزاء' : 'الجزء';
   const score=Math.round(Number(exam.totalScore||0));
   return {
-    studentName: exam.studentName,
-    teacherName: exam.teacherName||'',
+    // نُفضّل الاسم الحالي المُحدَّث للطالب/المحفّظ (عبر المعرّف الثابت) على الاسم المُجمَّد وقت الاختبار،
+    // فإن كان قد صُحِّح لاحقاً (مثلاً استبدال نقطة "." مكان اسم مفقود) تظهر الإفادة بالاسم الصحيح دائماً
+    studentName: student.name || exam.studentName,
+    teacherName: (teacher&&teacher.name) || exam.teacherName||'',
     dob: student.dob||'',
     placeOfBirth: student.placeOfBirth||'',
     nationalId: student.nationalId||'',
@@ -4174,6 +4177,8 @@ async function downloadCertificatePDF(){
         lastDownloadedAt: new Date().toISOString(),
         lastDownloadedBy: currentSupervisorName,
         supervisorName: data.supervisorName,
+        studentName: data.studentName,
+        teacherName: data.teacherName,
         dob: data.dob,
         placeOfBirth: data.placeOfBirth,
         nationalId: data.nationalId
