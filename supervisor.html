@@ -3756,8 +3756,14 @@ function getTeacherCircle(teacherName){
   const t=getTeachers().find(x=>x.name===teacherName);
   return t?(t.circle||''):'';
 }
-function getStudentDetails(studentName,teacherName){
-  return getAllStudents().find(s=>s.name===studentName&&s.teacherName===teacherName)||{};
+// المطابقة تتم أولاً عبر المعرّفات الثابتة (studentId+teacherId) التي لا تتغيّر أبداً، بدل الاعتماد فقط
+// على تطابق الأسماء النصية — لأن اسم المحفّظ (وأحياناً اسم الطالب) قد يُعدَّل لاحقاً بعد تسجيل الاختبار،
+// فيفشل أي تطابق نصّي رغم أن السجل الصحيح ما زال موجوداً وبياناته محدَّثة
+function getStudentDetails(studentId,teacherId,studentName,teacherName){
+  const all=getAllStudents();
+  return all.find(s=>s.id===studentId && s.teacherId===teacherId)
+    || all.find(s=>s.name===studentName && s.teacherName===teacherName)
+    || {};
 }
 // يحوّل قيمة تاريخ (نص "YYYY-MM-DD" أو أي صيغة أخرى) إلى Date محلي دون المرور بتوقيت UTC،
 // لتفادي مشكلة new Date('YYYY-MM-DD') الشهيرة التي تُفسَّر كمنتصف ليل UTC، فإذا عُرضت
@@ -3888,7 +3894,9 @@ function juzRangeMax(juzNum){ return Math.max(...juzRangeParts(juzNum)); }
 function computeCertData(){
   const exam=getSelectedCertExam();
   if(!exam) return null;
-  const student=getAllStudents().find(s=>s.name===exam.studentName && s.teacherName===exam.teacherName)||{};
+  const student=getAllStudents().find(s=>s.id===exam.studentId && s.teacherId===exam.teacherId)
+    || getAllStudents().find(s=>s.name===exam.studentName && s.teacherName===exam.teacherName)
+    || {};
   const nums=juzRangeParts(exam.juzNum).sort((a,b)=>a-b);
   const min=nums[0], max=nums[nums.length-1];
   const isRange = min!==max;
@@ -4160,11 +4168,15 @@ async function downloadCertificatePDF(){
     pdf.save('إفادة_'+safeLabel+'_'+serial+'.pdf');
 
     if(isReuse){
-      // نفس الاختبار = نفس الشهادة ونفس QR في كل مرة، فقط نحدّث بيانات آخر تنزيل دون تغيير المعرّف/الرقم
+      // نفس الاختبار = نفس الشهادة ونفس QR في كل مرة، لكن نحدّث بيانات الطالب المشتقة (تاريخ/مكان الميلاد ورقم الهوية)
+      // من السجل الحي كي لا تبقى صفحة التحقق (verify.html) عالقة على بيانات قديمة إن كانت فارغة/خاطئة وقت أول إصدار
       await db.collection('certificates').doc(docId).set({
         lastDownloadedAt: new Date().toISOString(),
         lastDownloadedBy: currentSupervisorName,
-        supervisorName: data.supervisorName
+        supervisorName: data.supervisorName,
+        dob: data.dob,
+        placeOfBirth: data.placeOfBirth,
+        nationalId: data.nationalId
       },{merge:true});
     } else {
       await db.collection('certificates').doc(docId).set({
@@ -4297,7 +4309,7 @@ function getSupervisorReportFiltered(){
 
   // إغناء كل نتيجة ببيانات الطالب الإضافية (الهوية، تاريخ الميلاد، مكان الميلاد)
   results = results.map(r=>{
-    const sd=getStudentDetails(r.studentName,r.teacherName);
+    const sd=getStudentDetails(r.studentId,r.teacherId,r.studentName,r.teacherName);
     return {...r,
       _nid: sd.nationalId||'—',
       _dob: sd.dob?fmtDate(sd.dob):'—',
