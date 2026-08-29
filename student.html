@@ -2404,9 +2404,16 @@ async function downloadCertificatePDF(){
 
     const myName=(myStudentData&&myStudentData.name)||document.getElementById('hdrName').textContent||'طالب';
     if(isReuse){
+      // نفس الاختبار = نفس الشهادة ونفس QR في كل مرة، لكن نحدّث بيانات الطالب المشتقة (تاريخ/مكان الميلاد ورقم الهوية)
+      // من السجل الحي كي لا تبقى صفحة التحقق (verify.html) عالقة على بيانات قديمة إن كانت فارغة/خاطئة وقت أول إصدار
       await db.collection('certificates').doc(docId).set({
         lastDownloadedAt: new Date().toISOString(),
-        lastDownloadedBy: myName
+        lastDownloadedBy: myName,
+        studentName: data.studentName,
+        teacherName: data.teacherName,
+        dob: data.dob,
+        placeOfBirth: data.placeOfBirth,
+        nationalId: data.nationalId
       },{merge:true});
     } else {
       await db.collection('certificates').doc(docId).set({
