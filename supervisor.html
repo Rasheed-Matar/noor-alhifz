@@ -1027,6 +1027,7 @@ select.form-input{cursor:pointer;}
           <select class="form-input" id="repPeriod" onchange="onRepPeriodChange()">
             <option value="day">يومي</option>
             <option value="month">شهري</option>
+            <option value="range">فترة مخصّصة (من - إلى)</option>
           </select>
         </div>
         <div class="form-group" id="repDayGroup">
@@ -1037,15 +1038,23 @@ select.form-input{cursor:pointer;}
           <label class="form-label">اختر الشهر</label>
           <input type="month" class="form-input" id="repMonth" onchange="refreshSupervisorReportPreview()">
         </div>
+        <div class="form-group" id="repFromGroup" style="display:none;">
+          <label class="form-label">من تاريخ</label>
+          <input type="date" class="form-input" id="repFrom" onchange="refreshSupervisorReportPreview()">
+        </div>
+        <div class="form-group" id="repToGroup" style="display:none;">
+          <label class="form-label">إلى تاريخ</label>
+          <input type="date" class="form-input" id="repTo" onchange="refreshSupervisorReportPreview()">
+        </div>
         <div class="form-group">
           <label class="form-label">نطاق الحلقات</label>
           <select class="form-input" id="repScope" onchange="onRepScopeChange()">
             <option value="all">لجميع الحلقات</option>
-            <option value="one">حلقة واحدة</option>
+            <option value="one">محفّظ واحد</option>
           </select>
         </div>
         <div class="form-group" id="repCircleGroup" style="display:none;">
-          <label class="form-label">اختر الحلقة</label>
+          <label class="form-label">اختر المحفّظ</label>
           <select class="form-input" id="repCircle" onchange="refreshSupervisorReportPreview()"></select>
         </div>
         <div class="form-group">
@@ -4205,6 +4214,9 @@ function openSupervisorReportModal(){
   const now=new Date();
   document.getElementById('repDay').value=now.toISOString().slice(0,10);
   document.getElementById('repMonth').value=now.toISOString().slice(0,7);
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  document.getElementById('repFrom').value=monthStart.toISOString().slice(0,10);
+  document.getElementById('repTo').value=now.toISOString().slice(0,10);
   document.getElementById('repPeriod').value='day';
   document.getElementById('repScope').value='all';
   document.getElementById('repType').value='all';
@@ -4219,14 +4231,16 @@ function openSupervisorReportModal(){
 
 function populateRepCircleOptions(){
   const sel=document.getElementById('repCircle');
-  const circles=[...new Set(getTeachers().map(t=>t.circle).filter(Boolean))].sort();
-  sel.innerHTML = circles.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option value="">لا توجد حلقات بعد</option>';
+  const names=[...new Set(getTeachers().map(t=>t.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  sel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">لا يوجد محفّظون بعد</option>';
 }
 
 function onRepPeriodChange(){
   const v=document.getElementById('repPeriod').value;
   document.getElementById('repDayGroup').style.display  = v==='day'  ?'':'none';
   document.getElementById('repMonthGroup').style.display= v==='month'?'':'none';
+  document.getElementById('repFromGroup').style.display = v==='range'?'':'none';
+  document.getElementById('repToGroup').style.display   = v==='range'?'':'none';
 }
 function onRepScopeChange(){
   const v=document.getElementById('repScope').value;
@@ -4248,6 +4262,14 @@ function getSupervisorReportFiltered(){
     from = new Date(dayVal); from.setHours(0,0,0,0);
     to   = new Date(dayVal); to.setHours(23,59,59,999);
     label= 'تقرير يومي — ' + from.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  } else if(period==='range'){
+    const fromVal = document.getElementById('repFrom').value;
+    const toVal   = document.getElementById('repTo').value;
+    if(!fromVal||!toVal){toast('⚠️ اختر تاريخي البداية والنهاية');return null;}
+    from = new Date(fromVal); from.setHours(0,0,0,0);
+    to   = new Date(toVal); to.setHours(23,59,59,999);
+    if(from>to){toast('⚠️ يجب أن يسبق تاريخ البداية تاريخ النهاية');return null;}
+    label= 'تقرير مخصّص — من '+from.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'})+' إلى '+to.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'});
   } else {
     const monthVal = document.getElementById('repMonth').value;
     if(!monthVal){toast('⚠️ اختر شهراً');return null;}
@@ -4263,11 +4285,14 @@ function getSupervisorReportFiltered(){
   });
   if(typeF!=='all') results=results.filter(r=>r.type===typeF);
 
-  let circleFilterLabel='جميعُ الحلقاتِ';
+  let circleFilterLabel='جميعُ المحفّظينَ';
+  let grouped=false;
   if(scope==='one'){
-    if(!circleF){toast('⚠️ اختر الحلقة');return null;}
-    results=results.filter(r=>getTeacherCircle(r.teacherName)===circleF);
+    if(!circleF){toast('⚠️ اختر المحفّظ');return null;}
+    results=results.filter(r=>r.teacherName===circleF);
     circleFilterLabel=circleF;
+  } else {
+    grouped=true; // تجميع النتائج حسب المحفّظ عند عرض جميع الحلقات معاً
   }
 
   // إغناء كل نتيجة ببيانات الطالب الإضافية (الهوية، تاريخ الميلاد، مكان الميلاد)
@@ -4278,13 +4303,25 @@ function getSupervisorReportFiltered(){
       _dob: sd.dob?fmtDate(sd.dob):'—',
       _pob: sd.placeOfBirth||'—'
     };
-  }).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+  });
+
+  // الترتيب: عند عرض جميع الحلقات، تُجمَّع نتائج كل محفّظ معاً (أبجدياً حسب اسمه)
+  // وداخل كل مجموعة تُرتَّب النتائج تنازلياً حسب تاريخ الاختبار. أما عند اختيار محفّظ واحد فيكفي الترتيب حسب التاريخ.
+  if(grouped){
+    results.sort((a,b)=>{
+      const c=(a.teacherName||'').localeCompare(b.teacherName||'','ar');
+      if(c!==0) return c;
+      return new Date(b.examDate)-new Date(a.examDate);
+    });
+  } else {
+    results.sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
+  }
 
   const typeFilterLabel = typeF==='all'?'الكل':typeLabel[typeF];
-  return {results, label, typeFilterLabel, circleFilterLabel};
+  return {results, label, typeFilterLabel, circleFilterLabel, grouped};
 }
 
-function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilterLabel, orientation){
+function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilterLabel, orientation, grouped){
   orientation = orientation || 'landscape';
   const isPortrait = orientation === 'portrait';
   const now=new Date();
@@ -4294,7 +4331,15 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
   const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
   const logoSrc=(document.querySelector('.nav-logo img')||{}).src||'';
 
-  const rows=results.map((r,i)=>`
+  let rows='';
+  let lastTeacher=null;
+  results.forEach((r,i)=>{
+    if(grouped && r.teacherName!==lastTeacher){
+      lastTeacher=r.teacherName;
+      const cnt=results.filter(x=>x.teacherName===r.teacherName).length;
+      rows+=`<tr class="grp-row"><td colspan="10">📖 حلقة: ${r.teacherName||'—'} <span class="grp-count">(${cnt} نتيجة)</span></td></tr>`;
+    }
+    rows+=`
     <tr style="background:${i%2===0?'#fff':'#f5fbf7'}">
       <td style="text-align:center;color:#1a1a2e;font-size:14px;font-weight:700;">${i+1}</td>
       <td style="font-size:14px;font-weight:700;color:#1a1a2e;">${r.studentName}</td>
@@ -4306,7 +4351,8 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
       <td style="text-align:center;font-weight:800;font-size:16px;color:${r.passed?'#1b6b4a':'#c0392b'};">${r.totalScore}%</td>
       <td style="font-size:14px;font-weight:700;color:#1a1a2e;">${r.teacherName}</td>
       <td style="text-align:center;font-size:14px;font-weight:700;color:#1a1a2e;">${new Date(r.examDate).toLocaleDateString('ar-EG')}</td>
-    </tr>`).join('');
+    </tr>`;
+  });
 
   const emptyRow = results.length?'':`<tr><td colspan="10" style="text-align:center;padding:30px;color:#999;">لا توجد نتائج في هذه الفترة</td></tr>`;
 
@@ -4348,6 +4394,8 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
   th{color:#fff;padding:10px 10px;font-size:12.5px;font-weight:700;}
   td{padding:9px 10px;border-bottom:1px solid #eaeae0;vertical-align:middle;}
   tr:last-child td{border-bottom:none;}
+  tr.grp-row td{background:linear-gradient(135deg,#eaf6ee,#dcefe3);color:#0d4f35;font-weight:800;font-size:13.5px;padding:8px 10px;border-top:2px solid #1b6b4a;border-bottom:1px solid #bfe3cd;}
+  .grp-count{font-weight:600;font-size:11.5px;color:#4a7a5e;}
 
   /* توقيع */
   .signature-section{margin-top:30px;display:flex;justify-content:space-between;gap:14px;}
@@ -4380,7 +4428,7 @@ function buildSupervisorReportHTML(results, label, typeFilterLabel, circleFilter
   </div>
   <div class="report-meta">
     المشرفُ: <b>${currentSupervisorName}</b><br>
-    الحلقةُ: <b>${circleFilterLabel}</b><br>
+    المحفّظُ: <b>${circleFilterLabel}</b><br>
     نوعُ الاختبارِ: <b>${typeFilterLabel}</b><br>
     تاريخُ الطباعةِ: <b>${now.toLocaleDateString('ar-EG')}</b><br>
     الوقتُ: <b>${now.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</b>
@@ -4440,9 +4488,9 @@ let _repHTML='';
 function refreshSupervisorReportPreview(){
   const data=getSupervisorReportFiltered();
   if(!data) return;
-  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+  const {results,label,typeFilterLabel,circleFilterLabel,grouped}=data;
 
-  _repHTML = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation);
+  _repHTML = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation,grouped);
 
   const frame=document.getElementById('repPreviewFrame');
   const loading=document.getElementById('repPreviewLoading');
@@ -4454,14 +4502,14 @@ function refreshSupervisorReportPreview(){
 async function downloadSupervisorReport(){
   const data=getSupervisorReportFiltered();
   if(!data) return;
-  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+  const {results,label,typeFilterLabel,circleFilterLabel,grouped}=data;
 
   if(results.length===0){
     toast('⚠️ لا توجد نتائج في هذه الفترة لتنزيلها');
     return;
   }
 
-  const html = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation);
+  const html = buildSupervisorReportHTML(results,label,typeFilterLabel,circleFilterLabel,repOrientation,grouped);
   _repHTML = html;
 
   const btn=document.getElementById('repDownloadBtn');
@@ -4927,7 +4975,7 @@ async function downloadDataReport(){
 function downloadExamReportExcel(){
   const data=getSupervisorReportFiltered();
   if(!data){return;}
-  const {results,label,typeFilterLabel,circleFilterLabel}=data;
+  const {results,label,typeFilterLabel,circleFilterLabel,grouped}=data;
   if(!results.length){toast('⚠️ لا توجد نتائج في هذه الفترة');return;}
 
   const now=new Date();
@@ -4936,12 +4984,30 @@ function downloadExamReportExcel(){
   const avg=results.length?Math.round(results.reduce((s,r)=>s+r.totalScore,0)/results.length):0;
   const typeLabel={scattered:'متفرّق',combined:'مجتمع'};
 
+  const dataRows=[];
+  let lastTeacher=null;
+  results.forEach((r,i)=>{
+    if(grouped && r.teacherName!==lastTeacher){
+      lastTeacher=r.teacherName;
+      const cnt=results.filter(x=>x.teacherName===r.teacherName).length;
+      dataRows.push({groupHeader:`📖 حلقة: ${r.teacherName||'—'}  (${cnt} نتيجة)`});
+    }
+    dataRows.push([
+      i+1,r.studentName,r._nid,r._dob,r._pob,
+      typeLabel[r.type]||r.type,
+      'الجزء '+r.juzNum,
+      {v:r.totalScore+'%', clr:r.passed?'1B6B4A':'C0392B', bg:r.passed?'E8F5ED':'FFF5F5'},
+      r.teacherName,
+      new Date(r.examDate).toLocaleDateString('ar-EG')
+    ]);
+  });
+
   const xl=buildXlsx({
     title:'تقرير نتائج الاختبارات',
     subtitle:label,
     meta:[
       ['المشرف',currentSupervisorName,'نوع الاختبار',typeFilterLabel],
-      ['الحلقة',circleFilterLabel,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
+      ['المحفّظ',circleFilterLabel,'تاريخ الطباعة',now.toLocaleDateString('ar-EG')],
     ],
     stats:[
       {lbl:'إجمالي الاختبارات',val:results.length,fg:'1B6B4A',bg:'E8F5ED'},
@@ -4951,14 +5017,7 @@ function downloadExamReportExcel(){
     ],
     headers:['#','اسم الطالب','رقم الهوية','تاريخ الميلاد','مكان الميلاد','نوع الاختبار','الجزء','العلامة','المحفّظ','تاريخ الاختبار'],
     colWidths:[4,24,14,14,14,10,8,9,22,14],
-    rows:results.map((r,i)=>[
-      i+1,r.studentName,r._nid,r._dob,r._pob,
-      typeLabel[r.type]||r.type,
-      'الجزء '+r.juzNum,
-      {v:r.totalScore+'%', clr:r.passed?'1B6B4A':'C0392B', bg:r.passed?'E8F5ED':'FFF5F5'},
-      r.teacherName,
-      new Date(r.examDate).toLocaleDateString('ar-EG')
-    ]),
+    rows:dataRows,
     totRow:[{v:'الإجمالي',span:7},'—',pass+' ناجح / '+fail+' راسب','—','متوسط: '+avg+'%'],
     filename:'تقرير_نتائج_الاختبارات'
   });
@@ -5138,6 +5197,13 @@ function buildXlsx({title,subtitle,meta,stats,headers,colWidths,rows,totRow,file
   // ── صفوف البيانات ──
   rows.forEach((row,ri)=>{
     ws['!rows'][R-1]={hpx:22};
+    if(row && typeof row==='object' && !Array.isArray(row) && row.groupHeader!==undefined){
+      const bTop={top:bdr('medium',MG),bottom:bdr('medium',MG),left:bdr('medium',MG),right:bdr('medium',MG)};
+      ws[COLS[0]+R]=ce(row.groupHeader,{font:f(true,12,MG),fill:fl('EAF6EE'),alignment:al('right'),border:bTop});
+      mg(R-1,0,R-1,nc-1); for(let c=1;c<nc;c++) ws[COLS[c]+R]=ce('',{fill:fl('EAF6EE'),border:bTop});
+      R++;
+      return;
+    }
     const alt=ri%2===1;
     row.forEach((v,ci)=>{
       const isObj=typeof v==='object'&&v!==null&&!Array.isArray(v);
