@@ -965,6 +965,21 @@ select.form-input{cursor:pointer;}
           <button class="btn-save" style="width:100%;" onclick="saveAdminSettings()">حفظ التغييرات</button>
         </div>
       </div>
+
+      <!-- Sub-supervisors management -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header">
+          <div class="card-title">👥 مشرفون فرعيون</div>
+          <button class="card-action" onclick="openAddSubAdmin()">+ إضافة مشرف فرعي</button>
+        </div>
+        <div style="padding:0 16px 4px;font-size:12.5px;color:#7a8a7a;">أشخاص يمكنهم الدخول إلى نفس لوحة المشرف الخاصة بك، مع تعليقة توضيحية خاصة بك لتمييز كل حساب.</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>التعليقة</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="subAdminsTable"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </main>
@@ -1009,6 +1024,25 @@ select.form-input{cursor:pointer;}
     <div class="modal-footer">
       <button class="btn-save" onclick="saveNewExaminer()">إضافة المختبر</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-add-examiner')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Sub-Supervisor -->
+<div class="modal-overlay" id="modal-add-subadmin">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-head-title">إضافة مشرف فرعي</span><button class="modal-close" onclick="closeModal('modal-add-subadmin')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group-s" style="margin-bottom:12px;grid-column:1/-1;"><label class="form-label-s">الاسم <span style="color:red">*</span></label><input class="form-inp-s" id="asa-name" placeholder="اسم الشخص" style="margin-top:6px;"></div>
+        <div class="form-group-s" style="margin-bottom:12px;"><label class="form-label-s">رقم الهوية (يُستخدم للدخول) <span style="color:red">*</span></label><input class="form-inp-s" id="asa-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;margin-top:6px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+        <div class="form-group-s" style="margin-bottom:12px;"><label class="form-label-s">كلمة مرور مؤقتة (6 أحرف فأكثر) <span style="color:red">*</span></label><input class="form-inp-s" id="asa-pass" type="text" placeholder="يمكنه تغييرها لاحقاً" style="margin-top:6px;"></div>
+        <div class="form-group-s" style="margin-bottom:4px;grid-column:1/-1;"><label class="form-label-s">تعليقة (لتذكيرك بمن هو صاحب الحساب) </label><textarea class="form-inp-s" id="asa-note" rows="2" placeholder="مثال: ابن أخي، يتابع الحلقات المسائية" style="margin-top:6px;resize:vertical;width:100%;box-sizing:border-box;font-family:inherit;"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveNewSubAdmin()">إضافة المشرف الفرعي</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-add-subadmin')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1511,6 +1545,11 @@ auth.onAuthStateChanged(user=>{
   if(cached){
     try{
       const d = JSON.parse(cached);
+      if(d.uid === user.uid && d.role === 'admin' && d.isSubAdmin && d.status === 'rejected'){
+        sessionStorage.removeItem('userCache');
+        auth.signOut().then(()=>{ window.location.href='login.html'; });
+        return;
+      }
       if(d.uid === user.uid && d.role === 'admin'){
         currentUser=user;
         currentSupervisorName=d.name||'المشرف';
@@ -1528,8 +1567,12 @@ auth.onAuthStateChanged(user=>{
 
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists||doc.data().role!=='admin'){ window.location.href='login.html'; return; }
-    currentUser=user;
     const d=doc.data();
+    if(d.isSubAdmin && d.status==='rejected'){
+      auth.signOut().then(()=>{ window.location.href='login.html'; });
+      return;
+    }
+    currentUser=user;
     currentSupervisorName=d.name||'المشرف';
     document.getElementById('navAvatar').textContent=ini(d.name||'م');
     document.getElementById('navUserName').textContent=d.name||'المشرف';
@@ -3715,6 +3758,114 @@ async function saveNewExaminer(){
     if(e.code==='auth/email-already-in-use') msg='رقم الهوية مسجّل بالفعل';
     toast('⚠️ خطأ: '+msg);
   }).finally(()=>{btn.textContent='إضافة المختبر';btn.disabled=false;});
+}
+
+// ════════════════════════════════════════
+//  SUB-SUPERVISORS (مشرفون فرعيون) — حسابات إضافية لها نفس صلاحية المشرف
+// ════════════════════════════════════════
+function openAddSubAdmin(){
+  ['asa-name','asa-nid','asa-pass','asa-note'].forEach(id=>document.getElementById(id).value='');
+  om('modal-add-subadmin');
+}
+
+async function renderSubAdmins(){
+  try{
+    const snap=await db.collection('users').where('isSubAdmin','==',true).get();
+    const subs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+    const tb=document.getElementById('subAdminsTable');
+    if(!subs.length){
+      tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مشرفون فرعيون بعد</td></tr>';
+      return;
+    }
+    const statusLabel={approved:'نشط',rejected:'موقوف'};
+    const statusCls={approved:'badge-ok',rejected:'badge-bad'};
+    tb.innerHTML=subs.map(s=>`
+      <tr>
+        <td><b>${s.name||'—'}</b></td>
+        <td style="direction:ltr;text-align:right;">${s.nationalId||'—'}</td>
+        <td style="max-width:220px;white-space:normal;color:#5a6a5a;">${s.note?s.note.replace(/</g,'&lt;'):'—'} <button class="btn-tbl-act" onclick="editSubAdminNote('${s.id}')" title="تعديل التعليقة" style="padding:2px 8px;">✏️</button></td>
+        <td><span class="badge ${statusCls[s.status]||'badge-warn'}">${statusLabel[s.status]||s.status}</span></td>
+        <td>
+          ${s.status!=='approved'?`<button class="btn-tbl-act" onclick="setSubAdminStatus('${s.id}','approved')">تفعيل</button>`:''}
+          ${s.status==='approved'?`<button class="btn-tbl-act bad" onclick="setSubAdminStatus('${s.id}','rejected')">إيقاف</button>`:''}
+          <button class="btn-tbl-act bad" onclick="deleteSubAdmin('${s.id}','${(s.name||'').replace(/'/g,"")}')">حذف</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e){ console.log('renderSubAdmins err',e); }
+}
+
+async function setSubAdminStatus(uid,status){
+  try{
+    await db.collection('users').doc(uid).update({status});
+    toast(status==='approved'?'✅ تم تفعيل الحساب':'⏸️ تم إيقاف الحساب');
+    renderSubAdmins();
+  } catch(e){ toast('⚠️ خطأ: '+e.message); }
+}
+
+function editSubAdminNote(uid){
+  db.collection('users').doc(uid).get().then(doc=>{
+    const cur=doc.exists?(doc.data().note||''):'';
+    const val=prompt('تعديل التعليقة:',cur);
+    if(val===null) return;
+    db.collection('users').doc(uid).update({note:val.trim()}).then(()=>{
+      toast('✅ تم تحديث التعليقة');
+      renderSubAdmins();
+    }).catch(e=>toast('⚠️ خطأ: '+e.message));
+  });
+}
+
+function deleteSubAdmin(uid,name){
+  confirmAction('حذف الحساب','سيتم حذف حساب "'+name+'" نهائياً ولن يتمكن من الدخول بعد الآن. لا يمكن التراجع عن هذا الإجراء.',()=>{
+    db.collection('users').doc(uid).delete().then(()=>{
+      toast('🗑️ تم حذف الحساب');
+      renderSubAdmins();
+    }).catch(e=>toast('⚠️ خطأ: '+e.message));
+  });
+}
+
+async function saveNewSubAdmin(){
+  const name=document.getElementById('asa-name').value.trim();
+  const nid=document.getElementById('asa-nid').value.trim();
+  const pass=document.getElementById('asa-pass').value;
+  const note=document.getElementById('asa-note').value.trim();
+
+  if(!name){toast('⚠️ أدخل الاسم');return;}
+  if(!isValidNid(nid)){toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام بالضبط');return;}
+  if(!pass||pass.length<6){toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف فأكثر');return;}
+
+  const btn=event.target; btn.textContent='⏳ جارٍ التحقق...'; btn.disabled=true;
+
+  const existing=await findExistingUserByNid(nid).catch(()=>null);
+  if(existing){
+    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    btn.textContent='إضافة المشرف الفرعي'; btn.disabled=false;
+    return;
+  }
+
+  const email=nidToEmail(nid);
+  btn.textContent='⏳ جارٍ الإنشاء...';
+  secondaryAuth.createUserWithEmailAndPassword(email,pass).then(cred=>{
+    const newUid=cred.user.uid;
+    return secondaryAuth.signOut().then(()=>{
+      return db.collection('users').doc(newUid).set({
+        name, nationalId:nid,
+        role:'admin', isSubAdmin:true, status:'approved',
+        note, createdBySubAdminOf:currentUser.uid, createdByName:currentSupervisorName,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+  }).then(()=>{
+    toast('✅ تم إضافة المشرف الفرعي بنجاح، يمكنه الدخول برقم هويته وكلمة المرور المؤقتة');
+    closeModal('modal-add-subadmin');
+    renderSubAdmins();
+  }).catch(e=>{
+    let msg=e.message;
+    if(e.code==='auth/email-already-in-use') msg='رقم الهوية هذا مسجّل بالفعل';
+    toast('⚠️ خطأ: '+msg);
+  }).finally(()=>{
+    btn.textContent='إضافة المشرف الفرعي'; btn.disabled=false;
+  });
 }
 
 async function loadExamResultsAdmin(){
@@ -6008,6 +6159,7 @@ const _origShowPage=showPage;
 showPage=function(page){
   _origShowPage(page);
   if(page==='quality'){renderExaminers();loadExamResultsAdmin();}
+  if(page==='settings'){renderSubAdmins();}
 };
 
 // ════════════════════════════════════════
