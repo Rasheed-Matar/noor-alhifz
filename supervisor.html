@@ -1122,11 +1122,11 @@ select.form-input{cursor:pointer;}
           <label class="form-label">نطاقُ الطلابِ</label>
           <select class="form-input" id="dataRepStudentScope" onchange="onDataRepScopeChange()">
             <option value="all">جميعُ الطلابِ (كلُّ حلقةٍ في صفحةٍ)</option>
-            <option value="one">حلقةٌ واحدةٌ فقط</option>
+            <option value="one">محفّظٌ واحدٌ فقط</option>
           </select>
         </div>
         <div class="form-group" id="dataRepCircleGroup" style="display:none;">
-          <label class="form-label">اختر الحلقة</label>
+          <label class="form-label">اختر المحفّظ</label>
           <select class="form-input" id="dataRepCircle" onchange="refreshDataReportPreview()"></select>
         </div>
         <div class="form-group" id="dataRepStatusGroup">
@@ -4680,10 +4680,21 @@ function onDataRepScopeChange(){
   refreshDataReportPreview();
 }
 
+// ═══════════════════════════════════════════════════════════
+//  قائمة "اختر المحفّظ" — تُبنى بالاعتماد على معرّف كل محفّظ (فريد
+//  دائماً)، لا على اسم الحلقة النصّي. سابقاً كانت القائمة تُبنى من
+//  أسماء الحلقات (t.circle) وتُزال التكرارات بينها بـ Set، فإذا كتب
+//  محفّظانِ مختلفانِ اسمَ حلقةٍ متطابقاً (نصّياً) بالخطأ، كان اختيار
+//  ذلك الاسم من القائمة يسحب طلابَ الاثنين مدموجين معاً في تقريرٍ
+//  واحدٍ دون قصدٍ. الآن كل خيارٍ يمثّل محفّظاً واحداً بعينه (بمعرّفه)،
+//  فلا يمكن أن يحدث دمجٌ غير مقصودٍ أبداً مهما تشابهت أسماء الحلقات.
+// ═══════════════════════════════════════════════════════════
 function populateDataRepCircleOptions(){
   const sel=document.getElementById('dataRepCircle');
-  const circles=[...new Set(getTeachers().map(t=>t.circle||'حلقة القرآن'))].sort();
-  sel.innerHTML = circles.map(c=>`<option value="${c}">${c}</option>`).join('') || '<option value="">لا توجد حلقات بعد</option>';
+  const teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  sel.innerHTML = teachers.map(t=>
+    `<option value="${t.id}">${t.name||'—'} (${t.circle||'حلقة القرآن'})</option>`
+  ).join('') || '<option value="">لا يوجد محفّظونَ بعد</option>';
 }
 
 // ── جلب وتجميع بيانات الطلاب حسب النطاق المختار ──
@@ -4692,15 +4703,16 @@ function getStudentsReportData(){
   const teachers = getTeachers();
 
   if(scope==='one'){
-    const circle = document.getElementById('dataRepCircle').value;
-    if(!circle){ toast('⚠️ اختر الحلقة'); return null; }
-    const groupTeachers = teachers.filter(t=>(t.circle||'حلقة القرآن')===circle);
-    let students=[];
-    groupTeachers.forEach(t=>{ (t.students||[]).forEach(s=>students.push({...s, teacherName:t.name})); });
+    const teacherId = document.getElementById('dataRepCircle').value;
+    if(!teacherId){ toast('⚠️ اختر المحفّظ'); return null; }
+    const t = teachers.find(x=>x.id===teacherId);
+    if(!t){ toast('⚠️ لم يُعثر على بيانات هذا المحفّظِ'); return null; }
+    const circle = t.circle||'حلقة القرآن';
+    const students = (t.students||[]).map(s=>({...s, teacherName:t.name}));
     return {
       mode:'one',
       circleLabel: circle,
-      groups: [{ circleLabel: circle, teacherNames: groupTeachers.map(t=>t.name).join('، ')||'—', students }]
+      groups: [{ circleLabel: circle, teacherNames: t.name||'—', students }]
     };
   }
 
