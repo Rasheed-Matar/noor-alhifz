@@ -463,11 +463,11 @@ function checkUserStatus(user) {
     // ── ROUTING LOGIC ──
     sessionStorage.setItem('userCache', JSON.stringify({ uid: user.uid, ...d }));
     if (d.role === 'admin') {
-      if (d.isSubAdmin && d.status === 'rejected') {
-        showView('rejected');
-        return;
-      }
       navigateTo('supervisor.html');
+      return;
+    }
+    if (d.role === 'fieldSupervisor' && d.status === 'approved') {
+      navigateTo('field-supervisor.html');
       return;
     }
     if (d.role === 'examiner' && d.status === 'approved') {
