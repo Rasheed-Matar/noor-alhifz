@@ -477,6 +477,10 @@ select.form-input{cursor:pointer;}
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
         حضور المحفظين
       </button>
+      <button class="nav-item" id="nav-teacherRating" onclick="showPage('teacherRating')" style="color:#7a4fbf;">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        تقييمات المحفظين
+      </button>
       <button class="nav-item" id="nav-quality" onclick="showPage('quality')" style="color:var(--gold3);">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
         مختبر الجودة
@@ -731,6 +735,39 @@ select.form-input{cursor:pointer;}
 
       <div class="card">
         <div id="teacherAttList" style="padding:14px;"></div>
+      </div>
+    </div>
+
+    <!-- ═══ TEACHER RATINGS (تقييمات المحفّظين) ═══ -->
+    <div class="page-view" id="page-teacherRating">
+      <div class="page-header">
+        <div><div class="page-title">⭐ تقييمات المحفّظين</div><div class="page-subtitle">تقييم يومي لكل محفّظ حسب نسبة حضور طلابه المعتمَدين، وحفظهم، ومراجعتهم</div></div>
+      </div>
+      <div class="fs-note" style="padding:0 0 14px;">
+        يُحتسَب التقييم فقط على "الطلاب المعتمَدين" لكل محفّظ — اضغط "تعديل الطلاب المعتمَدين" بجانب أي محفّظ لاختيار من تريد أن يُقيَّم عليهم (يمكنك تغيير الاختيار متى شئت). المحفّظ نفسه يستمر بإدخال بيانات جميع طلابه كالمعتاد؛ الاختيار هنا يؤثر فقط على حساب التقييم.
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-dot" style="background:#7a4fbf;"></span>التقييم اليومي</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div class="mon-datepicker" id="ratingDatePicker">
+              <button type="button" class="mon-datepicker-btn" id="ratingDatePickerBtn" onclick="toggleRatingDatePicker()">
+                <span class="mdp-left">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span id="ratingDatePickerLabel">اليوم</span>
+                </span>
+                <svg class="mdp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="mon-datepicker-panel" id="ratingDatePickerPanel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>المحفّظ</th><th>الحلقة</th><th>الطلاب المعتمَدون</th><th>نسبة الحضور</th><th>نسبة الحفظ</th><th>نسبة المراجعة</th><th>التقييم الإجمالي</th><th></th></tr></thead>
+            <tbody id="teacherRatingTable"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1054,6 +1091,27 @@ select.form-input{cursor:pointer;}
     <div class="modal-footer">
       <button class="btn-save" onclick="saveNewFieldSupervisor()">إضافة المشرف الميداني</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-add-field-supervisor')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Approved Evaluation Students -->
+<div class="modal-overlay" id="modal-eval-students">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-head-title">الطلاب المعتمَدون للتقييم — <span id="evalStudentsTeacherName"></span></span><button class="modal-close" onclick="closeModal('modal-eval-students')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ink2);margin-bottom:10px;">
+        حدّد الطلاب الذين سيُحتسَب تقييم هذا المحفّظ (الحضور/الحفظ/المراجعة) بناءً عليهم فقط. باقي طلابه تبقى بياناتهم كما هي، ولا تدخل في حساب التقييم.
+      </p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn-cancel-modal" style="padding:6px 12px;font-size:12px;" onclick="toggleAllEvalStudents(true)">تحديد الكل</button>
+        <button class="btn-cancel-modal" style="padding:6px 12px;font-size:12px;" onclick="toggleAllEvalStudents(false)">إلغاء تحديد الكل</button>
+      </div>
+      <div id="evalStudentsList" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveEvalStudentSelection()">💾 حفظ الاختيار</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-eval-students')">إلغاء</button>
     </div>
   </div>
 </div>
@@ -1649,6 +1707,7 @@ function startListening(){
           allUsers[idx].teacherAttendance=d.teacherAttendance||{};
           allUsers[idx].exams=d.exams||[]; // ترشيحات الاختبارات — تُستخدم في متابعة التفاعل اليومي
           allUsers[idx].fieldSupervisorId=d.fieldSupervisorId||''; // المشرف الميداني المسؤول عن هذا المحفّظ
+          allUsers[idx].evalStudentIds=d.evalStudentIds||[]; // الطلاب المعتمَدون لحساب تقييم هذا المحفّظ
         }
         renderEverything();
       },e=>console.log('userdata err',e));
@@ -2451,6 +2510,10 @@ function showPage(page){
   if(page==='stats'){
     buildMonDateOptions();
     refreshDailyMonitoring(monSelectedDate);
+  }
+  if(page==='teacherRating'){
+    buildRatingDateOptions();
+    refreshTeacherRatings(ratingSelectedDate);
   }
   if(page==='certificates'){
     populateCertStudents();
@@ -3673,7 +3736,194 @@ function sendActivityReminder(uid){
   openWA(t.phone,msg);
 }
 
-['modal-confirm','modal-detail','modal-add-examiner','modal-add-field-supervisor','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
+// ════════════════════════════════════════
+//  ⭐ تقييمات المحفّظين — حضور/حفظ/مراجعة يومية، محتسَبة فقط على
+//  "الطلاب المعتمَدين" لكل محفّظ (حقل evalStudentIds على وثيقة
+//  userdata الخاصة به). إن لم يُحدَّد أي اختيار بعد، تُحتسَب النسب
+//  على جميع طلابه النشطين افتراضياً، حتى يعمل التقييم فوراً بلا
+//  حاجة لإعداد مسبق.
+// ════════════════════════════════════════
+let ratingSelectedDate=todayISO();
+let ratingCalYear, ratingCalMonth;
+{ const t=new Date(); ratingCalYear=t.getFullYear(); ratingCalMonth=t.getMonth(); }
+
+function buildRatingDateOptions(){
+  const m=ratingSelectedDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){ ratingCalYear=+m[1]; ratingCalMonth=+m[2]-1; }
+  renderRatingCalendar();
+  updateRatingDatePickerLabel();
+}
+function updateRatingDatePickerLabel(){
+  const btnLbl=document.getElementById('ratingDatePickerLabel');
+  if(!btnLbl) return;
+  btnLbl.textContent = ratingSelectedDate===todayISO() ? 'اليوم — '+ratingSelectedDate
+    : (ratingSelectedDate===dateOffsetISO(-1) ? 'أمس — '+ratingSelectedDate : ratingSelectedDate);
+}
+function ratingCalNav(delta){
+  ratingCalMonth+=delta;
+  if(ratingCalMonth<0){ ratingCalMonth=11; ratingCalYear--; }
+  if(ratingCalMonth>11){ ratingCalMonth=0; ratingCalYear++; }
+  renderRatingCalendar();
+}
+function renderRatingCalendar(){
+  const panel=document.getElementById('ratingDatePickerPanel');
+  if(!panel) return;
+  const todayStr=todayISO();
+  const now=new Date();
+  const isCurrentViewMonth = ratingCalYear===now.getFullYear() && ratingCalMonth===now.getMonth();
+  const firstOfMonth=new Date(ratingCalYear,ratingCalMonth,1);
+  const startOffset=firstOfMonth.getDay();
+  const daysInMonth=new Date(ratingCalYear,ratingCalMonth+1,0).getDate();
+  const daysInPrevMonth=new Date(ratingCalYear,ratingCalMonth,0).getDate();
+  const cells=[];
+  for(let i=startOffset-1;i>=0;i--){ cells.push({day:daysInPrevMonth-i, otherMonth:true, disabled:true, iso:null}); }
+  for(let d=1; d<=daysInMonth; d++){
+    const iso=`${ratingCalYear}-${String(ratingCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells.push({day:d, otherMonth:false, disabled: iso>todayStr, iso, isToday: iso===todayStr, selected: iso===ratingSelectedDate});
+  }
+  while(cells.length%7!==0){ cells.push({day:'', otherMonth:true, disabled:true, iso:null}); }
+  const cellsHtml=cells.map(c=>{
+    if(!c.iso) return `<div class="mdp-cal-day other-month disabled">${c.day}</div>`;
+    const cls=['mdp-cal-day'];
+    if(c.disabled) cls.push('disabled');
+    if(c.isToday) cls.push('today');
+    if(c.selected) cls.push('selected');
+    return `<div class="${cls.join(' ')}" ${c.disabled?'':`onclick="selectRatingDate('${c.iso}')"`}>${c.day}</div>`;
+  }).join('');
+  panel.innerHTML = `
+    <div class="mdp-cal-head">
+      <div class="mdp-cal-nav" onclick="ratingCalNav(-1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 6 9 12 15 18"/></svg></div>
+      <div class="mdp-cal-title">${MON_MONTH_NAMES[ratingCalMonth]} ${ratingCalYear}</div>
+      <div class="mdp-cal-nav${isCurrentViewMonth?' disabled':''}" ${isCurrentViewMonth?'':'onclick="ratingCalNav(1)"'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+    <div class="mdp-cal-weekdays">${MON_WEEKDAYS.map(w=>`<div>${w}</div>`).join('')}</div>
+    <div class="mdp-cal-grid">${cellsHtml}</div>
+    <div class="mdp-cal-footer">
+      <div class="mdp-cal-quick${ratingSelectedDate===todayStr?' active':''}" onclick="selectRatingDate('${todayStr}')">اليوم</div>
+      <div class="mdp-cal-quick${ratingSelectedDate===dateOffsetISO(-1)?' active':''}" onclick="selectRatingDate('${dateOffsetISO(-1)}')">أمس</div>
+    </div>`;
+}
+function toggleRatingDatePicker(forceClose){
+  const panel=document.getElementById('ratingDatePickerPanel');
+  const btn=document.getElementById('ratingDatePickerBtn');
+  if(!panel||!btn) return;
+  const shouldOpen = forceClose===true ? false : !panel.classList.contains('open');
+  panel.classList.toggle('open', shouldOpen);
+  btn.classList.toggle('open', shouldOpen);
+}
+function selectRatingDate(iso){
+  ratingSelectedDate=iso;
+  const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){ ratingCalYear=+m[1]; ratingCalMonth=+m[2]-1; }
+  renderRatingCalendar(); updateRatingDatePickerLabel(); toggleRatingDatePicker(true);
+  refreshTeacherRatings(ratingSelectedDate);
+}
+document.addEventListener('click', e=>{
+  const wrap=document.getElementById('ratingDatePicker');
+  if(wrap && !wrap.contains(e.target)) toggleRatingDatePicker(true);
+});
+
+let ratingUnsubs=[];
+function refreshTeacherRatings(date){
+  ratingUnsubs.forEach(u=>u());
+  ratingUnsubs=[];
+  const teachers=getTeachers();
+  teachers.forEach(t=>{
+    const idx0=allUsers.findIndex(x=>x.id===t.id);
+    if(idx0>=0){ allUsers[idx0].ratingAttendance={}; allUsers[idx0].ratingSessions=[]; }
+    const u1=db.collection('userdata').doc(t.id).collection('attendance').doc(date).onSnapshot(doc=>{
+      const idx=allUsers.findIndex(x=>x.id===t.id);
+      if(idx>=0){ allUsers[idx].ratingAttendance=doc.exists?(doc.data()||{}):{}; renderTeacherRatings(); }
+    },e=>console.warn('rating — attendance listen err', t.id, e));
+    const u2=db.collection('userdata').doc(t.id).collection('sessions').where('date','==',date).onSnapshot(snap=>{
+      const idx=allUsers.findIndex(x=>x.id===t.id);
+      if(idx>=0){ allUsers[idx].ratingSessions=snap.docs.map(d=>d.data()); renderTeacherRatings(); }
+    },e=>console.warn('rating — sessions listen err', t.id, e));
+    ratingUnsubs.push(u1,u2);
+  });
+  renderTeacherRatings();
+}
+
+// الطلاب الذين يُحتسَب عليهم تقييم هذا المحفّظ: اختياره المعتمَد إن وُجد، وإلا كل طلابه النشطين
+function getEvalStudentIds(t){
+  const active=(t.students||[]).filter(s=>!s.archived);
+  const chosen=t.evalStudentIds;
+  if(chosen && chosen.length){
+    const activeIds=new Set(active.map(s=>s.id));
+    return chosen.filter(id=>activeIds.has(id));
+  }
+  return active.map(s=>s.id);
+}
+
+function renderTeacherRatings(){
+  const tb=document.getElementById('teacherRatingTable');
+  if(!tb) return;
+  const teachers=[...getTeachers()].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  if(!teachers.length){
+    tb.innerHTML='<tr><td colspan="8"><div class="empty-state">لا يوجد محفظون</div></td></tr>';
+    return;
+  }
+  const pct=(n,d)=> d>0 ? Math.round((n/d)*100) : null;
+  const badge=(p)=>{
+    if(p===null) return '<span class="badge badge-red">لا يوجد طلاب معتمَدون</span>';
+    const cls = p>=80?'badge-green' : p>=50?'badge-gold' : 'badge-red';
+    return `<span class="badge ${cls}">${p}%</span>`;
+  };
+  tb.innerHTML=teachers.map(t=>{
+    const evalIds=getEvalStudentIds(t);
+    const total=evalIds.length;
+    const attMap=t.ratingAttendance||{};
+    const presentCount=evalIds.filter(id=>attMap[id]==='present').length;
+    const sessions=(t.ratingSessions||[]).filter(s=>evalIds.includes(s.studentId));
+    const hifzCount=sessions.filter(s=>(s.hifz||[]).length>0).length;
+    const murajaaCount=sessions.filter(s=>(s.murajaa||[]).length>0).length;
+    const attPct=pct(presentCount,total), hifzPct=pct(hifzCount,total), murajaaPct=pct(murajaaCount,total);
+    const overall = total>0 ? Math.round(((attPct||0)+(hifzPct||0)+(murajaaPct||0))/3) : null;
+    return `<tr>
+      <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div></div></div></td>
+      <td>${t.circle||'—'}</td>
+      <td>${total} ${t.evalStudentIds&&t.evalStudentIds.length?'':'<span style="font-size:11px;color:var(--ink2);">(كل الطلاب — لم يُحدَّد اختيار بعد)</span>'}</td>
+      <td>${badge(attPct)}</td>
+      <td>${badge(hifzPct)}</td>
+      <td>${badge(murajaaPct)}</td>
+      <td>${overall===null?'—':`<b style="font-size:15px;">${overall}%</b>`}</td>
+      <td><button class="td-btn edit" onclick="openEvalStudentPicker('${t.id}')">تعديل الطلاب المعتمَدين</button></td>
+    </tr>`;
+  }).join('');
+}
+
+let evalPickerTeacherId=null;
+function openEvalStudentPicker(teacherId){
+  const t=allUsers.find(x=>x.id===teacherId); if(!t){ toast('⚠️ تعذّر العثور على المحفّظ'); return; }
+  evalPickerTeacherId=teacherId;
+  document.getElementById('evalStudentsTeacherName').textContent=t.name||'';
+  const active=(t.students||[]).filter(s=>!s.archived).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  const chosenSet=new Set((t.evalStudentIds&&t.evalStudentIds.length)?t.evalStudentIds:active.map(s=>s.id));
+  const list=document.getElementById('evalStudentsList');
+  if(!active.length){
+    list.innerHTML='<div class="empty-state">لا يوجد طلاب نشطون لهذا المحفّظ</div>';
+  } else {
+    list.innerHTML=active.map(s=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+        <input type="checkbox" class="eval-student-chk" value="${s.id}" ${chosenSet.has(s.id)?'checked':''} style="width:16px;height:16px;">
+        <span>${s.name}</span>
+        <span style="margin-inline-start:auto;font-size:11px;color:var(--ink2);">الجزء ${s.juz||0}</span>
+      </label>`).join('');
+  }
+  om('modal-eval-students');
+}
+function toggleAllEvalStudents(checked){
+  document.querySelectorAll('.eval-student-chk').forEach(c=>c.checked=checked);
+}
+function saveEvalStudentSelection(){
+  if(!evalPickerTeacherId) return;
+  const ids=[...document.querySelectorAll('.eval-student-chk:checked')].map(c=>c.value);
+  db.collection('userdata').doc(evalPickerTeacherId).set({evalStudentIds:ids},{merge:true})
+    .then(()=>{ toast('✅ تم حفظ الطلاب المعتمَدين للتقييم'); closeModal('modal-eval-students'); })
+    .catch(e=>toast('⚠️ خطأ: '+e.message));
+}
+
+['modal-confirm','modal-detail','modal-add-examiner','modal-add-field-supervisor','modal-eval-students','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
