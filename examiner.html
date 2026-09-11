@@ -780,8 +780,12 @@ function initLiveListeners(){
     });
     renderAll();
     const resultsTabVisible = document.getElementById('tab-results').style.display!=='none';
-    if(resultsTabVisible) renderResults(allExamResults);
+    if(resultsTabVisible) renderResults(getAllResults());
   }, err=>toast('⚠️ خطأ تحميل النتائج: '+err.message,'error'));
+}
+
+function getAllResults(){
+  return allExamResults.filter(r=>scopedTeacherIds.has(r.teacherId));
 }
 
 function getAllNominations(){
@@ -796,10 +800,6 @@ function getAllNominations(){
     });
   });
   return noms.sort((a,b)=>new Date(a.nominatedAt)-new Date(b.nominatedAt));
-}
-
-function getAllResults(){
-  return allExamResults;
 }
 
 // ════════════════════════════════════════
@@ -870,7 +870,7 @@ let resultsSearchTerm='';
 function filterResultsBySearch(val){
   resultsSearchTerm=val;
   document.getElementById('resultsSearchWrap').classList.toggle('has-val', !!val.trim());
-  renderResults(allExamResults);
+  renderResults(getAllResults());
 }
 function clearResultsSearch(){
   document.getElementById('resultsSearchInput').value='';
@@ -1627,7 +1627,7 @@ function getPDFFiltered(){
     label= 'تقرير شهري — ' + from.toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
   }
 
-  let results = allExamResults.filter(r=>{
+  let results = getAllResults().filter(r=>{
     const d=new Date(r.examDate);
     return d>=from && d<=to;
   });
@@ -1916,7 +1916,7 @@ function switchTab(name, btn){
   });
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if(name==='results') renderResults(allExamResults);
+  if(name==='results') renderResults(getAllResults());
   if(name==='nominated') refreshTeacherData();
 }
 
