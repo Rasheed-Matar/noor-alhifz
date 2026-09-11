@@ -654,10 +654,11 @@ select.form-input{cursor:pointer;}
         </div>
         <div style="padding:10px 18px 0;font-size:12px;color:var(--ink2);">
           كل مشرف ميداني مسؤول عن مجموعة من المحفّظين تحدّدها أنت من قائمة "المشرف الميداني" في جدول المحفّظين أدناه. يتابع المشرف الميداني حضور محفّظيه وإنجاز حلقاتهم ونتائج اختباراتهم، ويدير طلابهم — وتصلك إشعارات بأي حضور/غياب أو إضافة/حذف طالب يسجّله.
+          حدّد أيضاً "مختبر الجودة المسؤول" عن كل مشرف ميداني من القائمة المنسدلة في الجدول أدناه، ليقتصر عمل ذلك المختبر على اختبار الطلاب التابعين لمحفّظي هذا المشرف فقط — والمختبر غير المربوط بأي مشرف ميداني بعد لن يرى أي محفّظين في صفحته حتى تربطه.
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>الجوال</th><th>عدد المحفّظين التابعين</th><th></th></tr></thead>
+            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>الجوال</th><th>عدد المحفّظين التابعين</th><th>مختبر الجودة المسؤول</th><th></th></tr></thead>
             <tbody id="fieldSupervisorsTable"></tbody>
           </table>
         </div>
@@ -1482,6 +1483,7 @@ select.form-input{cursor:pointer;}
           </div>
         </div>
         <div class="form-group"><label class="form-label">رقم الهوية (يُستخدم للدخول) <span>*</span></label><input class="form-input" id="at-nid" type="tel" inputmode="numeric" maxlength="9" placeholder="٩ أرقام" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"></div>
+        <div class="form-group"><label class="form-label">الجنس <span>*</span></label><select class="form-input" id="at-gender"><option>محفّظ</option><option>محفّظة</option></select></div>
         <div class="form-group"><label class="form-label">تاريخ الميلاد <span>*</span></label><input class="form-input" id="at-dob" type="date"></div>
         <div class="form-group"><label class="form-label">مكان الميلاد <span>*</span></label><input class="form-input" id="at-pob" placeholder="مثال: نابلس"></div>
         <div class="form-group"><label class="form-label">رقم الجوال (واتساب) <span>*</span></label><input class="form-input" id="at-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
@@ -2280,6 +2282,7 @@ function downloadTaReportExcel(){
 // ════════════════════════════════════════
 function openAddTeacher(){
   ['at-fname','at-father','at-grand','at-family','at-nid','at-dob','at-pob','at-phone','at-circle','at-pass','at-family-count'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('at-gender').value='محفّظ';
   document.getElementById('at-dob').max = todayISO();
   om('modal-add-teacher');
 }
@@ -2346,6 +2349,7 @@ async function saveNewTeacher(){
   const grand  = document.getElementById('at-grand').value.trim();
   const family = document.getElementById('at-family').value.trim();
   const nid    = document.getElementById('at-nid').value.trim();
+  const gender = document.getElementById('at-gender').value;
   const dob    = document.getElementById('at-dob').value;
   const pob    = document.getElementById('at-pob').value.trim();
   const phone  = document.getElementById('at-phone').value.trim();
@@ -2380,7 +2384,7 @@ async function saveNewTeacher(){
     return secondaryAuth.signOut().then(()=>{
       return db.collection('users').doc(newUid).set({
         name, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
-        nationalId: nid, dob, placeOfBirth: pob,
+        nationalId: nid, gender, dob, placeOfBirth: pob,
         phone, circle: circle||'حلقة القرآن',
         familyMembersCount,
         role: 'teacher', status: 'approved', firstLogin: true,
@@ -4034,10 +4038,12 @@ async function renderFieldSupervisors(){
   try{
     const snap=await db.collection('users').where('role','==','fieldSupervisor').get();
     const list=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const examSnap=await db.collection('users').where('role','==','examiner').get();
+    const examiners=examSnap.docs.map(d=>({id:d.id,...d.data()}));
     const tb=document.getElementById('fieldSupervisorsTable');
     if(!tb) return;
     if(!list.length){
-      tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مشرفون ميدانيون بعد</td></tr>';
+      tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مشرفون ميدانيون بعد</td></tr>';
       populateFieldSupervisorSelects(list);
       return;
     }
@@ -4046,11 +4052,13 @@ async function renderFieldSupervisors(){
     const statusCls={approved:'badge-ok',pending:'badge-warn',rejected:'badge-bad'};
     tb.innerHTML=list.map(f=>{
       const count=teachers.filter(t=>t.fieldSupervisorId===f.id).length;
+      const examOptions='<option value="">— بدون —</option>'+examiners.map(ex=>`<option value="${ex.id}" ${ex.id===(f.examinerId||'')?'selected':''}>${ex.name}</option>`).join('');
       return `<tr>
         <td><b>${f.name||'—'}</b></td>
         <td style="direction:ltr;text-align:right;">${f.nationalId||'—'}</td>
         <td style="direction:ltr;text-align:right;">${f.phone||'—'}</td>
         <td>${count}</td>
+        <td><select class="fs-examiner-select" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;" onchange="assignExaminerToFieldSupervisor('${f.id}', this.value)">${examOptions}</select></td>
         <td>
           <span class="badge ${statusCls[f.status]||'badge-warn'}">${statusLabel[f.status]||f.status}</span>
           ${f.status!=='approved'?`<button class="btn-tbl-act" onclick="setFieldSupervisorStatus('${f.id}','approved')">تفعيل</button>`:''}
@@ -4060,6 +4068,13 @@ async function renderFieldSupervisors(){
     }).join('');
     populateFieldSupervisorSelects(list);
   } catch(e){ console.log('renderFieldSupervisors err',e); }
+}
+
+// يربط مشرفاً ميدانياً بمختبر جودة مسؤول عن اختبار طلاب محفّظيه (حقل مفرد examinerId على وثيقة المشرف الميداني نفسه في users)
+function assignExaminerToFieldSupervisor(fieldSupervisorId, examinerId){
+  db.collection('users').doc(fieldSupervisorId).set({examinerId: examinerId||''},{merge:true})
+    .then(()=>toast('✅ تم تحديث مختبر الجودة المسؤول'))
+    .catch(e=>toast('⚠️ خطأ: '+e.message));
 }
 
 // يملأ كل قوائم "المشرف الميداني" المنسدلة في جدول المحفّظين، محافظاً على القيمة المختارة حالياً لكل محفّظ
