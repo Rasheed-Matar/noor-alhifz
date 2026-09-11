@@ -245,6 +245,9 @@ tr:hover td{background:#fdf9f2;}
     </div>
   </div>
 
+  <!-- Field supervisor scope banner: شارة المشرف الميداني المسؤول، أو قائمة اختيار عند تعدّده -->
+  <div class="pass-banner" id="fsFilterBanner" style="display:none;background:linear-gradient(135deg,#1b3a5c,#0e2438);"></div>
+
   <!-- Stats -->
   <div class="stats-row">
     <div class="stat-card">
@@ -509,7 +512,10 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // ════════════════════════════════════════
 let currentUser = null, currentExaminerDoc = null;
 let allTeachers = [], allTeacherData = {}, allExamResults = [];
-let unsubUsers=null, unsubResults=null, unsubSettings=null, _teacherDataInterval=null;
+let rawTeachers = []; // كل المحفّظين المعتمدين قبل فلترة المشرف الميداني — allTeachers هي النتيجة المُفلترة منها فعلياً
+let myFieldSupervisors = []; // المشرفون الميدانيون المرتبطون بهذا المختبر (examinerId على وثيقة المشرف الميداني)
+let selectedFieldSupervisorId = ''; // عند تعدّد المشرفين المرتبطين، أيّهم يعرض/يختبر المختبر محفّظيه حالياً
+let unsubUsers=null, unsubResults=null, unsubSettings=null, unsubMySupervisors=null, _teacherDataInterval=null;
 let passingGrade = 70;
 let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
 
@@ -571,6 +577,7 @@ function doLogout(){
   if(unsubUsers){unsubUsers();unsubUsers=null;}
   if(unsubResults){unsubResults();unsubResults=null;}
   if(unsubSettings){unsubSettings();unsubSettings=null;}
+  if(unsubMySupervisors){unsubMySupervisors();unsubMySupervisors=null;}
   if(_teacherDataInterval){clearInterval(_teacherDataInterval);_teacherDataInterval=null;}
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
 }
@@ -646,6 +653,52 @@ async function loadData(){
   initLiveListeners();
 }
 
+// يُعاد حسابها بعد أي تحديث لِـ rawTeachers (كل المحفّظين) أو myFieldSupervisors (المشرفون المرتبطون
+// بهذا المختبر) — النتيجة النهائية allTeachers تقتصر دوماً على محفّظي مشرف ميداني واحد فقط:
+// المشرف الوحيد إن كان مرتبطاً بواحد، أو المُختار من القائمة إن تعدّدوا، أو لا شيء إن لم يُربط بعد
+function recomputeAllTeachers(){
+  let targetFsId = null;
+  if(myFieldSupervisors.length===1){
+    targetFsId = myFieldSupervisors[0].id;
+    selectedFieldSupervisorId = targetFsId;
+  } else if(myFieldSupervisors.length>1){
+    if(!selectedFieldSupervisorId || !myFieldSupervisors.some(f=>f.id===selectedFieldSupervisorId)){
+      selectedFieldSupervisorId = myFieldSupervisors[0].id;
+    }
+    targetFsId = selectedFieldSupervisorId;
+  } else {
+    selectedFieldSupervisorId = '';
+  }
+  allTeachers = targetFsId ? rawTeachers.filter(t=>t.fieldSupervisorId===targetFsId) : [];
+  renderFsFilterBanner();
+  populateManualTeachers();
+  renderAll();
+  refreshTeacherData();
+}
+
+function renderFsFilterBanner(){
+  const el=document.getElementById('fsFilterBanner');
+  if(!el) return;
+  if(!myFieldSupervisors.length){
+    el.style.display='flex';
+    el.innerHTML='<div class="pb-icon">⚠️</div><div class="pb-info"><div class="pb-title">لم يتم ربط حسابك بأي مشرف ميداني بعد</div><div class="pb-val" style="font-size:13px;font-weight:600;">تواصل مع إدارة المركز لربط حسابك بمشرف ميداني حتى تتمكن من رؤية محفّظيه واختبار طلابهم</div></div>';
+  } else if(myFieldSupervisors.length===1){
+    el.style.display='flex';
+    el.innerHTML='<div class="pb-icon">👤</div><div class="pb-info"><div class="pb-title">المشرف الميداني المسؤول عن محفّظيك</div><div class="pb-val" style="font-size:16px;">'+(myFieldSupervisors[0].name||'—')+'</div></div>';
+  } else {
+    el.style.display='flex';
+    el.innerHTML='<div class="pb-icon">👥</div><div class="pb-info"><div class="pb-title">أنت مرتبط بأكثر من مشرف ميداني — اختر من تختبر محفّظيه الآن</div>'
+      +'<select id="fsSelect" style="margin-top:6px;padding:7px 12px;border-radius:8px;border:none;font-family:inherit;font-size:14px;font-weight:700;" onchange="onFsSelectChange(this.value)">'
+      +myFieldSupervisors.map(f=>`<option value="${f.id}" ${f.id===selectedFieldSupervisorId?'selected':''}>${f.name}</option>`).join('')
+      +'</select></div>';
+  }
+}
+
+function onFsSelectChange(fsId){
+  selectedFieldSupervisorId = fsId;
+  recomputeAllTeachers();
+}
+
 function initLiveListeners(){
   // تحميل أي نتائج لم تُزامَن من جلسة سابقة (مثلاً أُغلق المتصفح قبل عودة الاتصال)
   // ومحاولة مزامنتها فوراً إن كان متصلاً الآن — لا ننتظر حدث 'online' لأنه لن يُطلَق
@@ -677,13 +730,20 @@ function initLiveListeners(){
   // البديل: جلب دفعة واحدة (batched) عند فتح الصفحة وتحديثها دورياً، بدل مستمع دائم لكل محفّظ.
   if(unsubUsers) unsubUsers();
   unsubUsers = db.collection('users').onSnapshot(snap=>{
-    allTeachers = snap.docs
+    rawTeachers = snap.docs
       .map(d=>({id:d.id,...d.data()}))
       .filter(u=>u.status==='approved' && u.role==='teacher');
-    populateManualTeachers();
-    renderAll();
-    refreshTeacherData();
+    recomputeAllTeachers();
   }, err=>toast('⚠️ خطأ تحميل المحفّظين: '+err.message,'error'));
+
+  // المشرفون الميدانيون المرتبطون بهذا المختبر (يحددهم المدير من صفحته) — على أساسهم تُفلتَر
+  // allTeachers أعلاه، بدل أن يرى المختبر كل محفّظي المركز مختلطين
+  if(unsubMySupervisors) unsubMySupervisors();
+  unsubMySupervisors = db.collection('users').where('role','==','fieldSupervisor').where('examinerId','==',currentUser.uid)
+    .onSnapshot(snap=>{
+      myFieldSupervisors = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+      recomputeAllTeachers();
+    }, err=>toast('⚠️ خطأ تحميل المشرف الميداني المسؤول: '+err.message,'error'));
 
   if(_teacherDataInterval) clearInterval(_teacherDataInterval);
   _teacherDataInterval=setInterval(refreshTeacherData, 25000); // تحديث دوري كل 25 ثانية بدل الاعتماد على مستمع دائم لكل محفّظ
