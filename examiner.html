@@ -578,6 +578,7 @@ function doLogout(){
   if(unsubResults){unsubResults();unsubResults=null;}
   if(unsubSettings){unsubSettings();unsubSettings=null;}
   if(unsubMySupervisors){unsubMySupervisors();unsubMySupervisors=null;}
+  if(unsubScopedTeacherIds){unsubScopedTeacherIds();unsubScopedTeacherIds=null;}
   if(_teacherDataInterval){clearInterval(_teacherDataInterval);_teacherDataInterval=null;}
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
 }
@@ -653,6 +654,26 @@ async function loadData(){
   initLiveListeners();
 }
 
+// معرّفات المحفّظين التابعين للمشرف الميداني المُختار حالياً (targetFsId) — نجلبها مباشرة من
+// مجموعة userdata (حيث يقيم حقل fieldSupervisorId فعلياً، وليس على وثائق users) عبر استعلام
+// حي (onSnapshot) بدل الاعتماد على حقل غير موجود على وثائق users نفسها
+let unsubScopedTeacherIds=null, scopedTeacherIds=new Set(), currentScopedFsId=null;
+function subscribeScopedTeacherIds(fsId){
+  if(unsubScopedTeacherIds){ unsubScopedTeacherIds(); unsubScopedTeacherIds=null; }
+  if(!fsId){ scopedTeacherIds=new Set(); applyTeacherScope(); return; }
+  unsubScopedTeacherIds = db.collection('userdata').where('fieldSupervisorId','==',fsId)
+    .onSnapshot(snap=>{
+      scopedTeacherIds = new Set(snap.docs.map(d=>d.id));
+      applyTeacherScope();
+    }, err=>toast('⚠️ خطأ تحميل محفّظي المشرف الميداني: '+err.message,'error'));
+}
+function applyTeacherScope(){
+  allTeachers = rawTeachers.filter(t=>scopedTeacherIds.has(t.id));
+  populateManualTeachers();
+  renderAll();
+  refreshTeacherData();
+}
+
 // يُعاد حسابها بعد أي تحديث لِـ rawTeachers (كل المحفّظين) أو myFieldSupervisors (المشرفون المرتبطون
 // بهذا المختبر) — النتيجة النهائية allTeachers تقتصر دوماً على محفّظي مشرف ميداني واحد فقط:
 // المشرف الوحيد إن كان مرتبطاً بواحد، أو المُختار من القائمة إن تعدّدوا، أو لا شيء إن لم يُربط بعد
@@ -669,11 +690,13 @@ function recomputeAllTeachers(){
   } else {
     selectedFieldSupervisorId = '';
   }
-  allTeachers = targetFsId ? rawTeachers.filter(t=>t.fieldSupervisorId===targetFsId) : [];
   renderFsFilterBanner();
-  populateManualTeachers();
-  renderAll();
-  refreshTeacherData();
+  if(targetFsId !== currentScopedFsId){
+    currentScopedFsId = targetFsId;
+    subscribeScopedTeacherIds(targetFsId);
+  } else {
+    applyTeacherScope();
+  }
 }
 
 function renderFsFilterBanner(){
