@@ -1155,11 +1155,16 @@ select.form-input{cursor:pointer;}
           <select class="form-input" id="repScope" onchange="onRepScopeChange()">
             <option value="all">لجميع الحلقات</option>
             <option value="one">محفّظ واحد</option>
+            <option value="supervisor">مشرف ميداني واحد</option>
           </select>
         </div>
         <div class="form-group" id="repCircleGroup" style="display:none;">
           <label class="form-label">اختر المحفّظ</label>
           <select class="form-input" id="repCircle" onchange="refreshSupervisorReportPreview()"></select>
+        </div>
+        <div class="form-group" id="repSupervisorGroup" style="display:none;">
+          <label class="form-label">اختر المشرف الميداني</label>
+          <select class="form-input" id="repSupervisor" onchange="refreshSupervisorReportPreview()"></select>
         </div>
         <div class="form-group">
           <label class="form-label">نوع الاختبار</label>
@@ -4677,6 +4682,7 @@ function openSupervisorReportModal(){
   onRepPeriodChange();
   onRepScopeChange();
   populateRepCircleOptions();
+  populateRepSupervisorOptions();
   om('modal-exam-report');
   refreshSupervisorReportPreview();
 }
@@ -4685,6 +4691,12 @@ function populateRepCircleOptions(){
   const sel=document.getElementById('repCircle');
   const names=[...new Set(getTeachers().map(t=>t.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   sel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('') || '<option value="">لا يوجد محفّظون بعد</option>';
+}
+
+function populateRepSupervisorOptions(){
+  const sel=document.getElementById('repSupervisor');
+  const list=getFieldSupervisors().slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  sel.innerHTML = list.map(f=>`<option value="${f.id}">${f.name}</option>`).join('') || '<option value="">لا يوجد مشرفون ميدانيون بعد</option>';
 }
 
 function onRepPeriodChange(){
@@ -4697,6 +4709,7 @@ function onRepPeriodChange(){
 function onRepScopeChange(){
   const v=document.getElementById('repScope').value;
   document.getElementById('repCircleGroup').style.display = v==='one'?'':'none';
+  document.getElementById('repSupervisorGroup').style.display = v==='supervisor'?'':'none';
   refreshSupervisorReportPreview();
 }
 
@@ -4743,6 +4756,14 @@ function getSupervisorReportFiltered(){
     if(!circleF){toast('⚠️ اختر المحفّظ');return null;}
     results=results.filter(r=>r.teacherName===circleF);
     circleFilterLabel=circleF;
+  } else if(scope==='supervisor'){
+    const fsId=document.getElementById('repSupervisor').value;
+    if(!fsId){toast('⚠️ اختر المشرف الميداني');return null;}
+    const fs=getFieldSupervisors().find(f=>f.id===fsId);
+    const teacherIds=new Set(getTeachers().filter(t=>t.fieldSupervisorId===fsId).map(t=>t.id));
+    results=results.filter(r=>teacherIds.has(r.teacherId));
+    circleFilterLabel='محفّظو المشرف الميداني: '+(fs?fs.name:'—');
+    grouped=true; // تجميع النتائج حسب المحفّظ لأن المشرف الميداني الواحد قد يتبعه أكثر من محفّظ
   } else {
     grouped=true; // تجميع النتائج حسب المحفّظ عند عرض جميع الحلقات معاً
   }
