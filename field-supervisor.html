@@ -931,35 +931,71 @@ function getPendingAddStudentRequests(){
 }
 
 function startListening(){
-  unsubUsers = db.collection('users')
-    .where('role','==','teacher').where('status','==','approved').where('fieldSupervisorId','==',currentUser.uid)
+  // ═══════════════════════════════════════════════════════════
+  //  مصدر الحقيقة لإسناد محفّظ لمشرف ميداني هو الحقل fieldSupervisorId
+  //  المخزَّن في وثيقة userdata/{المحفّظ} (هكذا يكتبه assignFieldSupervisor
+  //  في صفحة المدير)، وليس في وثيقة users/{المحفّظ}. لذلك نستعلم هنا عن
+  //  userdata مباشرة، ثم نُكمل بيانات كل محفّظ (الاسم/الحلقة/رقم الهوية/
+  //  الحالة) من وثيقة users الخاصة به.
+  // ═══════════════════════════════════════════════════════════
+  unsubUsers = db.collection('userdata').where('fieldSupervisorId','==',currentUser.uid)
     .onSnapshot(snap=>{
-      const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],deletionRequests:[],addStudentRequests:[],teacherAttendance:{},todayAttendance:{},exams:[],fieldSupervisorId:currentUser.uid}));
-      // إلغاء أي مستمعات userdata سابقة قبل إعادة البناء
       unsubData.forEach(u=>u()); unsubData=[];
-      allUsers=users;
-      users.forEach(user=>{
-        const u2=db.collection('userdata').doc(user.id).onSnapshot(dSnap=>{
-          const idx=allUsers.findIndex(x=>x.id===user.id);
-          if(idx>=0&&dSnap.exists){
-            const d=dSnap.data();
-            allUsers[idx].students=d.students||[];
-            allUsers[idx].deletionRequests=d.deletionRequests||[];
-            allUsers[idx].addStudentRequests=d.addStudentRequests||[];
-            allUsers[idx].teacherAttendance=d.teacherAttendance||{};
-            allUsers[idx].exams=d.exams||[];
-          }
-          renderEverything();
-        },e=>console.warn('userdata listen err',user.id,e));
-        // حضور اليوم فقط (لعرض عمود "حضور اليوم" في الجداول بلا تحميل كل السجل التاريخي)
-        const u3=db.collection('userdata').doc(user.id).collection('attendance').doc(todayISO()).onSnapshot(doc=>{
-          const idx=allUsers.findIndex(x=>x.id===user.id);
-          if(idx>=0) allUsers[idx].todayAttendance=doc.exists?(doc.data()||{}):{};
-          renderEverything();
-        },e=>console.warn('today attendance err',user.id,e));
-        unsubData.push(u2,u3);
+
+      allUsers = snap.docs.map(d=>{
+        const data=d.data();
+        return {
+          id:d.id,
+          // قيم مبدئية ريثما تصل بيانات users (الاسم/الحلقة...) عبر المستمع أدناه —
+          // نفترضها 'teacher'/'approved' مبدئياً حتى لا تختفي الصفوف أثناء التحميل،
+          // ثم تُصحَّح تلقائياً فور وصول البيانات الفعلية
+          name:'', circle:'', nationalId:'', phone:'', role:'teacher', status:'approved',
+          students:data.students||[], deletionRequests:data.deletionRequests||[],
+          addStudentRequests:data.addStudentRequests||[], teacherAttendance:data.teacherAttendance||{},
+          exams:data.exams||[], todayAttendance:{}, fieldSupervisorId:data.fieldSupervisorId
+        };
       });
       renderEverything();
+
+      snap.docs.forEach(d=>{
+        const teacherId=d.id;
+        // بيانات الهوية الأساسية (الاسم/الحلقة/رقم الهوية/الحالة) من users
+        const uUnsub=db.collection('users').doc(teacherId).onSnapshot(uDoc=>{
+          const idx=allUsers.findIndex(x=>x.id===teacherId);
+          if(idx<0) return;
+          if(uDoc.exists){
+            const ud=uDoc.data();
+            allUsers[idx].name=ud.name||'';
+            allUsers[idx].circle=ud.circle||'';
+            allUsers[idx].nationalId=ud.nationalId||'';
+            allUsers[idx].phone=ud.phone||'';
+            allUsers[idx].role=ud.role||'teacher';
+            allUsers[idx].status=ud.status||'pending';
+          }
+          renderEverything();
+        },e=>console.warn('users listen err',teacherId,e));
+        // بيانات userdata نفسها (طلاب/طلبات/حضور محفّظ/ترشيحات) — لحظياً لأي تحديث لاحق
+        const dUnsub=db.collection('userdata').doc(teacherId).onSnapshot(dSnap=>{
+          const idx=allUsers.findIndex(x=>x.id===teacherId);
+          if(idx<0) return;
+          if(dSnap.exists){
+            const dd=dSnap.data();
+            allUsers[idx].students=dd.students||[];
+            allUsers[idx].deletionRequests=dd.deletionRequests||[];
+            allUsers[idx].addStudentRequests=dd.addStudentRequests||[];
+            allUsers[idx].teacherAttendance=dd.teacherAttendance||{};
+            allUsers[idx].exams=dd.exams||[];
+            allUsers[idx].fieldSupervisorId=dd.fieldSupervisorId||'';
+          }
+          renderEverything();
+        },e=>console.warn('userdata listen err',teacherId,e));
+        // حضور الطلاب اليوم فقط (لعرض عمود "حضور اليوم")
+        const aUnsub=db.collection('userdata').doc(teacherId).collection('attendance').doc(todayISO()).onSnapshot(doc=>{
+          const idx=allUsers.findIndex(x=>x.id===teacherId);
+          if(idx>=0){ allUsers[idx].todayAttendance=doc.exists?(doc.data()||{}):{}; renderEverything(); }
+        },e=>console.warn('today attendance err',teacherId,e));
+        unsubData.push(uUnsub,dUnsub,aUnsub);
+      });
     },e=>{ console.error('teachers listen err',e); toast('⚠️ تعذّر تحميل بيانات المحفّظين'); });
 
   db.collection('appMessages').where('toRole','==','fieldSupervisor').where('toId','==',currentUser.uid)
@@ -967,6 +1003,7 @@ function startListening(){
 }
 
 let firstRenderDone=false;
+let monListenedIds=new Set();
 function renderEverything(){
   renderDashboard();
   const activePage=document.querySelector('.page-view.active');
@@ -975,7 +1012,15 @@ function renderEverything(){
   if(pageId==='teachers') filterTeachers('');
   if(pageId==='students') filterStudents(document.getElementById('studentSearchInp')?.value||'');
   if(pageId==='teacherAtt') renderTeacherAttendance();
-  if(pageId==='stats' && firstRenderDone) renderDailyMonitoring(); // القيَم اللحظية لبيانات اليوم تصل عبر مستمعات refreshDailyMonitoring المستقلة
+  if(pageId==='stats' && firstRenderDone){
+    // إن ظهر محفّظ جديد (أو اختفى) في قائمتي بعد أن كانت صفحة "المتابعة اليومية" مفتوحة
+    // بالفعل (مثلاً كانت لا تزال قيد التحميل، أو أعاد المدير إسناد محفّظ للتو)، نعيد ربط
+    // مستمعات اليوم المختار لتغطية القائمة المحدّثة بدل الاكتفاء بإعادة رسم القديم فقط
+    const currentIds=new Set(getTeachers().map(t=>t.id));
+    const changed = currentIds.size!==monListenedIds.size || [...currentIds].some(id=>!monListenedIds.has(id));
+    if(changed) refreshDailyMonitoring(monSelectedDate);
+    else renderDailyMonitoring();
+  }
   firstRenderDone=true;
 }
 
@@ -1492,6 +1537,7 @@ function refreshDailyMonitoring(date){
   monUnsubs.forEach(u=>u());
   monUnsubs=[];
   const teachers=getTeachers();
+  monListenedIds=new Set(teachers.map(t=>t.id));
   teachers.forEach(t=>{
     const idx0=allUsers.findIndex(x=>x.id===t.id);
     if(idx0>=0){ allUsers[idx0].monAttendance={}; allUsers[idx0].monEval={}; allUsers[idx0].monSessions=[]; }
