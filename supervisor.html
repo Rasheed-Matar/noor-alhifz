@@ -701,11 +701,15 @@ select.form-input{cursor:pointer;}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           إلغاء تفعيل حلقة
         </button>
+        <button class="btn-gold" style="flex:none;" onclick="openBulkTransferModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          نقل المحدَّدين لمحفّظ آخر
+        </button>
       </div>
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>الطالب</th><th>المحفظ</th><th>الجزء</th><th>الحضور</th><th>الحالة</th></tr></thead>
+            <thead><tr><th style="width:34px;"><input type="checkbox" id="studentsSelectAllChk" onchange="toggleAllStudentTransferChks(this.checked)" title="تحديد الكل"></th><th>الطالب</th><th>المحفظ</th><th>الجزء</th><th>الحضور</th><th>الحالة</th></tr></thead>
             <tbody id="studentsTable"></tbody>
           </table>
         </div>
@@ -1113,6 +1117,41 @@ select.form-input{cursor:pointer;}
     <div class="modal-footer">
       <button class="btn-save" onclick="saveEvalStudentSelection()">💾 حفظ الاختيار</button>
       <button class="btn-cancel-modal" onclick="closeModal('modal-eval-students')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Transfer Student(s) to another Teacher -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-head-title">🔀 نقل طالب/طلاب لحلقة أخرى</span><button class="modal-close" onclick="closeModal('modal-transfer')">✕</button></div>
+    <div class="modal-body">
+      <div style="background:#fff8ec;border:1px solid #f0d999;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;color:#7a5a10;">
+        ⚠️ سيُنقل مع الطالب سجل حضوره وتقييمه اليومي وجلسات الحفظ/المراجعة ونتائج اختباراته والإفادات الصادرة له، بحيث تصبح كاملة تحت المحفّظ الجديد ولا تبقى لدى المحفّظ الأصلي.
+      </div>
+      <div class="mf"><label>الطلاب المراد نقلهم</label>
+        <div id="transferList" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;background:var(--bg2,#f7f9f7);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;"></div>
+      </div>
+      <div class="mf"><label>نقل إلى المحفّظ</label>
+        <select class="filter-sel" id="transferDestTeacher" style="width:100%;"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" id="transferConfirmBtn" style="background:linear-gradient(135deg,#1a4b8c,#2e6bb8);" onclick="confirmTransfer()">🔀 تأكيد النقل</button>
+      <button class="btn-cancel-modal" onclick="closeModal('modal-transfer')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Transfer Result Summary -->
+<div class="modal-overlay" id="modal-transfer-result">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-head-title">نتيجة عملية النقل</span><button class="modal-close" onclick="closeModal('modal-transfer-result')">✕</button></div>
+    <div class="modal-body">
+      <div id="transferResultList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="closeModal('modal-transfer-result')">حسناً</button>
     </div>
   </div>
 </div>
@@ -3056,19 +3095,24 @@ function renderTeacherFilterOptions(){
 function renderStudents(data){
   const tb=document.getElementById('studentsTable');
   if(!data.length){
-    tb.innerHTML='<tr><td colspan="5"><div class="empty-state">لا يوجد طلاب</div></td></tr>';
+    tb.innerHTML='<tr><td colspan="6"><div class="empty-state">لا يوجد طلاب</div></td></tr>';
     return;
   }
   tb.innerHTML=data.map(s=>`
     <tr onclick="openStudentDetailAdmin('${s.teacherId}','${s.id}')" style="cursor:pointer;">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="student-transfer-chk" value="${s.id}" data-teacher="${s.teacherId}" data-name="${(s.name||'').replace(/"/g,'')}" ${s.archived?'disabled title="لا يمكن نقل طالب مؤرشف"':''}></td>
       <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(s.name)}</div><div><div class="teacher-name">${s.name}</div></div></div></td>
       <td>${s.teacherName||'—'}</td><td>${s.juz||0}</td>
       <td><div class="td-action" onclick="event.stopPropagation()">
         ${s.parentPhone?`<button class="td-btn msg" onclick="quickMsgParent('${s.parentPhone}','${(s.name||'').replace(/'/g,"")}')">واتساب</button>`:''}
         <button class="td-btn edit" onclick="openStudentDetailAdmin('${s.teacherId}','${s.id}')">تعديل</button>
+        ${!s.archived?`<button class="td-btn edit" style="background:#eef4ff;color:#1a4b8c;" onclick="openTransferModal('${s.teacherId}','${s.id}')">نقل</button>`:''}
       </div></td>
       <td><span class="badge ${s.pendingDeletion?'badge-gold':s.archived?'badge-red':'badge-green'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span></td>
     </tr>`).join('');
+}
+function toggleAllStudentTransferChks(checked){
+  document.querySelectorAll('.student-transfer-chk:not(:disabled)').forEach(c=>c.checked=checked);
 }
 function filterStudents(q){
   const tFilter=document.getElementById('studentTeacherFilter').value;
@@ -3143,6 +3187,15 @@ function openStudentDetailAdmin(teacherId, localId){
       </button>` : `
       <div class="pw-warn">⚠️ ${!s.parentPhone?'لا يوجد رقم جوال لولي الأمر':!s.nationalId?'لا يوجد رقم هوية للطالب':'لم يُفعَّل حساب دخول الطالب بعد، لذا لا يمكن إرسال رسالة التفعيل.'}</div>`}
     </div>
+
+    ${!s.archived ? `
+    <div class="edit-card">
+      <div class="edit-card-hd">
+        <div class="edit-card-ic" style="background:#eef4ff;color:#1a4b8c;">🔀</div>
+        <div><div class="edit-card-tt">نقل الطالب لحلقة محفّظ آخر</div><div class="edit-card-sub">ينتقل معه سجل الحضور والتقييم والجلسات والاختبارات بالكامل</div></div>
+      </div>
+      <button class="btn-save" style="width:100%;background:linear-gradient(135deg,#1a4b8c,#2e6bb8);" onclick="openTransferModal('${teacherId}','${localId}')">🔀 نقل الطالب الآن</button>
+    </div>` : ''}
   `;
   om('modal-detail');
 }
@@ -3932,7 +3985,218 @@ function saveEvalStudentSelection(){
     .catch(e=>toast('⚠️ خطأ: '+e.message));
 }
 
-['modal-confirm','modal-detail','modal-add-examiner','modal-add-field-supervisor','modal-eval-students','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
+// ════════════════════════════════════════
+//  نقل طالب / مجموعة طلاب من محفّظ إلى آخر
+//  ملاحظة دقّة: كل قراءة تتم من Firestore مباشرة وقت التنفيذ (وليس من allUsers
+//  المخزَّنة محلياً) تفادياً لتكرار خطأ الكتابة فوق بيانات قديمة (نفس درس
+//  مشكلة "محذوف" السابقة في examiner.html) — والنقل الجوهري (سجل الطالب +
+//  ترشيحاته + واجبه) يتم داخل Transaction واحدة ذرّية، بينما بقية البيانات
+//  التاريخية (الجلسات/الحضور/التقييم/نتائج الاختبارات/الشهادات/حساب الدخول)
+//  تُنقل بعدها خطوة بخطوة بدون توقف كل عملية عن سابقتها عند فشل جزئي، مع
+//  تلخيص واضح لأي جزء لم يُنقل كي لا يظهر نجاح وهمي.
+// ════════════════════════════════════════
+let transferQueue=[];
+
+function openTransferModal(teacherId, localId){
+  const t=allUsers.find(x=>x.id===teacherId);
+  const s=t&&(t.students||[]).find(x=>x.id===localId);
+  if(!t||!s){ toast('⚠️ تعذّر العثور على الطالب'); return; }
+  if(s.archived){ toast('⚠️ لا يمكن نقل طالب مؤرشف — أعد تفعيله أولاً'); return; }
+  transferQueue=[{teacherId, id:localId, name:s.name||''}];
+  closeModal('modal-detail');
+  renderTransferModal();
+}
+function openBulkTransferModal(){
+  const checked=[...document.querySelectorAll('.student-transfer-chk:checked')];
+  if(!checked.length){ toast('⚠️ حدّد طالباً واحداً على الأقل من القائمة أولاً'); return; }
+  transferQueue=checked.map(c=>({teacherId:c.dataset.teacher, id:c.value, name:c.dataset.name||''}));
+  renderTransferModal();
+}
+function renderTransferModal(){
+  document.getElementById('transferList').innerHTML=transferQueue.map(x=>{
+    const t=allUsers.find(u=>u.id===x.teacherId);
+    return `<div>👤 ${x.name} <span style="color:#7a8a7a;">— من: ${t?t.name:'—'}</span></div>`;
+  }).join('');
+  const sourceIds=new Set(transferQueue.map(x=>x.teacherId));
+  const sel=document.getElementById('transferDestTeacher');
+  const opts=getTeachers()
+    .filter(t=>!(sourceIds.size===1 && sourceIds.has(t.id)))
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'))
+    .map(t=>`<option value="${t.id}">${t.name} — ${t.circle||'حلقة القرآن'}</option>`).join('');
+  sel.innerHTML='<option value="">اختر المحفّظ الجديد...</option>'+opts;
+  om('modal-transfer');
+}
+function confirmTransfer(){
+  const toTeacherId=document.getElementById('transferDestTeacher').value;
+  if(!toTeacherId){ toast('⚠️ اختر المحفّظ الجديد أولاً'); return; }
+  if(!transferQueue.length) return;
+  const toTeacher=allUsers.find(u=>u.id===toTeacherId);
+  const names=transferQueue.map(x=>x.name).join('، ');
+  confirmAction(
+    transferQueue.length>1?'تأكيد نقل الطلاب':'تأكيد نقل الطالب',
+    `سيتم نقل: ${names} إلى حلقة "${toTeacher?toTeacher.name:''}" بكامل سجلاتهم (حضور، تقييم، جلسات، اختبارات، شهادات). لا يمكن التراجع تلقائياً عن هذه الخطوة. هل أنت متأكد؟`,
+    ()=>runTransfer(toTeacherId)
+  );
+}
+async function runTransfer(toTeacherId){
+  closeModal('modal-transfer');
+  const items=[...transferQueue];
+  transferQueue=[];
+  toast(`⏳ جارٍ نقل ${items.length>1?items.length+' طلاب':'الطالب'}... قد يستغرق ذلك بضع ثوانٍ`);
+  const results=[];
+  for(const it of items){
+    if(it.teacherId===toTeacherId){ results.push({name:it.name, ok:false, error:'الطالب أصلاً لدى هذا المحفّظ'}); continue; }
+    try{
+      const r=await transferOneStudent(it.teacherId, it.id, toTeacherId);
+      results.push({name:it.name, ok:true, warnings:r.warnings});
+    }catch(e){
+      results.push({name:it.name, ok:false, error:e.message||String(e)});
+    }
+  }
+  showTransferResult(results);
+}
+function showTransferResult(results){
+  document.getElementById('transferResultList').innerHTML=results.map(r=>{
+    if(r.ok && (!r.warnings||!r.warnings.length)){
+      return `<div style="background:#eafaf0;border:1px solid #b7e6c9;border-radius:8px;padding:8px 10px;font-size:13px;">✅ تم نقل <strong>${r.name}</strong> بنجاح، بكل سجلاته.</div>`;
+    } else if(r.ok){
+      return `<div style="background:#fff8ec;border:1px solid #f0d999;border-radius:8px;padding:8px 10px;font-size:13px;">
+        ⚠️ تم نقل <strong>${r.name}</strong> (السجل الأساسي والاختبارات والحضور)، لكن حدثت مشاكل جزئية:
+        <ul style="margin:6px 0 0;padding-inline-start:18px;">${r.warnings.map(w=>`<li>${w}</li>`).join('')}</ul>
+        يُفضّل مراجعة هذه النقاط يدوياً.
+      </div>`;
+    } else {
+      return `<div style="background:#fdecea;border:1px solid #f0b4ae;border-radius:8px;padding:8px 10px;font-size:13px;">❌ تعذّر نقل <strong>${r.name}</strong>: ${r.error}</div>`;
+    }
+  }).join('');
+  om('modal-transfer-result');
+}
+
+// نقل حقل مفتاحه معرّف الطالب داخل وثائق مؤرَّخة (attendance/dailyEval) — كل وثيقة تمثّل يوماً
+// والطالب مجرّد مفتاح داخلها، فلا يمكن استعلامها مباشرة، لذا نفحص كل الوثائق ونُرحّل ما يخصّه فقط
+async function moveDateKeyedField(fromCol, toCol, oldId, newId){
+  const snap=await fromCol.get();
+  const matching=snap.docs.filter(d=>Object.prototype.hasOwnProperty.call(d.data(), oldId));
+  for(let i=0;i<matching.length;i+=200){
+    const batch=db.batch();
+    matching.slice(i,i+200).forEach(d=>{
+      const val=d.data()[oldId];
+      batch.update(fromCol.doc(d.id), {[oldId]: firebase.firestore.FieldValue.delete()});
+      batch.set(toCol.doc(d.id), {[newId]: val}, {merge:true});
+    });
+    await batch.commit();
+  }
+}
+
+async function transferOneStudent(fromTeacherId, localId, toTeacherId){
+  const fromRef=db.collection('userdata').doc(fromTeacherId);
+  const toRef=db.collection('userdata').doc(toTeacherId);
+  let newId=localId, fromName='', toName='';
+
+  // ── المرحلة الحرجة: نقل سجل الطالب + ترشيحاته للاختبارات + واجبه الحالي، داخل Transaction واحدة ذرّية ──
+  await db.runTransaction(async (tx)=>{
+    const [fromSnap, toSnap]=await Promise.all([tx.get(fromRef), tx.get(toRef)]);
+    if(!fromSnap.exists) throw new Error('تعذّر العثور على بيانات المحفّظ الأصلي');
+    if(!toSnap.exists) throw new Error('تعذّر العثور على بيانات المحفّظ الجديد');
+    const fromData=fromSnap.data(), toData=toSnap.data();
+    fromName=fromData.name||''; toName=toData.name||'';
+
+    const fromStudents=fromData.students||[];
+    const idx=fromStudents.findIndex(s=>s.id===localId);
+    if(idx<0) throw new Error('الطالب لم يعد موجوداً لدى المحفّظ الأصلي (ربما نُقل مسبقاً)');
+    const student=fromStudents[idx];
+    if(student.archived) throw new Error('لا يمكن نقل طالب مؤرشف');
+
+    const toStudents=toData.students||[];
+    if(toStudents.some(s=>s.id===localId)) newId=uidGen(); // تفادي تصادم المعرّف المحلي لدى المحفّظ الجديد
+
+    const movedStudent={
+      ...student, id:newId, pendingDeletion:false,
+      transferHistory:[...(student.transferHistory||[]), {
+        fromTeacherId, fromTeacherName:fromName, toTeacherId, toTeacherName:toName,
+        date:new Date().toISOString(), previousLocalId:(newId!==localId?localId:null)
+      }]
+    };
+
+    const fromExams=fromData.exams||[];
+    const movingExams=fromExams.filter(e=>e.studentId===localId).map(e=>({...e, studentId:newId}));
+
+    const fromPatch={
+      students: fromStudents.filter(s=>s.id!==localId),
+      exams: fromExams.filter(e=>e.studentId!==localId),
+      deletionRequests: (fromData.deletionRequests||[]).map(r=>
+        (r.studentId===localId && r.status==='pending')
+          ? {...r, status:'cancelled', resolvedAt:new Date().toISOString(), resolvedReason:'نُقل الطالب لمحفّظ آخر'}
+          : r
+      )
+    };
+    const toPatch={
+      students: [...toStudents, movedStudent],
+      exams: [...(toData.exams||[]), ...movingExams]
+    };
+    if(Array.isArray(fromData.evalStudentIds) && fromData.evalStudentIds.includes(localId)){
+      fromPatch.evalStudentIds=fromData.evalStudentIds.filter(id=>id!==localId);
+    }
+    if(fromData.homework && fromData.homework[localId]!==undefined){
+      fromPatch['homework.'+localId]=firebase.firestore.FieldValue.delete();
+      toPatch['homework.'+newId]=fromData.homework[localId];
+    }
+
+    tx.update(fromRef, fromPatch);
+    tx.update(toRef, toPatch);
+  });
+
+  const warnings=[];
+
+  try{
+    const sessSnap=await fromRef.collection('sessions').where('studentId','==',localId).get();
+    const docs=sessSnap.docs;
+    for(let i=0;i<docs.length;i+=200){
+      const batch=db.batch();
+      docs.slice(i,i+200).forEach(d=>{
+        batch.set(toRef.collection('sessions').doc(d.id), {...d.data(), studentId:newId});
+        batch.delete(fromRef.collection('sessions').doc(d.id));
+      });
+      await batch.commit();
+    }
+  }catch(e){ warnings.push('تعذّر نقل بعض/كل جلسات الحفظ والمراجعة: '+(e.message||e)); }
+
+  try{ await moveDateKeyedField(fromRef.collection('attendance'), toRef.collection('attendance'), localId, newId); }
+  catch(e){ warnings.push('تعذّر نقل بعض/كل سجلات الحضور: '+(e.message||e)); }
+
+  try{ await moveDateKeyedField(fromRef.collection('dailyEval'), toRef.collection('dailyEval'), localId, newId); }
+  catch(e){ warnings.push('تعذّر نقل بعض/كل سجلات التقييم اليومي: '+(e.message||e)); }
+
+  try{
+    const exSnap=await db.collection('examResults').where('teacherId','==',fromTeacherId).get();
+    const matches=exSnap.docs.filter(d=>d.data().studentId===localId);
+    for(let i=0;i<matches.length;i+=400){
+      const batch=db.batch();
+      matches.slice(i,i+400).forEach(d=>batch.update(d.ref, {teacherId:toTeacherId, studentId:newId, teacherName:toName}));
+      await batch.commit();
+    }
+  }catch(e){ warnings.push('تعذّر تحديث بعض/كل نتائج الاختبارات (مختبر الجودة): '+(e.message||e)); }
+
+  try{
+    const certSnap=await db.collection('certificates').where('teacherId','==',fromTeacherId).get();
+    const matches=certSnap.docs.filter(d=>d.data().studentId===localId);
+    for(let i=0;i<matches.length;i+=400){
+      const batch=db.batch();
+      matches.slice(i,i+400).forEach(d=>batch.update(d.ref, {teacherId:toTeacherId, studentId:newId}));
+      await batch.commit();
+    }
+  }catch(e){ warnings.push('تعذّر تحديث بعض/كل سجلات الشهادات (الإفادات): '+(e.message||e)); }
+
+  try{
+    const authSnap=await db.collection('users').where('role','==','student').where('teacherId','==',fromTeacherId).get();
+    const authDoc=authSnap.docs.find(d=>d.data().studentId===localId);
+    if(authDoc) await authDoc.ref.update({teacherId:toTeacherId, studentId:newId});
+  }catch(e){ warnings.push('تعذّر تحديث حساب دخول الطالب — قد تتعطّل بوابته حتى تُصحَّح يدوياً: '+(e.message||e)); }
+
+  return {newId, warnings};
+}
+
+['modal-confirm','modal-detail','modal-add-examiner','modal-add-field-supervisor','modal-eval-students','modal-transfer','modal-transfer-result','modal-exam-report','modal-data-report','modal-import-students','modal-import-teachers'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
