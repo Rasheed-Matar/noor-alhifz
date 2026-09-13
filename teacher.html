@@ -7,6 +7,7 @@
 <title>لوحة المحفّظ — مركز الكتاب</title>
 <link rel="manifest" href="manifest.json">
 <script src="pwa.js" defer></script>
+<script src="sync-shared.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -1614,6 +1615,9 @@ const db = firebase.firestore();
 db.enablePersistence({ synchronizeTabs: true }).catch(err => {
   console.warn('تعذّر تفعيل وضع عدم الاتصال:', err.code);
 });
+// ملاحظة: تسجيل Service Worker يتم بالفعل من pwa.js (يحمَّل في <head> أعلاه)،
+// وقد تم دمج مستمع 'sync' الخاص برفع البيانات المعلّقة في الخلفية داخل sw.js
+// نفسه — لا حاجة لتسجيل ثانٍ هنا.
 
 // ════════════════════════════════════════
 //  STATE
@@ -1823,6 +1827,7 @@ function enterApp(user,data){
 
   window._teacherName = data.name||'';
   window._teacherCircle = data.circle||'حلقة القرآن';
+  cacheAuthTokens(user); // يخزّن رمز الدخول محلياً كي يستخدمه الـ Service Worker لاحقاً عند المزامنة الخلفية
   userDocRef=db.collection('userdata').doc(user.uid);
   attendanceCol=userDocRef.collection('attendance');
   dailyEvalCol=userDocRef.collection('dailyEval');
@@ -1930,13 +1935,18 @@ function saveField(patch){
   userDocRef.set(patch,{merge:true}).catch(e=>{
     console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
+  // الاتصال مقطوع الآن: نُسجّل نسخة احتياطية من الكتابة كي يرفعها الـ Service
+  // Worker تلقائياً في الخلفية عند عودة الإنترنت، حتى لو أغلق المحفّظ الصفحة
+  if(!navigator.onLine && currentUser) queueOfflineWrite(`userdata/${currentUser.uid}`, patch);
 }
 // حفظ يوم حضور واحد فقط — وثيقة مستقلة بذاتها ضمن attendance/{date}
 function saveAttendance(date){
   if(suppressSave||!attendanceCol) return;
-  attendanceCol.doc(date).set(attendance[date]||{},{merge:true}).catch(e=>{
+  const data=attendance[date]||{};
+  attendanceCol.doc(date).set(data,{merge:true}).catch(e=>{
     console.log('attendance save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
+  if(!navigator.onLine && currentUser) queueOfflineWrite(`userdata/${currentUser.uid}/attendance/${date}`, data);
 }
 // حفظ مصفوفة الطلاب فقط (صغيرة ومحدودة بعدد طلاب الحلقة، لا تكبر بلا حدود)
 function saveStudents(){
@@ -1951,6 +1961,7 @@ function saveSessionRecords(records){
   batch.commit().catch(e=>{
     console.log('sessions save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
   });
+  if(!navigator.onLine && currentUser) records.forEach(r=>queueOfflineWrite(`userdata/${currentUser.uid}/sessions/${r.id}`, r));
 }
 function saveExams(){
   saveField({exams});
@@ -2291,9 +2302,9 @@ function emptyEvalEntry(){ return {hifzScore:0,murajaaScore:0,disciplineScore:0}
 const _pendingEvalWrites={};
 function _flushEvalWrite(date,studentId,key,val){
   if(!dailyEvalCol) return;
-  dailyEvalCol.doc(date).set({
-    [studentId]: { [key]: val }
-  }, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+  const data={ [studentId]: { [key]: val } };
+  dailyEvalCol.doc(date).set(data, { merge:true }).catch(e=>console.warn('dailyEval save err', e));
+  if(!navigator.onLine && currentUser) queueOfflineWrite(`userdata/${currentUser.uid}/dailyEval/${date}`, data);
 }
 function _scheduleEvalWrite(date,studentId,key,val){
   const cellKey=date+'|'+studentId+'|'+key;
