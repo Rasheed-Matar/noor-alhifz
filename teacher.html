@@ -1955,6 +1955,64 @@ function saveSessionRecords(records){
 function saveExams(){
   saveField({exams});
 }
+// ═══════════════════════════════════════════════════════════
+//  حلّ جذري لمشكلة "الطالب يظهر عند المشرف لكن لا يظهر عند
+//  المحفّظ" ومشكلة الحذف غير المستقر: saveField/saveStudents
+//  القديمة كانت تكتب المصفوفة المحليّة كاملةً فوق وثيقة السيرفر
+//  (merge على مستوى الحقل يستبدل المصفوفة بأكملها، لا يدمجها
+//  عنصراً بعنصر). بما أن enablePersistence مفعّل على هذا الجهاز،
+//  أي كتابة كهذه أثناء انقطاع الاتصال (شائع في غزة) تُعاد لاحقاً
+//  فور عودة الاتصال بنفس المحتوى القديم الذي كانت عليه لحظة
+//  الكتابة — فتمحو صمتاً أي طالب أضافه/حذفه المشرف أو المشرف
+//  الميداني بالتزامن. الدوال التالية تقرأ الوثيقة الحيّة من
+//  السيرفر داخل Transaction وقت الكتابة الفعلية وتُطبّق فقط
+//  التعديل المطلوب (على طالب واحد بمعرّفه، أو إضافة عنصر لسجل
+//  طلبات) فوق أحدث نسخة موجودة فعلياً، دون لمس أي عنصر آخر —
+//  فتبقى إضافات/حذوفات المشرف سليمة دائماً بغضّ النظر عن توقيت
+//  مزامنة جهاز المحفّظ.
+async function patchStudentsInTeacherDoc(patchFn){
+  if(!userDocRef) return;
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(userDocRef);
+      const liveStudents=(snap.exists && snap.data().students)||[];
+      const patched=patchFn(liveStudents);
+      tx.set(userDocRef,{students:patched},{merge:true});
+    });
+  }catch(e){
+    console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
+  }
+}
+async function patchStudentAndDeletionRequests(studentId, studentPatchFn, requestsPatchFn){
+  if(!userDocRef) return;
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(userDocRef);
+      const liveStudents=(snap.exists && snap.data().students)||[];
+      const liveRequests=(snap.exists && snap.data().deletionRequests)||[];
+      const patchedStudents = studentPatchFn ? liveStudents.map(s=>s.id===studentId?studentPatchFn(s):s) : liveStudents;
+      const patchedRequests = requestsPatchFn(liveRequests);
+      tx.set(userDocRef,{students:patchedStudents, deletionRequests:patchedRequests},{merge:true});
+    });
+  }catch(e){
+    console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
+  }
+}
+async function patchAddStudentRequests(patchFn){
+  if(!userDocRef) return;
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(userDocRef);
+      const live=(snap.exists && snap.data().addStudentRequests)||[];
+      tx.set(userDocRef,{addStudentRequests:patchFn(live)},{merge:true});
+    });
+  }catch(e){
+    console.log('save err',e); toast('⚠️ تعذر الحفظ، تحقق من الاتصال','error');
+  }
+}
+// أُبقيت هذه الدوال القديمة لأي استدعاء متبقٍّ لها فقط (لا يوجد حالياً)، لكن
+// لم تعد تُستخدم لأي حقل مشترك بين المحفّظ والمشرف (students/deletionRequests/
+// addStudentRequests) — استُبدلت بالدوال الآمنة أعلاه في كل موضع استخدام
 function saveStudentsAndDeletionRequests(){
   saveField({students, deletionRequests});
 }
@@ -2892,6 +2950,7 @@ function saveBulkSession(){
   const today=TODAY();
   let updatedCount=0, newCount=0;
   const touchedRecords=[];
+  const sessionsCountTouchedIds=new Set();
   bulkSelectedIds.forEach(studentId=>{
     let record=sessions.find(x=>x.studentId===studentId&&x.date===today);
     if(record){
@@ -2911,11 +2970,16 @@ function saveBulkSession(){
       newCount++;
       const st=students.find(x=>x.id===studentId);
       if(st) st.sessionsCount=(st.sessionsCount||0)+1;
+      sessionsCountTouchedIds.add(studentId);
     }
     touchedRecords.push(record);
   });
   saveSessionRecords(touchedRecords);
-  saveStudents();
+  if(sessionsCountTouchedIds.size){
+    patchStudentsInTeacherDoc(live=>live.map(s=>
+      sessionsCountTouchedIds.has(s.id) ? {...s, sessionsCount:(s.sessionsCount||0)+1} : s
+    ));
+  }
   hifzEntries=[]; murajaaEntries=[]; editingHifzIdx=null; editingMurajaaIdx=null;
   const selectedCount=bulkSelectedIds.size;
   bulkSelectedIds.clear();
@@ -3125,7 +3189,11 @@ function saveSession(){
     };
     sessions.push(record);
     const st=students.find(x=>x.id===record.studentId);
-    if(st){ st.sessionsCount=(st.sessionsCount||0)+1; saveStudents(); }
+    if(st){
+      st.sessionsCount=(st.sessionsCount||0)+1;
+      const sid=record.studentId;
+      patchStudentsInTeacherDoc(live=>live.map(s=>s.id===sid?{...s, sessionsCount:(s.sessionsCount||0)+1}:s));
+    }
   }
   saveSessionRecords([record]);
   editingSessionId=null;
@@ -3455,9 +3523,11 @@ ${appUrl}
 
 function toggleArchive(studentId){
   const s=students.find(x=>x.id===studentId); if(!s) return;
-  s.archived=!s.archived;
-  saveStudents(); renderAll(); cm('mStudentDetail');
-  toast(s.archived?'📦 تم أرشفة الطالب':'✅ تم إعادة تفعيل الطالب');
+  const newVal=!s.archived;
+  s.archived=newVal;
+  patchStudentsInTeacherDoc(live=>live.map(x=>x.id===studentId?{...x, archived:newVal}:x));
+  renderAll(); cm('mStudentDetail');
+  toast(newVal?'📦 تم أرشفة الطالب':'✅ تم إعادة تفعيل الطالب');
 }
 
 let pendingDeleteStudentId=null;
@@ -3475,15 +3545,20 @@ function submitDeleteRequest(){
   const reason=document.getElementById('del-req-reason').value.trim();
   if(!reason){ toast('⚠️ يجب كتابة سبب الحذف','error'); return; }
 
-  deletionRequests.push({
+  const newReq={
     id:uid(), studentId:s.id, studentName:s.name,
     reason, status:'pending',
     requestedAt:new Date().toISOString(), resolvedAt:null
-  });
+  };
+  deletionRequests.push(newReq);
   s.pendingDeletion=true;
   s.notes=(s.notes?s.notes+'\n':'')+'سبب طلب الحذف: '+reason;
 
-  saveStudentsAndDeletionRequests(); renderAll();
+  patchStudentAndDeletionRequests(s.id,
+    live=>({...live, pendingDeletion:true, notes:(live.notes?live.notes+'\n':'')+'سبب طلب الحذف: '+reason}),
+    liveReqs=>[...liveReqs, newReq]
+  );
+  renderAll();
   cm('mDeleteRequest'); cm('mStudentDetail');
   toast('✅ تم إرسال طلب الحذف إلى المشرف');
 }
@@ -3494,7 +3569,18 @@ function cancelDeleteRequest(studentId){
   s.pendingDeletion=false;
   const req=[...deletionRequests].reverse().find(r=>r.studentId===studentId&&r.status==='pending');
   if(req){ req.status='rejected'; req.resolvedAt=new Date().toISOString(); }
-  saveStudentsAndDeletionRequests(); renderAll(); cm('mStudentDetail');
+  patchStudentAndDeletionRequests(studentId,
+    live=>({...live, pendingDeletion:false}),
+    liveReqs=>{
+      const arr=[...liveReqs];
+      const idxFromEnd=[...arr].reverse().findIndex(r=>r.studentId===studentId&&r.status==='pending');
+      if(idxFromEnd===-1) return arr;
+      const realIdx=arr.length-1-idxFromEnd;
+      arr[realIdx]={...arr[realIdx], status:'rejected', resolvedAt:new Date().toISOString()};
+      return arr;
+    }
+  );
+  renderAll(); cm('mStudentDetail');
   toast('↩️ تم إلغاء طلب الحذف');
 }
 
@@ -3545,15 +3631,16 @@ function submitAddStudentRequest(){
     toast('⚠️ يوجد طلب معلَّق بالفعل بنفس رقم الهوية','error'); return;
   }
 
-  addStudentRequests.push({
+  const newAddReq={
     id: uid(),
     firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
     name: buildFullName(fname,father,grand,family),
     nationalId: nid, dob, placeOfBirth: pob, gender,
     parentPhone: phone, juz, notes,
     status:'pending', requestedAt:new Date().toISOString(), resolvedAt:null, rejectionReason:null
-  });
-  saveAddStudentRequests();
+  };
+  addStudentRequests.push(newAddReq);
+  patchAddStudentRequests(live=>[...live, newAddReq]);
   renderStudentsList();
   cm('mAddStudentRequest');
   toast('✅ تم إرسال الطلب إلى المشرف، بانتظار الموافقة');
@@ -3562,7 +3649,7 @@ function submitAddStudentRequest(){
 function cancelAddStudentRequest(requestId){
   if(!confirm('إلغاء طلب إضافة هذا الطالب؟')) return;
   addStudentRequests = addStudentRequests.filter(r=>r.id!==requestId);
-  saveAddStudentRequests();
+  patchAddStudentRequests(live=>live.filter(r=>r.id!==requestId));
   renderStudentsList();
   toast('↩️ تم إلغاء الطلب');
 }
