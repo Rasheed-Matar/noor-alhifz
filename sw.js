@@ -1,4 +1,9 @@
-const CACHE = 'noor-v-20260627-2140';
+// نظام المزامنة الاحتياطي في الخلفية (Background Sync) — رفع الكتابات
+// المسجَّلة أثناء انقطاع الإنترنت تلقائياً عند عودته، حتى لو كانت
+// الصفحة مغلقة تماماً (أندرويد/كروم فقط). المنطق الكامل في sync-shared.js
+importScripts('sync-shared.js');
+
+const CACHE = 'noor-v-20260913-1940';
 
 // كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
 const ASSETS = [
@@ -11,6 +16,7 @@ const ASSETS = [
   './manifest.json',
   './icon.svg',
   './pwa.js',
+  './sync-shared.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
@@ -74,3 +80,11 @@ self.addEventListener('fetch', e => {
 });
 
 self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skipWaiting(); });
+
+// حدث المزامنة الخلفية: يطلقه نظام التشغيل عند عودة الإنترنت، حتى لو
+// كانت الصفحة/التطبيق مغلقاً تماماً — flushPendingWrites معرَّفة في sync-shared.js
+self.addEventListener('sync', e => {
+  if (e.tag === SYNC_TAG) {
+    e.waitUntil(flushPendingWrites());
+  }
+});
