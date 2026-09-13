@@ -1176,7 +1176,7 @@ function renderDashboard(){
   tb.innerHTML=[...teachers].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar')).map(t=>{
     const active=(t.students||[]).filter(s=>!s.archived);
     const todayAtt=t.todayAttendance||{};
-    const present=active.filter(s=>todayAtt[s.id]==='present').length;
+    const present=active.filter(s=>todayAtt[s.id]==='present'||todayAtt[s.id]==='late').length;
     const myAtt=(t.teacherAttendance||{})[today];
     const attLabel={present:'حاضر',absent:'غائب',late:'متأخر',excused:'مستأذن'}[myAtt]||'لم يُسجَّل';
     const attCls={present:'badge-green',absent:'badge-red',late:'badge-gold',excused:'badge-gold'}[myAtt]||'badge-red';
@@ -1206,7 +1206,7 @@ function renderTeachers(data){
   tb.innerHTML=data.map(t=>{
     const active=(t.students||[]).filter(s=>!s.archived);
     const todayAtt=t.todayAttendance||{};
-    const present=active.filter(s=>todayAtt[s.id]==='present').length;
+    const present=active.filter(s=>todayAtt[s.id]==='present'||todayAtt[s.id]==='late').length;
     return `<tr>
       <td><div class="teacher-info"><div class="teacher-avatar">${ini(t.name)}</div><div><div class="teacher-name">${t.name}</div></div></div></td>
       <td style="font-size:12px;color:#7a8a7a;direction:ltr;text-align:right;">${t.nationalId||'—'}</td>
@@ -1444,23 +1444,32 @@ function rejectAddStudentRequest(teacherId, requestId){
   });
 }
 
+// ملاحظة حلّ جذري: القراءة السابقة كانت من allUsers المخزّنة محلياً (قد لا تكون
+// محدَّثة إن لم يتزامن جهاز المحفّظ بعد بسبب انقطاع الاتصال)، ثم تُكتب المصفوفتان
+// كاملتين فوق وثيقة السيرفر — أي تغيير آخر طرأ على students/deletionRequests بين
+// لحظة تحميل allUsers ولحظة الضغط على "موافقة" (إضافة طالب جديد، طلب حذف آخر...)
+// كان يُمحى صمتاً. الآن تُقرأ الوثيقة الحيّة داخل Transaction وقت الكتابة الفعلية.
 function approveDeleteRequest(teacherId,requestId){
   const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
   const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
   confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',async ()=>{
-    const updatedStudents=(teacher.students||[]).filter(s=>s.id!==req.studentId);
-    const updatedRequests=(teacher.deletionRequests||[]).map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
+    const teacherRef=db.collection('userdata').doc(teacherId);
     try{
-      const sessSnap=await db.collection('userdata').doc(teacherId).collection('sessions')
+      const sessSnap=await teacherRef.collection('sessions')
         .where('studentId','==',req.studentId).get();
       if(!sessSnap.empty){
         const batch=db.batch();
         sessSnap.forEach(doc=>batch.delete(doc.ref));
         await batch.commit();
       }
-      await db.collection('userdata').doc(teacherId).set({
-        students:updatedStudents, deletionRequests:updatedRequests
-      },{merge:true});
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(teacherRef);
+        const liveStudents=(snap.exists && snap.data().students)||[];
+        const liveRequests=(snap.exists && snap.data().deletionRequests)||[];
+        const updatedStudents=liveStudents.filter(s=>s.id!==req.studentId);
+        const updatedRequests=liveRequests.map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
+        tx.set(teacherRef,{students:updatedStudents, deletionRequests:updatedRequests},{merge:true});
+      });
       toast('🗑️ تم حذف الطالب نهائياً');
       sendAdminNotification(`المشرف الميداني ${currentFsName} وافق على حذف الطالب "${req.studentName}" لدى المحفّظ ${teacher.name}`);
     }catch(e){ toast('⚠️ خطأ: '+e.message); }
@@ -1470,12 +1479,19 @@ function approveDeleteRequest(teacherId,requestId){
 function rejectDeleteRequest(teacherId,requestId){
   const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
   const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
-  confirmAction('رفض طلب الحذف','هل تريد رفض طلب حذف الطالب "'+req.studentName+'" والاحتفاظ به؟',()=>{
-    const updatedStudents=(teacher.students||[]).map(s=>s.id===req.studentId?{...s,pendingDeletion:false}:s);
-    const updatedRequests=(teacher.deletionRequests||[]).map(r=>r.id===requestId?{...r,status:'rejected',resolvedAt:new Date().toISOString()}:r);
-    db.collection('userdata').doc(teacherId).set({
-      students:updatedStudents, deletionRequests:updatedRequests
-    },{merge:true}).then(()=>toast('↩️ تم رفض طلب الحذف')).catch(e=>toast('⚠️ خطأ: '+e.message));
+  confirmAction('رفض طلب الحذف','هل تريد رفض طلب حذف الطالب "'+req.studentName+'" والاحتفاظ به؟',async ()=>{
+    const teacherRef=db.collection('userdata').doc(teacherId);
+    try{
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(teacherRef);
+        const liveStudents=(snap.exists && snap.data().students)||[];
+        const liveRequests=(snap.exists && snap.data().deletionRequests)||[];
+        const updatedStudents=liveStudents.map(s=>s.id===req.studentId?{...s,pendingDeletion:false}:s);
+        const updatedRequests=liveRequests.map(r=>r.id===requestId?{...r,status:'rejected',resolvedAt:new Date().toISOString()}:r);
+        tx.set(teacherRef,{students:updatedStudents, deletionRequests:updatedRequests},{merge:true});
+      });
+      toast('↩️ تم رفض طلب الحذف');
+    }catch(e){ toast('⚠️ خطأ: '+e.message); }
   });
 }
 
@@ -1869,7 +1885,7 @@ function renderTeacherRatings(){
     const evalIds=getEvalStudentIds(t);
     const total=evalIds.length;
     const attMap=t.ratingAttendance||{};
-    const presentCount=evalIds.filter(id=>attMap[id]==='present').length;
+    const presentCount=evalIds.filter(id=>attMap[id]==='present'||attMap[id]==='late').length;
     const sessions=(t.ratingSessions||[]).filter(s=>evalIds.includes(s.studentId));
     const hifzCount=sessions.filter(s=>(s.hifz||[]).length>0).length;
     const murajaaCount=sessions.filter(s=>(s.murajaa||[]).length>0).length;
