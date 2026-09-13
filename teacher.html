@@ -2136,7 +2136,7 @@ async function renderDash(){
   const active=students.filter(s=>!s.archived);
   const todayAtt=attendance[TODAY()]||{};
   const present=active.filter(s=>todayAtt[s.id]==='present'||todayAtt[s.id]==='late').length;
-  const absent=active.filter(s=>todayAtt[s.id]==='absent').length;
+  const absent=active.filter(s=>todayAtt[s.id]==='absent'||todayAtt[s.id]==='excused').length;
 
   document.getElementById('st-students').textContent=active.length;
   document.getElementById('st-present').textContent=present+'/'+active.length;
@@ -4735,7 +4735,7 @@ function buildUnifiedTable(studentsList,from,to,content){
         else if(att==='late') lateCount++;
         else if(att==='excused') excusedCount++;
       });
-      const pct=totalCount?Math.round(presentCount/totalCount*100):0;
+      const pct=totalCount?Math.round((presentCount+lateCount)/totalCount*100):0;
       row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#16a34a;font-weight:700;">${presentCount}</td>
         <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#e63946;font-weight:700;">${absentCount}</td>
         <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;text-align:center;color:#b7791f;font-weight:700;">${lateCount}</td>
@@ -4936,8 +4936,8 @@ async function buildDailyEvalReportHTML(date){
 
   const avg=Math.round(list.reduce((sum,r)=>sum+r.total,0)/list.length);
   const openedCount=list.filter(r=>r.opened).length;
-  const presentCount=list.filter(r=>r.attStatus==='present').length;
-  const absentCount=list.filter(r=>r.attStatus==='absent').length;
+  const presentCount=list.filter(r=>r.attStatus==='present'||r.attStatus==='late').length;
+  const absentCount=list.filter(r=>r.attStatus==='absent'||r.attStatus==='excused').length;
   const dateFmt=new Date(date).toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
 
   const gradeOf=(pct)=> pct>=90?{lbl:'ممتاز',clr:'#0f9d58'}: pct>=75?{lbl:'جيد جداً',clr:'#2e7dd7'}: pct>=60?{lbl:'جيد',clr:'#c9a227'}: pct>=40?{lbl:'متوسط',clr:'#e08a00'}:{lbl:'ضعيف',clr:'#d9453d'};
