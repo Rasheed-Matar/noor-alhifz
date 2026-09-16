@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -458,30 +459,23 @@ function checkUserStatus(user) {
       showView('pending');
       return;
     }
-    const d = doc.data();
+    const d = { uid: user.uid, ...doc.data() };
 
-    // ── ROUTING LOGIC ──
-    sessionStorage.setItem('userCache', JSON.stringify({ uid: user.uid, ...d }));
-    if (d.role === 'admin') {
-      navigateTo('supervisor.html');
-      return;
+    // ── ROUTING LOGIC (متعدد الصلاحيات) ──
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+
+    const forceSwitch = new URLSearchParams(location.search).get('switch') === '1';
+    const roles = NoorRoles.activeRoles(d);
+
+    if (roles.length) {
+      if (forceSwitch && roles.length > 1) {
+        showView('loading');
+        NoorRoles.showPicker(roles, { name: d.name, navigate: navigateTo });
+        return;
+      }
+      if (NoorRoles.routeAfterLogin(d, navigateTo)) return;
     }
-    if (d.role === 'fieldSupervisor' && d.status === 'approved') {
-      navigateTo('field-supervisor.html');
-      return;
-    }
-    if (d.role === 'examiner' && d.status === 'approved') {
-      navigateTo('examiner.html');
-      return;
-    }
-    if (d.role === 'student' && d.status === 'approved') {
-      navigateTo('student.html');
-      return;
-    }
-    if (d.status === 'approved') {
-      navigateTo('teacher.html');
-      return;
-    }
+
     if (d.status === 'rejected') {
       showView('rejected');
       return;
