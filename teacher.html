@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="quran-mushaf-lines.js"></script>
@@ -570,6 +571,9 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
     </div>
   </div>
   <div class="tb-actions">
+    <a href="#" class="tb-btn" id="btnSwitchRole" title="تبديل الصلاحية" onclick="doSwitchRole();return false;" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+    </a>
     <a href="login.html" class="tb-btn" id="logoutBtn" title="تسجيل الخروج" onclick="doLogout();return false;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </a>
@@ -1732,6 +1736,11 @@ function doLogout(){
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>{ window.location.href='login.html'; });
 }
 
+function doSwitchRole(){
+  const d = JSON.parse(sessionStorage.getItem('userCache')||'{}');
+  if(!NoorRoles.switchRole(d)) toast('لا توجد صلاحيات أخرى لحسابك');
+}
+
 // ═══════════════════════════════════════════════════════════
 //  ترحيل لمرة واحدة: أي بيانات قديمة كانت مخزّنة داخل وثيقة
 //  المحفّظ نفسها (attendance/dailyEval/sessions) تُنقل إلى
@@ -1792,25 +1801,23 @@ auth.onAuthStateChanged(user=>{
 });
 
 function checkUserStatus(user){
+  const apply = d => {
+    const g = NoorRoles.guardPage('teacher', d);
+    if(!g.ok){ window.location.href = g.redirect; return; }
+    enterApp(user, d);
+  };
   const cached = sessionStorage.getItem('userCache');
   if(cached){
     try{
       const d = JSON.parse(cached);
-      if(d.uid === user.uid){
-        if(d.role==='admin'){ window.location.href='supervisor.html'; return; }
-        if(d.role==='examiner'){ window.location.href='examiner.html'; return; }
-        if(d.role==='teacher' && d.status==='approved'){ enterApp(user,d); return; }
-        window.location.href='login.html'; return;
-      }
+      if(d.uid === user.uid){ apply(d); return; }
     }catch(e){}
   }
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists){ window.location.href='login.html'; return; }
-    const d=doc.data();
-    if(d.role==='admin'){ window.location.href='supervisor.html'; return; }
-    if(d.role==='examiner'){ window.location.href='examiner.html'; return; }
-    if(d.role==='teacher' && d.status==='approved'){ enterApp(user,d); return; }
-    window.location.href='login.html';
+    const d = { uid:user.uid, ...doc.data() };
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+    apply(d);
   }).catch(()=>{ window.location.href='login.html'; });
 }
 
@@ -1818,6 +1825,8 @@ function enterApp(user,data){
   const ls = document.getElementById('loadingScreen');
   ls.classList.add('hide');
   setTimeout(()=>ls.classList.add('gone'), 300);
+  const btnSR = document.getElementById('btnSwitchRole');
+  if(btnSR) btnSR.style.display = NoorRoles.activeRoles(data).length > 1 ? 'flex' : 'none';
   document.getElementById('hdr-teacher-name').textContent=data.name||user.email;
   document.getElementById('sb-name').textContent=data.name||user.email;
   document.getElementById('sb-circle').textContent=data.circle||'حلقة القرآن';
