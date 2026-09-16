@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -229,6 +230,7 @@ tr:hover td{background:#fdf9f2;}
       <div class="nav-avatar" id="navAvatar">م</div>
       <span id="navUserName">المختبر</span>
     </div>
+    <button class="logout-btn" id="btnSwitchRole" onclick="doSwitchRole()" style="display:none">🔄 تبديل الصلاحية</button>
     <button class="logout-btn" onclick="doLogout()">خروج</button>
   </div>
 </nav>
@@ -610,34 +612,40 @@ auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){window.location.href='login.html';return;}
 
+  const enter = d => {
+    currentUser=user;
+    currentExaminerDoc=d;
+    document.getElementById('navAvatar').textContent=ini(d.name||'مخ');
+    document.getElementById('navUserName').textContent=d.name||'المختبر';
+    const btnSR=document.getElementById('btnSwitchRole');
+    if(btnSR) btnSR.style.display = NoorRoles.activeRoles(d).length > 1 ? 'flex' : 'none';
+    const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
+    initDate();
+    initLiveListeners();
+  };
+
   const cached = sessionStorage.getItem('userCache');
   if(cached){
     try{
       const d = JSON.parse(cached);
-      if(d.uid === user.uid && d.role === 'examiner'){
-        currentUser=user;
-        currentExaminerDoc=d;
-        document.getElementById('navAvatar').textContent=ini(d.name||'مخ');
-        document.getElementById('navUserName').textContent=d.name||'المختبر';
-        const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
-        initDate();
-        initLiveListeners();
-        return;
-      }
+      if(d.uid === user.uid && NoorRoles.hasRole(d,'examiner')){ enter(d); return; }
     }catch(e){}
   }
 
   db.collection('users').doc(user.uid).get().then(doc=>{
-    if(!doc.exists||doc.data().role!=='examiner'){window.location.href='login.html';return;}
-    currentUser=user;
-    currentExaminerDoc=doc.data();
-    document.getElementById('navAvatar').textContent=ini(currentExaminerDoc.name||'مخ');
-    document.getElementById('navUserName').textContent=currentExaminerDoc.name||'المختبر';
-    const ls2=document.getElementById('loadingScreen'); ls2.classList.add('hide'); setTimeout(()=>ls2.classList.add('gone'),300);
-    initDate();
-    initLiveListeners();
+    if(!doc.exists){ window.location.href='login.html'; return; }
+    const d = { uid:user.uid, ...doc.data() };
+    const g = NoorRoles.guardPage('examiner', d);
+    if(!g.ok){ window.location.href = g.redirect; return; }
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+    enter(d);
   }).catch(()=>window.location.href='login.html');
 });
+
+function doSwitchRole(){
+  const d = JSON.parse(sessionStorage.getItem('userCache')||'{}');
+  if(!NoorRoles.switchRole(d)) toast && toast('لا توجد صلاحيات أخرى لحسابك');
+}
 
 function initDate(){
   const days=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
