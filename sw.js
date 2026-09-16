@@ -3,7 +3,7 @@
 // الصفحة مغلقة تماماً (أندرويد/كروم فقط). المنطق الكامل في sync-shared.js
 importScripts('sync-shared.js');
 
-const CACHE = 'noor-v-20260913-1940';
+const CACHE = 'noor-v-20260916-multirole';
 
 // كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
 const ASSETS = [
@@ -13,10 +13,13 @@ const ASSETS = [
   './teacher.html',
   './supervisor.html',
   './examiner.html',
+  './field-supervisor.html',
+  './student.html',
   './manifest.json',
   './icon.svg',
   './pwa.js',
   './sync-shared.js',
+  './roles.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
