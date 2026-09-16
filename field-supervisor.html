@@ -1049,7 +1049,7 @@ function subscribeTeacherData(){
           evalStudentIds:data.evalStudentIds||[]
         };
       });
-      renderEverything();
+      scheduleRender();
 
       snap.docs.forEach(d=>{
         const teacherId=d.id;
@@ -1065,7 +1065,7 @@ function subscribeTeacherData(){
             allUsers[idx].role=ud.role||'teacher';
             allUsers[idx].status=ud.status||'pending';
           }
-          renderEverything();
+          scheduleRender();
         },e=>console.warn('users listen err',teacherId,e));
         const dUnsub=db.collection('userdata').doc(teacherId).onSnapshot(dSnap=>{
           const idx=allUsers.findIndex(x=>x.id===teacherId);
@@ -1080,11 +1080,11 @@ function subscribeTeacherData(){
             allUsers[idx].fieldSupervisorId=dd.fieldSupervisorId||'';
             allUsers[idx].evalStudentIds=dd.evalStudentIds||[];
           }
-          renderEverything();
+          scheduleRender();
         },e=>console.warn('userdata listen err',teacherId,e));
         const aUnsub=db.collection('userdata').doc(teacherId).collection('attendance').doc(todayISO()).onSnapshot(doc=>{
           const idx=allUsers.findIndex(x=>x.id===teacherId);
-          if(idx>=0){ allUsers[idx].todayAttendance=doc.exists?(doc.data()||{}):{}; renderEverything(); }
+          if(idx>=0){ allUsers[idx].todayAttendance=doc.exists?(doc.data()||{}):{}; scheduleRender(); }
         },e=>console.warn('today attendance err',teacherId,e));
         unsubData.push(uUnsub,dUnsub,aUnsub);
       });
@@ -1105,6 +1105,19 @@ function subscribeTeacherData(){
 
 let firstRenderDone=false;
 let monListenedIds=new Set();
+// ── جدولة إعادة الرسم ──
+// مستمعات Firestore تُطلق دفعات متتالية من التحديثات (مستمع لكل محفّظ:
+// users + userdata + attendance)، وكل واحد كان يستدعي renderEverything()
+// فوراً — أي إعادة بناء كاملة للجداول عشرات المرات في أجزاء من الثانية،
+// وهو سبب "الرفرشة" المزعجة وقفزات التمرير وضياع التحديدات.
+// الحل: نجمّع كل الدفعة في إعادة رسم واحدة عند الإطار التالي.
+let _renderScheduled=false;
+function scheduleRender(){
+  if(_renderScheduled) return;
+  _renderScheduled=true;
+  requestAnimationFrame(()=>{ _renderScheduled=false; renderEverything(); });
+}
+
 function renderEverything(){
   renderDashboard();
   const activePage=document.querySelector('.page-view.active');
@@ -1229,21 +1242,37 @@ function quickMsgTeacher(uid){
 // ════════════════════════════════════════
 //  STUDENTS
 // ════════════════════════════════════════
+let _stuSig='';
 function renderStudents(data){
   const tb=document.getElementById('studentsTable');
   if(!data.length){
+    _stuSig='';
     tb.innerHTML='<tr><td colspan="7"><div class="empty-state">لا يوجد طلاب</div></td></tr>';
     return;
   }
+
+  // لا نعيد بناء الجدول إن لم يتغيّر شيء فعلياً في المعروض — هذا يمنع
+  // "الرفرشة" الناتجة عن دفعات تحديثات Firestore المتلاحقة
+  const sig=data.map(s=>[s.id,s.name,s.teacherId,s.teacherName,s.juz,s.parentPhone,s.archived?1:0,s.pendingDeletion?1:0].join('~')).join('|');
+  if(sig===_stuSig && tb.querySelector('.student-transfer-chk')) return;
+  _stuSig=sig;
+
+  // نحفظ التحديدات ومكان التمرير ثم نستعيدهما بعد إعادة البناء
+  const checked=new Set([...tb.querySelectorAll('.student-transfer-chk:checked')].map(c=>c.value));
+  const scroller=tb.closest('.table-wrap')||tb.parentElement;
+  const scrollTop=scroller?scroller.scrollTop:0;
+
   tb.innerHTML=data.map(s=>`
     <tr>
-      <td><input type="checkbox" class="student-transfer-chk" value="${s.id}" data-teacher="${s.teacherId}" data-name="${(s.name||'').replace(/"/g,'')}" ${s.archived?'disabled title="لا يمكن نقل طالب مؤرشف"':''}></td>
+      <td><input type="checkbox" class="student-transfer-chk" value="${s.id}" data-teacher="${s.teacherId}" data-name="${(s.name||'').replace(/"/g,'')}" ${checked.has(s.id)?'checked':''} ${s.archived?'disabled title="لا يمكن نقل طالب مؤرشف"':''}></td>
       <td><div class="teacher-info"><div class="teacher-avatar" style="background:linear-gradient(135deg,var(--gold3),var(--gold2));">${ini(s.name)}</div><div><div class="teacher-name">${s.name}</div></div></div></td>
       <td>${s.teacherName||'—'}</td><td>${s.juz||0}</td>
       <td>${s.parentPhone?`<button class="td-btn msg" onclick="quickMsgParent('${s.parentPhone}','${(s.name||'').replace(/'/g,"")}')">واتساب</button>`:'—'}</td>
       <td><span class="badge ${s.pendingDeletion?'badge-gold':s.archived?'badge-red':'badge-green'}">${s.pendingDeletion?'بانتظار الحذف':s.archived?'مؤرشف':'نشط'}</span></td>
       <td>${!s.archived?`<button class="td-btn edit" style="background:#eef4ff;color:#1a4b8c;" onclick="openTransferModal('${s.teacherId}','${s.id}')">نقل</button>`:''}</td>
     </tr>`).join('');
+
+  if(scroller) scroller.scrollTop=scrollTop;
 }
 function toggleAllStudentTransferChks(checked){
   document.querySelectorAll('.student-transfer-chk:not(:disabled)').forEach(c=>c.checked=checked);
@@ -1326,6 +1355,13 @@ function saveNewStudentAdmin(){
       });
     });
   }).then(()=>{
+    // إضافة الطالب فوراً للواجهة قبل وصول تحديث الخادم — فيظهر في الجدول
+    // مباشرة دون انتظار ولا وميض
+    const idx=allUsers.findIndex(u=>u.id===teacherId);
+    if(idx>=0 && !(allUsers[idx].students||[]).some(s=>s.id===studentLocalId)){
+      allUsers[idx].students=[...(allUsers[idx].students||[]), newStudent];
+      scheduleRender();
+    }
     toast('✅ تم إضافة الطالب — كلمة المرور الافتراضية: رقم الهوية');
     closeModal('modal-add-student');
     sendAdminNotification(`المشرف الميداني ${currentFsName} أضاف الطالب "${fullName}" لدى المحفّظ ${teacherObj?.name||''}`);
@@ -1498,6 +1534,7 @@ function rejectDeleteRequest(teacherId,requestId){
 // ════════════════════════════════════════
 //  TEACHER ATTENDANCE — يصل إشعار للمدير بكل تسجيل
 // ════════════════════════════════════════
+let _taSig='';
 function renderTeacherAttendance(){
   const dateEl=document.getElementById('taDate');
   if(!dateEl) return;
@@ -1518,12 +1555,21 @@ function renderTeacherAttendance(){
   document.getElementById('taStatExcused').textContent=cE;
 
   const el=document.getElementById('teacherAttList');
-  if(!teachers.length){ el.innerHTML='<div class="empty-note" style="padding:30px;text-align:center;color:#999;">لا يوجد محفّظون مطابقون</div>'; return; }
+  if(!teachers.length){ _taSig=''; el.innerHTML='<div class="empty-note" style="padding:30px;text-align:center;color:#999;">لا يوجد محفّظون مطابقون</div>'; return; }
+
+  // إن لم تتغيّر قائمة المحفّظين ولا التاريخ ولا أسماؤهم، نكتفي بتحديث
+  // حالة الأزرار فقط بدل إعادة بناء البطاقات — فلا وميض ولا قفزة تمرير
+  const sig=date+'|'+teachers.map(t=>t.id+':'+(t.name||'')+':'+(t.circle||'')+':'+(t.phone||'')).join(',');
+  if(sig===_taSig && el.querySelector('.tatt-card')){
+    updateTeacherAttButtons(date);
+    return;
+  }
+  _taSig=sig;
 
   el.innerHTML=teachers.map(t=>{
     const cur=(t.teacherAttendance||{})[date];
     return `
-    <div class="tatt-card">
+    <div class="tatt-card" data-tid="${t.id}">
       <div class="tatt-info">
         <div class="tatt-avatar">${ini(t.name)}</div>
         <div>
@@ -1532,13 +1578,28 @@ function renderTeacherAttendance(){
         </div>
       </div>
       <div class="tatt-btns">
-        <button class="att-btn type-p ${cur==='present'?'sel-p':''}" onclick="setTeacherAttendance('${t.id}','${date}','present')" title="حاضر">✓</button>
-        <button class="att-btn type-l ${cur==='late'?'sel-l':''}" onclick="setTeacherAttendance('${t.id}','${date}','late')" title="متأخر">⏰</button>
-        <button class="att-btn type-a ${cur==='absent'?'sel-a':''}" onclick="setTeacherAttendance('${t.id}','${date}','absent')" title="غائب">✕</button>
-        <button class="att-btn type-e ${cur==='excused'?'sel-e':''}" onclick="setTeacherAttendance('${t.id}','${date}','excused')" title="مستأذن">!</button>
+        <button class="att-btn type-p ${cur==='present'?'sel-p':''}" data-st="present" onclick="setTeacherAttendance('${t.id}','${date}','present')" title="حاضر">✓</button>
+        <button class="att-btn type-l ${cur==='late'?'sel-l':''}" data-st="late" onclick="setTeacherAttendance('${t.id}','${date}','late')" title="متأخر">⏰</button>
+        <button class="att-btn type-a ${cur==='absent'?'sel-a':''}" data-st="absent" onclick="setTeacherAttendance('${t.id}','${date}','absent')" title="غائب">✕</button>
+        <button class="att-btn type-e ${cur==='excused'?'sel-e':''}" data-st="excused" onclick="setTeacherAttendance('${t.id}','${date}','excused')" title="مستأذن">!</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// تحديث "جراحي" لحالة أزرار الحضور فقط — دون المساس ببنية البطاقات
+const _SEL_CLS={present:'sel-p',late:'sel-l',absent:'sel-a',excused:'sel-e'};
+function updateTeacherAttButtons(date){
+  document.querySelectorAll('#teacherAttList .tatt-card').forEach(card=>{
+    const t=allUsers.find(x=>x.id===card.dataset.tid);
+    if(!t) return;
+    const cur=(t.teacherAttendance||{})[date];
+    card.querySelectorAll('.att-btn').forEach(b=>{
+      const isSel = b.dataset.st===cur;
+      const cls=_SEL_CLS[b.dataset.st];
+      b.classList.toggle(cls, isSel);
+    });
+  });
 }
 
 const ATT_LABEL_AR={present:'حاضر',absent:'غائب',late:'متأخر',excused:'مستأذن'};
