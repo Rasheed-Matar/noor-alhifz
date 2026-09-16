@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -484,6 +485,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <div class="hdr-name" id="hdrName">الطالب</div>
     <div class="hdr-sub" id="hdrCircle">بوابة الطالب</div>
   </div>
+  <button class="hdr-btn" id="btnSwitchRole" onclick="doSwitchRole()" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+    تبديل
+  </button>
   <button class="hdr-btn" onclick="doLogout()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     خروج
@@ -1053,19 +1058,17 @@ auth.onAuthStateChanged(user=>{
 function checkUserStatus(user){
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists){ navigateTo('login.html'); return; }
-    const d=doc.data();
-    // التحقق من دور الطالب
-    if(d.role==='admin'){ navigateTo('supervisor.html'); return; }
-    if(d.role==='examiner'){ navigateTo('examiner.html'); return; }
-    if(d.role==='teacher'){ navigateTo('teacher.html'); return; }
-    // role === 'student' أو أي دور آخر
-    if(d.role==='student' && d.status==='approved'){
-      enterApp(user, d);
-      return;
-    }
-    // إذا لم يكن طالباً معتمداً
-    navigateTo('login.html');
+    const d = { uid:user.uid, ...doc.data() };
+    const g = NoorRoles.guardPage('student', d);
+    if(!g.ok){ navigateTo(g.redirect); return; }
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+    enterApp(user, d);
   }).catch(()=>navigateTo('login.html'));
+}
+
+function doSwitchRole(){
+  const d = JSON.parse(sessionStorage.getItem('userCache')||'{}');
+  if(!NoorRoles.switchRole(d)) toast('لا توجد صلاحيات أخرى لحسابك');
 }
 
 function enterApp(user, userData){
@@ -1073,6 +1076,8 @@ function enterApp(user, userData){
   const ls=document.getElementById('loadingScreen');
   ls.classList.add('hide');
   setTimeout(()=>ls.classList.add('gone'),300);
+  const btnSR = document.getElementById('btnSwitchRole');
+  if(btnSR) btnSR.style.display = NoorRoles.activeRoles(userData).length > 1 ? 'flex' : 'none';
 
   myStudentId = userData.studentId;
   myTeacherId = userData.teacherId;
