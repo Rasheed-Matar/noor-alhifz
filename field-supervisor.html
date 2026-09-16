@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -488,6 +489,10 @@ select.form-input{cursor:pointer;}
       <button class="nav-item" id="nav-settings" onclick="showPage('settings')">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         الإعدادات
+      </button>
+      <button class="nav-item" id="btnSwitchRole" onclick="doSwitchRole()" style="display:none">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        تبديل الصلاحية
       </button>
       <button class="nav-item" id="nav-logout" onclick="doLogout()">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -973,11 +978,13 @@ auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){ window.location.href='login.html'; return; }
   db.collection('users').doc(user.uid).get().then(doc=>{
-    if(!doc.exists||doc.data().role!=='fieldSupervisor'||doc.data().status!=='approved'){
-      window.location.href='login.html'; return;
-    }
+    if(!doc.exists){ window.location.href='login.html'; return; }
+    const d = { uid:user.uid, ...doc.data() };
+    const g = NoorRoles.guardPage('fieldSupervisor', d);
+    if(!g.ok){ window.location.href = g.redirect; return; }
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+
     currentUser=user;
-    const d=doc.data();
     currentFsName=d.name||'المشرف الميداني';
     document.getElementById('navAvatar').textContent=ini(d.name||'م');
     document.getElementById('navUserName').textContent=d.name||'المشرف الميداني';
@@ -986,10 +993,17 @@ auth.onAuthStateChanged(user=>{
     document.getElementById('setPhone').value=d.phone||'';
     document.getElementById('navDate').textContent=new Date().toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     sessionStorage.setItem('fsUserCache','1');
+    const btnSR=document.getElementById('btnSwitchRole');
+    if(btnSR) btnSR.style.display = NoorRoles.activeRoles(d).length > 1 ? 'flex' : 'none';
     const ls=document.getElementById('loadingScreen'); ls.style.display='none';
     startListening();
   }).catch(()=>{ window.location.href='login.html'; });
 });
+
+function doSwitchRole(){
+  const d = JSON.parse(sessionStorage.getItem('userCache')||'{}');
+  if(!NoorRoles.switchRole(d)) toast('لا توجد صلاحيات أخرى لحسابك');
+}
 
 function saveAdminSettings(){
   const name=document.getElementById('setName').value.trim();
