@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="roles.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="quran-mushaf-lines.js"></script>
@@ -510,6 +511,10 @@ select.form-input{cursor:pointer;}
       <button class="nav-item" id="nav-settings" onclick="showPage('settings')">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         الإعدادات
+      </button>
+      <button class="nav-item" id="btnSwitchRole" onclick="doSwitchRole()" style="display:none">
+        <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        تبديل الصلاحية
       </button>
       <button class="nav-item" id="nav-logout" onclick="doLogout()">
         <svg class="nav-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1609,6 +1614,9 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = secondaryApp.auth();
 
+// نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
+const ADMIN_API = 'https://noor-admin-api.vercel.app/api/reset-password';
+
 function nidToEmail(nid){ return nid + '@noor-alhifz.app'; }
 const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 
@@ -1656,39 +1664,42 @@ auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){ window.location.href='login.html'; return; }
 
-  const cached = sessionStorage.getItem('userCache');
-  if(cached){
-    try{
-      const d = JSON.parse(cached);
-      if(d.uid === user.uid && d.role === 'admin'){
-        currentUser=user;
-        currentSupervisorName=d.name||'المشرف';
-        document.getElementById('navAvatar').textContent=ini(d.name||'م');
-        document.getElementById('navUserName').textContent=d.name||'المشرف';
-        document.getElementById('setName').value=d.name||'';
-        document.getElementById('setEmail').value=user.email||'';
-        document.getElementById('setPhone').value=d.phone||'';
-        const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
-        startListening();
-        return;
-      }
-    }catch(e){}
-  }
-
-  db.collection('users').doc(user.uid).get().then(doc=>{
-    if(!doc.exists||doc.data().role!=='admin'){ window.location.href='login.html'; return; }
+  const enter = d => {
     currentUser=user;
-    const d=doc.data();
     currentSupervisorName=d.name||'المشرف';
     document.getElementById('navAvatar').textContent=ini(d.name||'م');
     document.getElementById('navUserName').textContent=d.name||'المشرف';
     document.getElementById('setName').value=d.name||'';
     document.getElementById('setEmail').value=user.email||'';
     document.getElementById('setPhone').value=d.phone||'';
-    const ls2=document.getElementById('loadingScreen'); ls2.classList.add('hide'); setTimeout(()=>ls2.classList.add('gone'),300);
+    const btnSR=document.getElementById('btnSwitchRole');
+    if(btnSR) btnSR.style.display = NoorRoles.activeRoles(d).length > 1 ? 'flex' : 'none';
+    const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
     startListening();
+  };
+
+  const cached = sessionStorage.getItem('userCache');
+  if(cached){
+    try{
+      const d = JSON.parse(cached);
+      if(d.uid === user.uid && NoorRoles.hasRole(d,'admin')){ enter(d); return; }
+    }catch(e){}
+  }
+
+  db.collection('users').doc(user.uid).get().then(doc=>{
+    if(!doc.exists){ window.location.href='login.html'; return; }
+    const d = { uid:user.uid, ...doc.data() };
+    const g = NoorRoles.guardPage('admin', d);
+    if(!g.ok){ window.location.href = g.redirect; return; }
+    sessionStorage.setItem('userCache', JSON.stringify(d));
+    enter(d);
   }).catch(()=>{ window.location.href='login.html'; });
 });
+
+function doSwitchRole(){
+  const d = JSON.parse(sessionStorage.getItem('userCache')||'{}');
+  if(!NoorRoles.switchRole(d)) toast('لا توجد صلاحيات أخرى لحسابك');
+}
 
 function saveAdminSettings(){
   const name=document.getElementById('setName').value.trim();
@@ -2354,24 +2365,19 @@ async function adminResetPassword(uid, kind){
 
   if(!nationalId || !authUid){ toast('⚠️ بيانات غير مكتملة'); return; }
 
-  const email = nidToEmail(nationalId);
-
+  toast('⏳ جارٍ إعادة التعيين...');
   try{
-    const cred = await secondaryAuth.signInWithEmailAndPassword(email, nationalId);
-    await cred.user.updatePassword(newPass);
-    await secondaryAuth.signOut();
-    await db.collection('users').doc(authUid).update({ firstLogin:true });
+    const idToken = await auth.currentUser.getIdToken(true);
+    const r = await fetch(ADMIN_API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ idToken, nationalId, newPassword: newPass })
+    });
+    const data = await r.json();
+    if(!r.ok || !data.ok) throw new Error(data.error || 'فشل الطلب');
     toast('✅ تم تعيين كلمة المرور الجديدة بنجاح');
     closeModal('modal-detail');
   } catch(e){
-    try{ await secondaryAuth.signOut(); }catch(_){}
-    if(e.code==='auth/wrong-password' || e.code==='auth/invalid-credential' || e.code==='auth/invalid-login-credentials'){
-      toast('⚠️ هذا المستخدم غيّر كلمة مروره مسبقاً، ولا يمكن تعيين كلمة جديدة له تلقائياً دون خادم مساعد (Cloud Function). تواصل معه لإعادة ضبطها يدوياً.');
-    } else if(e.code==='auth/user-not-found'){
-      toast('⚠️ لا يوجد حساب دخول مفعّل بهذا الرقم بعد');
-    } else {
-      toast('⚠️ خطأ: '+e.message);
-    }
+    toast('⚠️ تعذّرت إعادة التعيين: '+e.message);
   }
 }
 
@@ -2385,6 +2391,31 @@ async function findExistingUserByNid(nid){
   const snap = await db.collection('users').where('nationalId','==',nid).limit(1).get();
   if(snap.empty) return null;
   return {id:snap.docs[0].id, ...snap.docs[0].data()};
+}
+
+// إضافة صلاحية جديدة لحساب موجود (بدل رفض الإضافة عند تكرار رقم الهوية)
+// يرجع true إن أضاف الصلاحية، false إن ألغى المستخدم أو فشل
+async function offerAddRoleToExisting(existing, newRole, extraFields){
+  const already = Array.isArray(existing.roles) ? existing.roles.includes(newRole) : existing.role===newRole;
+  if(already){
+    toast('⚠️ هذا الحساب لديه صلاحية «'+(roleLabelAr[newRole]||newRole)+'» بالفعل');
+    return false;
+  }
+  const currentLabel = (existing.roles||[existing.role]).map(r=>roleLabelAr[r]||r).join('، ');
+  const ok = confirm('رقم الهوية مسجّل بالفعل كـ '+currentLabel+
+    '\nهل تريد إضافة صلاحية «'+(roleLabelAr[newRole]||newRole)+'» لنفس الحساب بدل إنشاء حساب جديد؟');
+  if(!ok) return false;
+  try{
+    await db.collection('users').doc(existing.id).update(Object.assign({
+      roles: firebase.firestore.FieldValue.arrayUnion(newRole),
+      status: 'approved'
+    }, extraFields||{}));
+    toast('✅ تمت إضافة الصلاحية لنفس الحساب');
+    return true;
+  }catch(e){
+    toast('⚠️ تعذّرت إضافة الصلاحية: '+e.message);
+    return false;
+  }
 }
 
 async function saveNewTeacher(){
@@ -2414,7 +2445,8 @@ async function saveNewTeacher(){
 
   const existing = await findExistingUserByNid(nid).catch(()=>null);
   if(existing){
-    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    const added = await offerAddRoleToExisting(existing, 'teacher', { circle: circle||'حلقة القرآن' });
+    if(added){ closeModal('modal-add-teacher'); }
     btn.textContent='إضافة المحفّظ'; btn.disabled=false;
     return;
   }
@@ -2431,7 +2463,7 @@ async function saveNewTeacher(){
         nationalId: nid, gender, dob, placeOfBirth: pob,
         phone, circle: circle||'حلقة القرآن',
         familyMembersCount,
-        role: 'teacher', status: 'approved', firstLogin: true,
+        role: 'teacher', roles: ['teacher'], status: 'approved', firstLogin: true,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -2507,7 +2539,7 @@ function saveNewStudentAdmin(){
         firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
         nationalId: nid, dob, placeOfBirth: pob, gender,
         phone, circle: teacherObj?.circle||'حلقة القرآن',
-        role: 'student', status: 'approved',
+        role: 'student', roles: ['student'], status: 'approved',
         teacherId: teacherId,
         studentId: studentLocalId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2711,7 +2743,7 @@ function approveAddStudentRequest(teacherId, requestId){
         firstName:req.firstName, fatherName:req.fatherName, grandfatherName:req.grandfatherName, familyName:req.familyName,
         nationalId: req.nationalId, dob: req.dob, placeOfBirth: req.placeOfBirth, gender: req.gender,
         phone: req.parentPhone, circle: teacher.circle||'حلقة القرآن',
-        role: 'student', status: 'approved',
+        role: 'student', roles: ['student'], status: 'approved',
         teacherId: teacherId,
         studentId: studentLocalId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2775,7 +2807,7 @@ function renderPwResetRequests(){
         <td>${role}</td>
         <td style="font-size:12px;color:#7a8a7a;">${dateStr}</td>
         <td><div class="td-action">
-          ${matched?`<button class="td-btn edit" onclick="tryAutoResetPassword('${r.id}','${matched.nationalId}','${matched.id}','${matched.phone||r.phone}','${(matched.name||'').replace(/'/g,"")}')">🔑 محاولة تلقائية</button>`:''}
+          ${matched?`<button class="td-btn edit" onclick="tryAutoResetPassword('${r.id}','${matched.nationalId}','${matched.id}','${matched.phone||r.phone}','${(matched.name||'').replace(/'/g,"")}')">🔑 إعادة تعيين</button>`:''}
           <button class="td-btn edit" onclick="copyResetEmail('${r.nationalId}')">📋 نسخ البريد</button>
           <button class="td-btn edit" onclick="window.open('https://console.firebase.google.com/project/noor-alhifz/authentication/users','_blank')">🔗 فتح Console</button>
           ${matched&&matched.phone?`<button class="td-btn edit" onclick="notifyPwResetViaWA('${r.id}','${matched.phone}','${(matched.name||'').replace(/'/g,"")}')">💬 واتساب</button>`:''}
@@ -2792,35 +2824,29 @@ async function tryAutoResetPassword(reqId, nationalId, authUid, phone, name){
   if(!newPass) return;
   if(newPass.length<6){ toast('⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل','error'); return; }
 
-  const email=nidToEmail(nationalId);
+  toast('⏳ جارٍ إعادة التعيين...');
   try{
-    const cred=await secondaryAuth.signInWithEmailAndPassword(email, nationalId);
-    await cred.user.updatePassword(newPass);
-    await secondaryAuth.signOut();
-    await db.collection('users').doc(authUid).update({ firstLogin:true });
-    toast('✅ تم تغيير كلمة المرور تلقائياً بنجاح');
+    const idToken = await auth.currentUser.getIdToken(true);
+    const r = await fetch(ADMIN_API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ idToken, nationalId, newPassword: newPass })
+    });
+    const data = await r.json();
+    if(!r.ok || !data.ok) throw new Error(data.error || 'فشل الطلب');
+
+    toast('✅ تم تغيير كلمة المرور بنجاح');
 
     if(phone && confirm('تم التغيير بنجاح. هل تريد إرسال كلمة المرور الجديدة للمستخدم عبر واتساب الآن؟')){
-      const msg=`السلام عليكم ورحمة الله وبركاته 🌿
-
-تم إعادة تعيين كلمة مرور حسابك بنجاح ✅
-
-🔐 *كلمة المرور الجديدة:*
-${newPass}
-
-يُرجى تغييرها فور تسجيل الدخول من الإعدادات.
-
-مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.`;
+      const msg = 'السلام عليكم ورحمة الله وبركاته 🌿' + String.fromCharCode(10,10) +
+        'تم إعادة تعيين كلمة مرور حسابك بنجاح ✅' + String.fromCharCode(10,10) +
+        '🔐 *كلمة المرور الجديدة:*' + String.fromCharCode(10) + newPass + String.fromCharCode(10,10) +
+        'يُرجى تغييرها فور تسجيل الدخول من الإعدادات.' + String.fromCharCode(10,10) +
+        'مركزُ الكتابِ لتعليمِ القرآنِ الكريمِ والسُّنَّةِ النبويةِ.';
       openWA(phone, msg);
     }
     resolvePwResetRequest(reqId);
   }catch(e){
-    try{ await secondaryAuth.signOut(); }catch(_){}
-    if(e.code==='auth/wrong-password' || e.code==='auth/invalid-credential'){
-      toast('⚠️ هذا الحساب غيّر كلمة مروره مسبقاً — استخدم زر "فتح Console" بدلاً من ذلك','error');
-    } else {
-      toast('⚠️ تعذّرت المحاولة التلقائية: '+e.message,'error');
-    }
+    toast('⚠️ تعذّرت إعادة التعيين: ' + e.message, 'error');
   }
 }
 
@@ -4284,7 +4310,8 @@ async function saveNewExaminer(){
 
   const existing = await findExistingUserByNid(nid).catch(()=>null);
   if(existing){
-    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    const added = await offerAddRoleToExisting(existing, 'examiner');
+    if(added){ closeModal('modal-add-examiner'); }
     btn.textContent='إضافة المختبر'; btn.disabled=false;
     return;
   }
@@ -4298,7 +4325,7 @@ async function saveNewExaminer(){
       return db.collection('users').doc(newUid).set({
         name,firstName:fname,fatherName:father,grandfatherName:grand,familyName:family,
         nationalId:nid,phone,
-        role:'examiner',status:'approved',
+        role:'examiner',roles:['examiner'],status:'approved',
         createdAt:firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -4397,7 +4424,8 @@ async function saveNewFieldSupervisor(){
 
   const existing = await findExistingUserByNid(nid).catch(()=>null);
   if(existing){
-    toast('⚠️ رقم الهوية هذا مسجّل بالفعل كـ '+(roleLabelAr[existing.role]||existing.role));
+    const added = await offerAddRoleToExisting(existing, 'fieldSupervisor');
+    if(added){ closeModal('modal-add-field-supervisor'); }
     btn.textContent='إضافة المشرف الميداني'; btn.disabled=false;
     return;
   }
@@ -4411,7 +4439,7 @@ async function saveNewFieldSupervisor(){
       return db.collection('users').doc(newUid).set({
         name,firstName:fname,fatherName:father,grandfatherName:grand,familyName:family,
         nationalId:nid,phone,
-        role:'fieldSupervisor',status:'approved',
+        role:'fieldSupervisor',roles:['fieldSupervisor'],status:'approved',
         createdAt:firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -6437,7 +6465,7 @@ async function confirmStudentImport(){
         name:r.name, firstName:r.firstName, fatherName:r.fatherName, grandfatherName:r.grandfatherName, familyName:r.familyName,
         nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth, gender:r.gender,
         phone:r.parentPhone, circle: teacherObj.circle||'حلقة القرآن',
-        role:'student', status:'approved',
+        role:'student', roles:['student'], status:'approved',
         teacherId: teacherId, studentId: studentLocalId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -6672,7 +6700,7 @@ async function confirmTeacherImport(){
         nationalId:r.nationalId, dob:r.dob, placeOfBirth:r.placeOfBirth,
         phone:r.phone, circle:r.circle||'حلقة القرآن',
         familyMembersCount:r.familyMembersCount,
-        role:'teacher', status:'approved', firstLogin:true,
+        role:'teacher', roles:['teacher'], status:'approved', firstLogin:true,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       okCount++;
@@ -6888,7 +6916,7 @@ async function startActivation(){
           nationalId:nid, dob:s.dob||'', placeOfBirth:s.placeOfBirth||'',
           gender:s.gender||'', phone:s.parentPhone||'',
           circle:teacher.circle||'حلقة القرآن',
-          role:'student', status:'approved',
+          role:'student', roles:['student'], status:'approved',
           teacherId, studentId:s.id,
           firstLogin:true,
           createdAt:firebase.firestore.FieldValue.serverTimestamp()
