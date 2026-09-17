@@ -1615,8 +1615,8 @@ const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = secondaryApp.auth();
 
 // نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
-const ADMIN_API = 'https://noor-admin-api.vercel.app/api/reset-password';
-
+const ADMIN_API = 'https://noor-alhifz.vercel.app/api/reset-password';
+  
 function nidToEmail(nid){ return nid + '@noor-alhifz.app'; }
 const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 
