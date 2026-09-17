@@ -1,0 +1,9 @@
+{
+  "name": "noor-admin-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "نقطة نهاية إدارية (Vercel Serverless) لإعادة تعيين كلمات مرور مستخدمي نور الحفظ عبر Firebase Admin SDK",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
