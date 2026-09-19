@@ -1119,7 +1119,7 @@ function saveAdminSettings(){
 //  FIRESTORE LISTENERS — محفّظو هذا المشرف الميداني فقط
 //  (fieldSupervisorId === معرّف حسابه الحالي)
 // ════════════════════════════════════════
-function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role==='teacher'); }
+function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&NoorRoles.hasRole(u,'teacher')); }
 function getAllStudents(){
   let rows=[];
   getTeachers().forEach(t=>{ (t.students||[]).forEach(s=>rows.push({...s,teacherName:t.name,teacherId:t.id})); });
