@@ -1035,6 +1035,17 @@ select.form-input{cursor:pointer;}
           <div class="form-group-s"><label class="form-label-s">رقم الجوال (واتساب / SMS) <span style="color:#7a8a7a;font-weight:400;">— ليتمكّن المحفّظون من مراسلتك</span></label><input class="form-inp-s" id="setPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
           <button class="btn-save" style="width:100%;" onclick="saveAdminSettings()">حفظ التغييرات</button>
         </div>
+        <div class="settings-section">
+          <div class="settings-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            صيانة النظام
+          </div>
+          <p style="font-size:12.5px;color:#7a8a7a;margin-bottom:12px;line-height:1.7;">
+            يفحص كل الحسابات ويعيد أي صلاحية أصلية فُقدت عند إضافة صلاحية إضافية لحساب موجود (تعدد الصلاحيات)، دون حذف أي شيء موجود حالياً. آمن للتشغيل أكثر من مرة.
+          </p>
+          <button class="btn-save" style="width:100%;background:#5a7a6a;" onclick="repairUserRoles()">🔧 إصلاح صلاحيات الحسابات</button>
+          <div id="repairRolesResult" style="font-size:12.5px;color:#0a3d2b;margin-top:8px;font-weight:600;"></div>
+        </div>
       </div>
     </div>
 
@@ -1717,6 +1728,36 @@ function saveAdminSettings(){
     document.getElementById('navUserName').textContent=name;
     toast('✅ تم حفظ التغييرات');
   }).catch(e=>toast('⚠️ خطأ: '+e.message));
+}
+
+// أداة صيانة لمرة واحدة (يمكن تكرارها بأمان): تُعيد لكل حساب صلاحيته الأصلية (role) داخل
+// مصفوفة الصلاحيات المتعددة (roles) إن كانت مفقودة منها — يصلح الحسابات التي أُضيفت لها صلاحية
+// جديدة عبر "إضافة صلاحية لحساب موجود" قبل أن تُحفظ الصلاحية الأصلية معها بشكل صحيح
+async function repairUserRoles(){
+  const out=document.getElementById('repairRolesResult');
+  out.textContent='⏳ جارٍ الفحص...';
+  try{
+    const snap=await db.collection('users').get();
+    let batch=db.batch(), n=0, batchCount=0;
+    const batches=[batch];
+    snap.forEach(doc=>{
+      const d=doc.data();
+      if(!d.role) return;
+      const roles=Array.isArray(d.roles)?d.roles.slice():[];
+      if(!roles.includes(d.role)){
+        roles.push(d.role);
+        if(batchCount>=450){ batch=db.batch(); batches.push(batch); batchCount=0; } // حد Firestore 500 عملية لكل دفعة
+        batch.update(doc.ref,{roles});
+        batchCount++; n++;
+      }
+    });
+    if(n) await Promise.all(batches.map(b=>b.commit()));
+    out.textContent = n ? `✅ تم إصلاح ${n} حساباً` : '✅ لا يوجد ما يحتاج إصلاحاً — كل الحسابات سليمة';
+    toast(n?`✅ تم إصلاح ${n} حساباً`:'✅ كل الحسابات سليمة');
+  }catch(e){
+    out.textContent='⚠️ تعذّر الفحص: '+e.message;
+    toast('⚠️ خطأ: '+e.message);
+  }
 }
 
 // ════════════════════════════════════════
