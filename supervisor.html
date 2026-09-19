@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#1a6b4a">
 <title>مركز الكتاب — لوحة المشرف</title>
+<meta property="og:title" content="مركز الكتاب — لوحة المشرف">
+<meta property="og:description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
+<meta property="og:image" content="https://rasheed-matar.github.io/noor-alhifz/og-image.png">
+<meta property="og:url" content="https://rasheed-matar.github.io/noor-alhifz/supervisor.html">
+<meta property="og:type" content="website">
+<meta name="description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
 <link rel="manifest" href="manifest.json">
 <script src="pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@700&display=swap" rel="stylesheet"/>
@@ -1615,8 +1621,8 @@ const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = secondaryApp.auth();
 
 // نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
-const ADMIN_API = 'https://noor-alhifz.vercel.app/api/reset-password';
-  
+const ADMIN_API = 'https://noor-admin-api.vercel.app/api/reset-password';
+
 function nidToEmail(nid){ return nid + '@noor-alhifz.app'; }
 const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 
@@ -1747,29 +1753,42 @@ function startListening(){
     if(typeof renderDashboard==='function') renderDashboard();
   },e=>console.log('pwResetRequests err',e));
   unsubUsers=db.collection('users').onSnapshot(snap=>{
-    const users=snap.docs.map(d=>({id:d.id,...d.data(),students:[],deletionRequests:[],addStudentRequests:[],teacherAttendance:{},todayAttendance:{}}));
-    allUsers=users;
-    renderPwResetRequests();
-    unsubData.forEach(u=>u()); unsubData=[];
-    users.filter(u=>u.status==='approved'&&u.role==='teacher').forEach(user=>{
-      // وثيقة المحفّظ الرئيسية الآن صغيرة وثابتة (طلاب+إعدادات+اختبارات+طلبات حذف فقط) —
-      // الحضور والجلسات صارت بوثائق فرعية منفصلة، تُجلب عند الحاجة عبر refreshTodayAttendance/refreshWeekSessions أدناه
-      const u2=db.collection('userdata').doc(user.id).onSnapshot(dSnap=>{
-        const idx=allUsers.findIndex(x=>x.id===user.id);
-        if(idx>=0&&dSnap.exists){
-          const d=dSnap.data();
-          allUsers[idx].students=d.students||[];
-          allUsers[idx].deletionRequests=d.deletionRequests||[];
-          allUsers[idx].addStudentRequests=d.addStudentRequests||[];
-          allUsers[idx].teacherAttendance=d.teacherAttendance||{};
-          allUsers[idx].exams=d.exams||[]; // ترشيحات الاختبارات — تُستخدم في متابعة التفاعل اليومي
-          allUsers[idx].fieldSupervisorId=d.fieldSupervisorId||''; // المشرف الميداني المسؤول عن هذا المحفّظ
-          allUsers[idx].evalStudentIds=d.evalStudentIds||[]; // الطلاب المعتمَدون لحساب تقييم هذا المحفّظ
-        }
-        renderEverything();
-      },e=>console.log('userdata err',e));
-      unsubData.push(u2);
+    snap.docChanges().forEach(change=>{
+      const d={id:change.doc.id, ...change.doc.data()};
+      if(change.type==='removed'){
+        const idx=allUsers.findIndex(x=>x.id===d.id);
+        if(idx>=0) allUsers.splice(idx,1);
+        const dIdx=unsubData.findIndex(u=>u._uid===d.id);
+        if(dIdx>=0){ unsubData[dIdx](); unsubData.splice(dIdx,1); }
+        return;
+      }
+      const idx=allUsers.findIndex(x=>x.id===d.id);
+      if(idx>=0){
+        // حدّث الحقول الأساسية فقط، واحتفظ بالطلاب/الطلبات المحمّلة مسبقاً كي لا تُمسح كل مرة
+        Object.assign(allUsers[idx], d);
+      } else {
+        allUsers.push({...d, students:[], deletionRequests:[], addStudentRequests:[], teacherAttendance:{}, todayAttendance:{}});
+      }
+      if(d.status==='approved' && d.role==='teacher' && !unsubData.some(u=>u._uid===d.id)){
+        const u2=db.collection('userdata').doc(d.id).onSnapshot(dSnap=>{
+          const idx2=allUsers.findIndex(x=>x.id===d.id);
+          if(idx2>=0&&dSnap.exists){
+            const dd=dSnap.data();
+            allUsers[idx2].students=dd.students||[];
+            allUsers[idx2].deletionRequests=dd.deletionRequests||[];
+            allUsers[idx2].addStudentRequests=dd.addStudentRequests||[];
+            allUsers[idx2].teacherAttendance=dd.teacherAttendance||{};
+            allUsers[idx2].exams=dd.exams||[]; // ترشيحات الاختبارات — تُستخدم في متابعة التفاعل اليومي
+            allUsers[idx2].fieldSupervisorId=dd.fieldSupervisorId||''; // المشرف الميداني المسؤول عن هذا المحفّظ
+            allUsers[idx2].evalStudentIds=dd.evalStudentIds||[]; // الطلاب المعتمَدون لحساب تقييم هذا المحفّظ
+          }
+          renderEverything();
+        },e=>console.log('userdata err',e));
+        u2._uid=d.id;
+        unsubData.push(u2);
+      }
     });
+    renderPwResetRequests();
     renderEverything();
     refreshTodayAttendance();
     refreshWeekSessions();
