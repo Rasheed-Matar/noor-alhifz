@@ -1769,7 +1769,7 @@ function startListening(){
       } else {
         allUsers.push({...d, students:[], deletionRequests:[], addStudentRequests:[], teacherAttendance:{}, todayAttendance:{}});
       }
-      if(d.status==='approved' && d.role==='teacher' && !unsubData.some(u=>u._uid===d.id)){
+      if(d.status==='approved' && NoorRoles.hasRole(d,'teacher') && !unsubData.some(u=>u._uid===d.id)){
         const u2=db.collection('userdata').doc(d.id).onSnapshot(dSnap=>{
           const idx2=allUsers.findIndex(x=>x.id===d.id);
           if(idx2>=0&&dSnap.exists){
@@ -1858,7 +1858,19 @@ function renderEverything(){
   renderTeacherAttendance();
 }
 
-function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&u.role==='teacher'); }
+// يجلب كل المستخدمين الذين يملكون صلاحية معيّنة، سواء كانت الصلاحية الأساسية القديمة (role)
+// أو إحدى صلاحياتهم المتعددة (roles) — يدمج النتيجتين ويزيل التكرار
+async function getUsersWithRole(role){
+  const [legacySnap, multiSnap] = await Promise.all([
+    db.collection('users').where('role','==',role).get(),
+    db.collection('users').where('roles','array-contains',role).get()
+  ]);
+  const map={};
+  legacySnap.docs.forEach(d=>{ map[d.id]={id:d.id,...d.data()}; });
+  multiSnap.docs.forEach(d=>{ map[d.id]={id:d.id,...d.data()}; });
+  return Object.values(map);
+}
+function getTeachers(){ return allUsers.filter(u=>u.status==='approved'&&NoorRoles.hasRole(u,'teacher')); }
 function findStudentAuthDoc(teacherId, localId){
   return allUsers.find(u=>u.role==='student' && u.teacherId===teacherId && u.studentId===localId);
 }
@@ -2415,20 +2427,22 @@ async function findExistingUserByNid(nid){
 // إضافة صلاحية جديدة لحساب موجود (بدل رفض الإضافة عند تكرار رقم الهوية)
 // يرجع true إن أضاف الصلاحية، false إن ألغى المستخدم أو فشل
 async function offerAddRoleToExisting(existing, newRole, extraFields){
-  const already = Array.isArray(existing.roles) ? existing.roles.includes(newRole) : existing.role===newRole;
-  if(already){
+  // نبني القائمة الكاملة للصلاحيات الحالية أولاً (من roles إن وُجدت، وإلا من الحقل القديم role)
+  // حتى لا تُفقَد الصلاحية الأصلية عند إضافة صلاحية جديدة لحساب لم يُرحَّل بعد
+  const currentRoles = Array.isArray(existing.roles) && existing.roles.length ? existing.roles.slice() : (existing.role?[existing.role]:[]);
+  if(currentRoles.includes(newRole)){
     toast('⚠️ هذا الحساب لديه صلاحية «'+(roleLabelAr[newRole]||newRole)+'» بالفعل');
     return false;
   }
-  const currentLabel = (existing.roles||[existing.role]).map(r=>roleLabelAr[r]||r).join('، ');
+  const currentLabel = currentRoles.map(r=>roleLabelAr[r]||r).join('، ');
   const ok = confirm('رقم الهوية مسجّل بالفعل كـ '+currentLabel+
     '\nهل تريد إضافة صلاحية «'+(roleLabelAr[newRole]||newRole)+'» لنفس الحساب بدل إنشاء حساب جديد؟');
   if(!ok) return false;
   try{
-    await db.collection('users').doc(existing.id).update(Object.assign({
-      roles: firebase.firestore.FieldValue.arrayUnion(newRole),
+    await db.collection('users').doc(existing.id).set(Object.assign({
+      roles: [...currentRoles, newRole],
       status: 'approved'
-    }, extraFields||{}));
+    }, extraFields||{}), {merge:true});
     toast('✅ تمت إضافة الصلاحية لنفس الحساب');
     return true;
   }catch(e){
@@ -4278,8 +4292,7 @@ async function savePassingGrade(){
 
 async function renderExaminers(){
   try{
-    const snap=await db.collection('users').where('role','==','examiner').get();
-    const examiners=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const examiners=await getUsersWithRole('examiner');
     const tb=document.getElementById('examinersTable');
     if(!examiners.length){
       tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مختبرون بعد</td></tr>';
@@ -4363,14 +4376,12 @@ async function saveNewExaminer(){
 //  المشرفون الميدانيون — كل مشرف مسؤول عن مجموعة محفّظين تُسنَد له
 //  يدوياً من هذه الصفحة (حقل fieldSupervisorId على وثيقة كل محفّظ)
 // ═══════════════════════════════════════════════════════════
-function getFieldSupervisors(){ return allUsers.filter(u=>u.role==='fieldSupervisor'); }
+function getFieldSupervisors(){ return allUsers.filter(u=>NoorRoles.hasRole(u,'fieldSupervisor')); }
 
 async function renderFieldSupervisors(){
   try{
-    const snap=await db.collection('users').where('role','==','fieldSupervisor').get();
-    const list=snap.docs.map(d=>({id:d.id,...d.data()}));
-    const examSnap=await db.collection('users').where('role','==','examiner').get();
-    const examiners=examSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const list=await getUsersWithRole('fieldSupervisor');
+    const examiners=await getUsersWithRole('examiner');
     const tb=document.getElementById('fieldSupervisorsTable');
     if(!tb) return;
     if(!list.length){
