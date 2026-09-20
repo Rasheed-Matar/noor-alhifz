@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#1a6b4a">
 <title>مركز الكتاب — مختبر الجودة</title>
+<meta property="og:title" content="مركز الكتاب — مختبر الجودة">
+<meta property="og:description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
+<meta property="og:image" content="https://rasheed-matar.github.io/noor-alhifz/og-image.png">
+<meta property="og:url" content="https://rasheed-matar.github.io/noor-alhifz/examiner.html">
+<meta property="og:type" content="website">
+<meta name="description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
 <link rel="manifest" href="manifest.json">
 <script src="pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet"/>
@@ -517,7 +523,8 @@ let allTeachers = [], allTeacherData = {}, allExamResults = [];
 let rawTeachers = []; // كل المحفّظين المعتمدين قبل فلترة المشرف الميداني — allTeachers هي النتيجة المُفلترة منها فعلياً
 let myFieldSupervisors = []; // المشرفون الميدانيون المرتبطون بهذا المختبر (examinerId على وثيقة المشرف الميداني)
 let selectedFieldSupervisorId = ''; // عند تعدّد المشرفين المرتبطين، أيّهم يعرض/يختبر المختبر محفّظيه حالياً
-let unsubUsers=null, unsubResults=null, unsubSettings=null, unsubMySupervisors=null, _teacherDataInterval=null;
+let unsubUsers=null, unsubResults=null, unsubSettings=null, unsubMySupervisors=null, unsubMySupervisorsMulti=null, _teacherDataInterval=null;
+let _fsLegacyResults=[], _fsMultiResults=[];
 let passingGrade = 70;
 let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
 
@@ -580,6 +587,7 @@ function doLogout(){
   if(unsubResults){unsubResults();unsubResults=null;}
   if(unsubSettings){unsubSettings();unsubSettings=null;}
   if(unsubMySupervisors){unsubMySupervisors();unsubMySupervisors=null;}
+  if(unsubMySupervisorsMulti){unsubMySupervisorsMulti();unsubMySupervisorsMulti=null;}
   if(unsubScopedTeacherIds){unsubScopedTeacherIds();unsubScopedTeacherIds=null;}
   if(_teacherDataInterval){clearInterval(_teacherDataInterval);_teacherDataInterval=null;}
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
@@ -763,18 +771,34 @@ function initLiveListeners(){
   unsubUsers = db.collection('users').onSnapshot(snap=>{
     rawTeachers = snap.docs
       .map(d=>({id:d.id,...d.data()}))
-      .filter(u=>u.status==='approved' && u.role==='teacher');
+      .filter(u=>u.status==='approved' && NoorRoles.hasRole(u,'teacher'));
     recomputeAllTeachers();
   }, err=>toast('⚠️ خطأ تحميل المحفّظين: '+err.message,'error'));
 
   // المشرفون الميدانيون المرتبطون بهذا المختبر (يحددهم المدير من صفحته) — على أساسهم تُفلتَر
   // allTeachers أعلاه، بدل أن يرى المختبر كل محفّظي المركز مختلطين
+  // نستمع لاستعلامين معاً وندمج نتيجتهما: الحقل القديم role (حسابات لم تُرحَّل) ومصفوفة roles
+  // الجديدة (حساب متعدد الصلاحيات، مثل من يكون مختبراً ومشرفاً ميدانياً معاً) — بدون هذا الدمج
+  // يختفي أي مشرف ميداني حساباه الأساسي ليس 'fieldSupervisor' من قائمة هذا المختبر
+  function mergeMyFieldSupervisors(){
+    const map={};
+    _fsLegacyResults.forEach(d=>{ map[d.id]=d; });
+    _fsMultiResults.forEach(d=>{ map[d.id]=d; });
+    myFieldSupervisors = Object.values(map).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+    recomputeAllTeachers();
+  }
   if(unsubMySupervisors) unsubMySupervisors();
+  if(unsubMySupervisorsMulti) unsubMySupervisorsMulti();
   unsubMySupervisors = db.collection('users').where('role','==','fieldSupervisor').where('examinerId','==',currentUser.uid)
     .onSnapshot(snap=>{
-      myFieldSupervisors = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
-      recomputeAllTeachers();
+      _fsLegacyResults = snap.docs.map(d=>({id:d.id,...d.data()}));
+      mergeMyFieldSupervisors();
     }, err=>toast('⚠️ خطأ تحميل المشرف الميداني المسؤول: '+err.message,'error'));
+  unsubMySupervisorsMulti = db.collection('users').where('roles','array-contains','fieldSupervisor').where('examinerId','==',currentUser.uid)
+    .onSnapshot(snap=>{
+      _fsMultiResults = snap.docs.map(d=>({id:d.id,...d.data()}));
+      mergeMyFieldSupervisors();
+    }, err=>console.log('fs multi-role err',err));
 
   if(_teacherDataInterval) clearInterval(_teacherDataInterval);
   _teacherDataInterval=setInterval(refreshTeacherData, 25000); // تحديث دوري كل 25 ثانية بدل الاعتماد على مستمع دائم لكل محفّظ
