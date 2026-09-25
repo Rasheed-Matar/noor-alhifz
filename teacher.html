@@ -544,7 +544,7 @@ body{font-family:'Segoe UI',Tahoma,'Arabic Typesetting',sans-serif;
 .cert-wrap.tpl-amin .cert-body .name-line{color:#8a1220;}
 .cert-wrap.tpl-amin .cert-body b{color:#8a1220;}
 .cert-wrap.tpl-amin .closing{color:#8a1220;}
-.cert-wrap.tpl-amin .sign-name{color:#8a1220;}
+.cert-wrap.tpl-amin .sign-name{color:#0d4f8b;}
 #modal-cert-zoom{padding:0;}
 #modal-cert-zoom .cert-zoom-shell{width:96vw;height:92vh;max-width:1400px;background:linear-gradient(160deg,#0f1a14,#1c2b22);border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55);display:flex;flex-direction:column;animation:modalIn .35s cubic-bezier(.22,.68,0,1.2) both;}
 .cert-zoom-toolbar{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;flex-shrink:0;}
@@ -5171,15 +5171,28 @@ function juzRangeParts(juzNum){
 function juzRangeMax(juzNum){ return Math.max(...juzRangeParts(juzNum)); }
 
 let certSupervisorDefaultName='';
-function loadDefaultSupervisorName(){
+// اسم التوقيع الذي يُملأ تلقائياً في خانة "اسم المشرف الموقّع": يُؤخَذ من المشرف الميداني المسؤول
+// تحديداً عن هذا المحفّظ (حقل certSignName على وثيقة ذلك المشرف الميداني نفسه، أو اسمه إن لم
+// يُحدَّد توقيع مختلف)، وإلا يُستخدم أول حساب مشرف (أدمن) كقيمة افتراضية أخيرة كما كان سابقاً
+async function loadDefaultSupervisorName(){
   if(certSupervisorDefaultName) return;
-  db.collection('users').where('role','==','admin').limit(1).get().then(snap=>{
-    if(!snap.empty){
-      certSupervisorDefaultName = snap.docs[0].data().name || '';
-      const inp=document.getElementById('certSupervisorName');
-      if(inp && !inp.value) inp.value=certSupervisorDefaultName;
+  try{
+    const ud=await db.collection('userdata').doc(currentUser.uid).get();
+    const fsId=ud.exists?(ud.data().fieldSupervisorId||''):'';
+    if(fsId){
+      const fs=await db.collection('users').doc(fsId).get();
+      if(fs.exists){
+        const d=fs.data();
+        certSupervisorDefaultName = (d.certSignName!=null && d.certSignName!=='') ? d.certSignName : (d.name||'');
+      }
     }
-  }).catch(e=>console.warn('loadDefaultSupervisorName err',e));
+    if(!certSupervisorDefaultName){
+      const snap=await db.collection('users').where('role','==','admin').limit(1).get();
+      if(!snap.empty) certSupervisorDefaultName = snap.docs[0].data().name || '';
+    }
+  }catch(e){ console.warn('loadDefaultSupervisorName err',e); }
+  const inp=document.getElementById('certSupervisorName');
+  if(inp && !inp.value) inp.value=certSupervisorDefaultName;
 }
 
 function populateCertStudents(){
