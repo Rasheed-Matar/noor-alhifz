@@ -408,6 +408,16 @@ select.form-input{cursor:pointer;}
 .cert-wrap .stamp-block{width:145px;text-align:center;}
 .cert-wrap .stamp-block img{width:105px;height:105px;object-fit:contain;}
 .cert-wrap .stamp-label{font-size:12px;color:#8a8370;margin-top:0;font-weight:600;}
+/* قالب مسجد الأمين محمد — لوحة ألوان حمراء/ذهبية متناسقة مع لون شعاره وختمه، بدل الأزرق الافتراضي لمركز الكتاب */
+.cert-wrap.tpl-amin .cert-border-dot{border-color:#8a1220;}
+.cert-wrap.tpl-amin .id-line b{color:#8a1220;}
+.cert-wrap.tpl-amin .org-name{color:#8a1220;}
+.cert-wrap.tpl-amin .bismillah{color:#8a1220;}
+.cert-wrap.tpl-amin .cert-title{color:#8a1220;text-shadow:0 1px 0 rgba(201,147,46,.3);}
+.cert-wrap.tpl-amin .cert-body .name-line{color:#8a1220;}
+.cert-wrap.tpl-amin .cert-body b{color:#8a1220;}
+.cert-wrap.tpl-amin .closing{color:#8a1220;}
+.cert-wrap.tpl-amin .sign-name{color:#8a1220;}
 #modal-cert-zoom{padding:0;}
 #modal-cert-zoom .cert-zoom-shell{width:96vw;height:92vh;max-width:1400px;background:linear-gradient(160deg,#0f1a14,#1c2b22);border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55);display:flex;flex-direction:column;animation:modalIn .35s cubic-bezier(.22,.68,0,1.2) both;}
 .cert-zoom-toolbar{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;flex-shrink:0;}
@@ -4845,7 +4855,7 @@ function buildCertHTML(data, serial, verifyUrl){
   const qrContent = verifyUrl ? generateQRSvg(verifyUrl, 64) : CERT_QR_PLACEHOLDER;
   const grantVerb = data.studentGenderWord==='الطالبة' ? 'نمنحها' : 'نمنحه';
   return `
-  <div class="cert-wrap">
+  <div class="cert-wrap ${data.certTemplate==='amin'?'tpl-amin':''}">
     <div class="cert-border-dot"></div>
     <div class="cert-border-inner"></div>
     <div class="cert-corner cc-tl">✾</div>
