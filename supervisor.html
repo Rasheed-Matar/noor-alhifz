@@ -417,7 +417,7 @@ select.form-input{cursor:pointer;}
 .cert-wrap.tpl-amin .cert-body .name-line{color:#8a1220;}
 .cert-wrap.tpl-amin .cert-body b{color:#8a1220;}
 .cert-wrap.tpl-amin .closing{color:#8a1220;}
-.cert-wrap.tpl-amin .sign-name{color:#8a1220;}
+.cert-wrap.tpl-amin .sign-name{color:#0d4f8b;}
 #modal-cert-zoom{padding:0;}
 #modal-cert-zoom .cert-zoom-shell{width:96vw;height:92vh;max-width:1400px;background:linear-gradient(160deg,#0f1a14,#1c2b22);border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55);display:flex;flex-direction:column;animation:modalIn .35s cubic-bezier(.22,.68,0,1.2) both;}
 .cert-zoom-toolbar{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;flex-shrink:0;}
@@ -677,10 +677,11 @@ select.form-input{cursor:pointer;}
           كل مشرف ميداني مسؤول عن مجموعة من المحفّظين تحدّدها أنت من قائمة "المشرف الميداني" في جدول المحفّظين أدناه. يتابع المشرف الميداني حضور محفّظيه وإنجاز حلقاتهم ونتائج اختباراتهم، ويدير طلابهم — وتصلك إشعارات بأي حضور/غياب أو إضافة/حذف طالب يسجّله.
           حدّد أيضاً "مختبر الجودة المسؤول" عن كل مشرف ميداني من القائمة المنسدلة في الجدول أدناه، ليقتصر عمل ذلك المختبر على اختبار الطلاب التابعين لمحفّظي هذا المشرف فقط — والمختبر غير المربوط بأي مشرف ميداني بعد لن يرى أي محفّظين في صفحته حتى تربطه.
           كذلك حدّد "قالب الشهادات" لكل مشرف ميداني: أي قالب (جهة مُصدِرة) تُستخدم تلقائياً لكل شهادة تخص طلاب محفّظي هذا المشرف تحديداً — سواء صدرت من صفحتك أو من صفحة المحفّظ أو صفحة الطالب نفسه، فيختلف الإصدار من مشرف لآخر تلقائياً دون تدخّل يدوي في كل مرة.
+          وحدّد أيضاً "اسم التوقيع على الشهادات" لكل مشرف ميداني: هو الاسم الذي سيظهر موقّعاً في خانة "المشرف الميداني" على شهادات طلاب محفّظيه (افتراضياً اسمه المسجّل، ويمكنك تعديله إن أردت اسماً مختلفاً للتوقيع).
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>الجوال</th><th>عدد المحفّظين التابعين</th><th>مختبر الجودة المسؤول</th><th>قالب الشهادات</th><th></th></tr></thead>
+            <thead><tr><th>الاسم</th><th>رقم الهوية</th><th>الجوال</th><th>عدد المحفّظين التابعين</th><th>مختبر الجودة المسؤول</th><th>قالب الشهادات</th><th>اسم التوقيع على الشهادات</th><th></th></tr></thead>
             <tbody id="fieldSupervisorsTable"></tbody>
           </table>
         </div>
@@ -4468,6 +4469,7 @@ async function renderFieldSupervisors(){
       const examOptions='<option value="">— بدون —</option>'+examiners.map(ex=>`<option value="${ex.id}" ${ex.id===(f.examinerId||'')?'selected':''}>${ex.name}</option>`).join('');
       const curTpl = f.certTemplate && CERT_TEMPLATES[f.certTemplate] ? f.certTemplate : 'markaz';
       const tplOptions=Object.keys(CERT_TEMPLATES).map(k=>`<option value="${k}" ${k===curTpl?'selected':''}>${CERT_TEMPLATES[k].label}</option>`).join('');
+      const curSignName = (f.certSignName!=null ? f.certSignName : (f.name||''));
       return `<tr>
         <td><b>${f.name||'—'}</b></td>
         <td style="direction:ltr;text-align:right;">${f.nationalId||'—'}</td>
@@ -4475,6 +4477,7 @@ async function renderFieldSupervisors(){
         <td>${count}</td>
         <td><select class="fs-examiner-select" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;" onchange="assignExaminerToFieldSupervisor('${f.id}', this.value)">${examOptions}</select></td>
         <td><select class="fs-cert-template-select" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;" onchange="assignCertTemplateToFieldSupervisor('${f.id}', this.value)">${tplOptions}</select></td>
+        <td><input type="text" class="fs-cert-signname-input" value="${certEsc(curSignName)}" placeholder="${certEsc(f.name||'')}" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;width:140px;" onchange="assignCertSignNameToFieldSupervisor('${f.id}', this.value)"></td>
         <td>
           <span class="badge ${statusCls[f.status]||'badge-warn'}">${statusLabel[f.status]||f.status}</span>
           ${f.status!=='approved'?`<button class="btn-tbl-act" onclick="setFieldSupervisorStatus('${f.id}','approved')">تفعيل</button>`:''}
@@ -4492,6 +4495,29 @@ function assignCertTemplateToFieldSupervisor(fieldSupervisorId, certTemplate){
   db.collection('users').doc(fieldSupervisorId).set({certTemplate: certTemplate||'markaz'},{merge:true})
     .then(()=>toast('✅ تم تحديث قالب الشهادات'))
     .catch(e=>toast('⚠️ خطأ: '+e.message));
+}
+
+// اسم التوقيع الذي يظهر في خانة "المشرف الميداني" على شهادات طلاب محفّظي هذا المشرف — يمكن أن يختلف
+// عن اسم حساب المشرف الميداني نفسه (مثلاً لإضافة لقب)، ويُستخدم تلقائياً كقيمة افتراضية لحقل
+// "اسم المشرف الموقّع" عند إصدار أي شهادة تخص محفّظي هذا المشرف، من أي صفحة صدرت
+function assignCertSignNameToFieldSupervisor(fieldSupervisorId, signName){
+  const idx=allUsers.findIndex(u=>u.id===fieldSupervisorId);
+  const fallback = idx>-1 ? (allUsers[idx].name||'') : '';
+  const value = (signName!=null && signName.trim()!=='') ? signName.trim() : fallback;
+  db.collection('users').doc(fieldSupervisorId).set({certSignName: value},{merge:true})
+    .then(()=>toast('✅ تم تحديث اسم التوقيع على الشهادات'))
+    .catch(e=>toast('⚠️ خطأ: '+e.message));
+}
+
+// اسم التوقيع الذي يجب استخدامه تلقائياً في خانة "المشرف الميداني" على شهادة طالب محفّظ معيّن:
+// يُحدَّد بحسب المشرف الميداني المسؤول عن هذا المحفّظ (حقل certSignName على وثيقة المشرف الميداني
+// نفسه، أو اسمه إن لم يُحدَّد توقيع مختلف)، وإلا يُستخدم اسم المشرف (الأدمن) الحالي كقيمة افتراضية أخيرة
+function resolveCertSignerForTeacherName(teacherName){
+  const teacher=getTeachers().find(t=>t.name===teacherName);
+  if(!teacher || !teacher.fieldSupervisorId) return currentSupervisorName||'';
+  const fs=getFieldSupervisors().find(f=>f.id===teacher.fieldSupervisorId);
+  if(!fs) return currentSupervisorName||'';
+  return (fs.certSignName!=null && fs.certSignName!=='') ? fs.certSignName : (fs.name || currentSupervisorName || '');
 }
 
 // يربط مشرفاً ميدانياً بمختبر جودة مسؤول عن اختبار طلاب محفّظيه (حقل مفرد examinerId على وثيقة المشرف الميداني نفسه في users)
@@ -4732,7 +4758,7 @@ function onCertStudentPick(){
   if(exams.length){
     sel.disabled=false;
     sel.innerHTML=exams.map(r=>`<option value="${r.id}">الجزء ${r.juzNum}${r.juzName?' — '+certEsc(r.juzName):''} — العلامة ${r.totalScore}% — بتاريخ ${fmtDateLatin(r.examDate)}</option>`).join('');
-    document.getElementById('certSupervisorName').value=currentSupervisorName;
+    document.getElementById('certSupervisorName').value=resolveCertSignerForTeacherName(teacherFilter);
   } else {
     sel.disabled=true;
     sel.innerHTML='<option value="">لا توجد اختبارات ناجحة لهذا الطالب</option>';
