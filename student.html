@@ -446,6 +446,16 @@ body.page-exit{animation:pageExit .25s ease forwards;}
 .cert-wrap .stamp-block{width:145px;text-align:center;}
 .cert-wrap .stamp-block img{width:105px;height:105px;object-fit:contain;}
 .cert-wrap .stamp-label{font-size:12px;color:#8a8370;margin-top:0;font-weight:600;}
+/* قالب مسجد الأمين محمد — لوحة ألوان حمراء/ذهبية متناسقة مع لون شعاره وختمه، بدل الأزرق الافتراضي لمركز الكتاب */
+.cert-wrap.tpl-amin .cert-border-dot{border-color:#8a1220;}
+.cert-wrap.tpl-amin .id-line b{color:#8a1220;}
+.cert-wrap.tpl-amin .org-name{color:#8a1220;}
+.cert-wrap.tpl-amin .bismillah{color:#8a1220;}
+.cert-wrap.tpl-amin .cert-title{color:#8a1220;text-shadow:0 1px 0 rgba(201,147,46,.3);}
+.cert-wrap.tpl-amin .cert-body .name-line{color:#8a1220;}
+.cert-wrap.tpl-amin .cert-body b{color:#8a1220;}
+.cert-wrap.tpl-amin .closing{color:#8a1220;}
+.cert-wrap.tpl-amin .sign-name{color:#0d4f8b;}
 .btn-save-pw:disabled{opacity:.6;cursor:not-allowed;}
 .pw-hint{font-size:12px;color:var(--txm);background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7;}
 
@@ -2316,9 +2326,15 @@ function buildCertHTML(data, serial, verifyUrl){
   const tpl = CERT_TEMPLATES[data.certTemplate] || CERT_TEMPLATES.markaz;
   const logoSrc = tpl.getLogo();
   const qrContent = verifyUrl ? generateQRSvg(verifyUrl, 64) : CERT_QR_PLACEHOLDER;
-  const grantVerb = data.studentGenderWord==='الطالبة' ? 'نمنحها' : 'نمنحه';
+  const isFemaleStudent = data.studentGenderWord==='الطالبة';
+  const grantVerb = isFemaleStudent ? 'نمنحها' : 'نمنحه';
+  const completeVerb = isFemaleStudent ? 'أتمّت' : 'أتمّ';
+  const passVerb = isFemaleStudent ? 'اجتازت' : 'اجتاز';
+  const scoreVerb = isFemaleStudent ? 'حصلت' : 'حصل';
+  const depositVerb = isFemaleStudent ? 'نستودعها' : 'نستودعه';
+  const forPronoun = isFemaleStudent ? 'لها' : 'له';
   return `
-  <div class="cert-wrap">
+  <div class="cert-wrap ${data.certTemplate==='amin'?'tpl-amin':''}">
     <div class="cert-border-dot"></div>
     <div class="cert-border-inner"></div>
     <div class="cert-corner cc-tl">✾</div>
@@ -2353,11 +2369,11 @@ function buildCertHTML(data, serial, verifyUrl){
         <div class="line">${certEsc(tpl.bodyIntro)} ${certEsc(data.studentGenderWord)}/</div>
         <div class="name-line">${certEsc(data.studentName)}</div>
         <div class="line">${certEsc(data.bornWord)} في/ <b>${certEsc(data.placeOfBirth||'—')}</b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
-        <div class="line">قد أتم حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
-        <div class="line">وقد اجتاز لجنة اختبار مختصة وحصل على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
+        <div class="line">قد ${completeVerb} حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
+        <div class="line">وقد ${passVerb} لجنة اختبار مختصة و${scoreVerb} على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
       </div>
 
-      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة نستودعه التقوى، راجين له مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
+      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة ${depositVerb} التقوى، راجين ${forPronoun} مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
 
       <div class="cert-spacer"></div>
 
