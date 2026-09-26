@@ -5228,7 +5228,10 @@ function onCertStudentPick(){
 }
 
 // عند اختيار اختبار: إن كانت له إفادة صادرة سابقاً نستخدم قالبها المحفوظ كما هو، وإلا نحدّد القالب
-// تلقائياً حسب المشرف الميداني المسؤول عن هذا المحفّظ
+// تلقائياً حسب المشرف الميداني المسؤول عن هذا المحفّظ. أما اسم المشرف الموقّع (وهو أصلاً غير قابل
+// للتعديل هنا) فلا نُعيد تحميل القيمة القديمة من أول إصدار للشهادة، بل نُبقي دائماً القيمة التي
+// حمّلها loadDefaultSupervisorName (اسم التوقيع الحالي المضبوط للمشرف الميداني المسؤول)، حتى تنعكس
+// أي تحديثات على "اسم التوقيع على الشهادات" فوراً حتى على شهادات قديمة معاد فتحها
 async function onCertExamPick(){
   const exam=getSelectedCertExam();
   if(exam){
@@ -5236,10 +5239,6 @@ async function onCertExamPick(){
     _currentCertTemplate = existing && existing.certTemplate && CERT_TEMPLATES[existing.certTemplate]
       ? existing.certTemplate
       : await resolveMyCertTemplate();
-    if(existing && existing.supervisorName){
-      const supEl=document.getElementById('certSupervisorName');
-      if(supEl) supEl.value=existing.supervisorName;
-    }
   } else {
     _currentCertTemplate='markaz';
   }
@@ -5330,7 +5329,13 @@ function buildCertHTML(data, serial, verifyUrl){
   const tpl = CERT_TEMPLATES[data.certTemplate] || CERT_TEMPLATES.markaz;
   const logoSrc = tpl.getLogo();
   const qrContent = verifyUrl ? generateQRSvg(verifyUrl, 64) : CERT_QR_PLACEHOLDER;
-  const grantVerb = data.studentGenderWord==='الطالبة' ? 'نمنحها' : 'نمنحه';
+  const isFemaleStudent = data.studentGenderWord==='الطالبة';
+  const grantVerb = isFemaleStudent ? 'نمنحها' : 'نمنحه';
+  const completeVerb = isFemaleStudent ? 'أتمّت' : 'أتمّ';
+  const passVerb = isFemaleStudent ? 'اجتازت' : 'اجتاز';
+  const scoreVerb = isFemaleStudent ? 'حصلت' : 'حصل';
+  const depositVerb = isFemaleStudent ? 'نستودعها' : 'نستودعه';
+  const forPronoun = isFemaleStudent ? 'لها' : 'له';
   return `
   <div class="cert-wrap ${data.certTemplate==='amin'?'tpl-amin':''}">
     <div class="cert-border-dot"></div>
@@ -5367,11 +5372,11 @@ function buildCertHTML(data, serial, verifyUrl){
         <div class="line">${certEsc(tpl.bodyIntro)} ${certEsc(data.studentGenderWord)}/</div>
         <div class="name-line">${certEsc(data.studentName)}</div>
         <div class="line">${certEsc(data.bornWord)} في/ <b>${certEsc(data.placeOfBirth||'—')}</b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
-        <div class="line">قد أتم حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
-        <div class="line">وقد اجتاز لجنة اختبار مختصة وحصل على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
+        <div class="line">قد ${completeVerb} حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
+        <div class="line">وقد ${passVerb} لجنة اختبار مختصة و${scoreVerb} على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
       </div>
 
-      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة نستودعه التقوى، راجين له مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
+      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة ${depositVerb} التقوى، راجين ${forPronoun} مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
 
       <div class="cert-spacer"></div>
 
