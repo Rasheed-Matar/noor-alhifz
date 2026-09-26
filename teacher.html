@@ -4725,6 +4725,26 @@ function mergeProgressEntries(sessionsList, field){
   return order.map(k=>map[k]);
 }
 
+// حساب دقيق لعدد الأسطر الفعلي لإدخال حفظ/مراجعة واحد (يعتمد على pagesLines المحسوبة وقت الإدخال،
+// وإن لم تكن محفوظة يُعاد حسابها الآن عبر computeQuranSpan لضمان دقة العدد دائماً)
+function progressEntryLines(e){
+  return e.pagesLines ? e.pagesLines.totalLines
+    : ((typeof computeQuranSpan==='function' && computeQuranSpan(e.surahNum,e.from,e.to))||{totalLines:0}).totalLines;
+}
+// تحويل مجموع الأسطر إلى نص صفحات مقروء (15 سطراً = صفحة كاملة في مصحف المدينة)
+function quranPagesText(totalLines){
+  if(!totalLines) return '0';
+  const pages=Math.floor(totalLines/15), remLines=totalLines%15;
+  return (typeof formatQuranSpan==='function') ? formatQuranSpan({pages,remLines,totalLines})
+    : (remLines? `${pages} صفحة و${remLines} سطر` : `${pages} صفحة`);
+}
+// إجمالي صفحات الحفظ أو المراجعة الفعلية لطالب واحد ضمن جلسات مدى معيّن — يُحتسب من كل إدخال فعلي
+// (وليس من القائمة المدموجة للعرض) حتى لا يتأثر بأي فجوات بين الإدخالات، فتبقى النتيجة دقيقة ومطابقة للواقع
+function studentProgressPagesTxt(stdSess,field){
+  const totalLines=stdSess.reduce((a,s)=>a+(s[field]||[]).reduce((aa,e)=>aa+progressEntryLines(e),0),0);
+  return quranPagesText(totalLines);
+}
+
 function buildUnifiedTable(studentsList,from,to,content){
   const dates=getRangeDates(from,to);
   const showProgress=(content==='progress'||content==='both');
@@ -4757,8 +4777,11 @@ function buildUnifiedTable(studentsList,from,to,content){
       const murajaaMerged=mergeProgressEntries(stdSess,'murajaa');
       const hifzList=hifzMerged.map(h=>`${h.surah} من ${h.from} إلى ${h.to}`);
       const murajaaList=murajaaMerged.map(m=>`${m.surah} من ${m.from} إلى ${m.to}`);
-      row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${hifzList.length?hifzList.join('، '):'—'}</td>
-        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${murajaaList.length?murajaaList.join('، '):'—'}</td>`;
+      const hifzPagesTxt=studentProgressPagesTxt(stdSess,'hifz');
+      const murajaaPagesTxt=studentProgressPagesTxt(stdSess,'murajaa');
+      const pagesBadge=(txt)=>`<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #c9a227;font-size:11px;font-weight:800;color:#0a3d2b;">📄 عدد الصفحات: ${txt}</div>`;
+      row+=`<td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${hifzList.length?hifzList.join('، '):'—'}${hifzList.length?pagesBadge(hifzPagesTxt):''}</td>
+        <td style="padding:7px 10px;border:1px solid #e0e8e4;vertical-align:top;">${murajaaList.length?murajaaList.join('، '):'—'}${murajaaList.length?pagesBadge(murajaaPagesTxt):''}</td>`;
     }
 
     if(showAttendance){
