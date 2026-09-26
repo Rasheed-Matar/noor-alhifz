@@ -4457,7 +4457,7 @@ async function renderFieldSupervisors(){
     const tb=document.getElementById('fieldSupervisorsTable');
     if(!tb) return;
     if(!list.length){
-      tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مشرفون ميدانيون بعد</td></tr>';
+      tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">لا يوجد مشرفون ميدانيون بعد</td></tr>';
       populateFieldSupervisorSelects(list);
       return;
     }
@@ -4477,7 +4477,7 @@ async function renderFieldSupervisors(){
         <td>${count}</td>
         <td><select class="fs-examiner-select" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;" onchange="assignExaminerToFieldSupervisor('${f.id}', this.value)">${examOptions}</select></td>
         <td><select class="fs-cert-template-select" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;" onchange="assignCertTemplateToFieldSupervisor('${f.id}', this.value)">${tplOptions}</select></td>
-        <td><input type="text" class="fs-cert-signname-input" value="${certEsc(curSignName)}" placeholder="${certEsc(f.name||'')}" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;width:140px;" onchange="assignCertSignNameToFieldSupervisor('${f.id}', this.value)"></td>
+        <td><input type="text" class="fs-cert-signname-input" dir="rtl" value="${certEsc(curSignName)}" placeholder="${certEsc(f.name||'')}" title="${certEsc(curSignName)}" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;font-size:12px;width:100%;min-width:190px;box-sizing:border-box;" onchange="assignCertSignNameToFieldSupervisor('${f.id}', this.value)"></td>
         <td>
           <span class="badge ${statusCls[f.status]||'badge-warn'}">${statusLabel[f.status]||f.status}</span>
           ${f.status!=='approved'?`<button class="btn-tbl-act" onclick="setFieldSupervisorStatus('${f.id}','approved')">تفعيل</button>`:''}
@@ -4879,7 +4879,13 @@ function buildCertHTML(data, serial, verifyUrl){
   const tpl = CERT_TEMPLATES[data.certTemplate] || CERT_TEMPLATES.markaz;
   const logoSrc = tpl.getLogo();
   const qrContent = verifyUrl ? generateQRSvg(verifyUrl, 64) : CERT_QR_PLACEHOLDER;
-  const grantVerb = data.studentGenderWord==='الطالبة' ? 'نمنحها' : 'نمنحه';
+  const isFemaleStudent = data.studentGenderWord==='الطالبة';
+  const grantVerb = isFemaleStudent ? 'نمنحها' : 'نمنحه';
+  const completeVerb = isFemaleStudent ? 'أتمّت' : 'أتمّ';
+  const passVerb = isFemaleStudent ? 'اجتازت' : 'اجتاز';
+  const scoreVerb = isFemaleStudent ? 'حصلت' : 'حصل';
+  const depositVerb = isFemaleStudent ? 'نستودعها' : 'نستودعه';
+  const forPronoun = isFemaleStudent ? 'لها' : 'له';
   return `
   <div class="cert-wrap ${data.certTemplate==='amin'?'tpl-amin':''}">
     <div class="cert-border-dot"></div>
@@ -4916,11 +4922,11 @@ function buildCertHTML(data, serial, verifyUrl){
         <div class="line">${certEsc(tpl.bodyIntro)} ${certEsc(data.studentGenderWord)}/</div>
         <div class="name-line">${certEsc(data.studentName)}</div>
         <div class="line">${certEsc(data.bornWord)} في/ <b>${certEsc(data.placeOfBirth||'—')}         </b> بتاريخ/ <b>${data.dob?fmtDateLatin(data.dob):'—'}</b></div>
-        <div class="line">قد أتم حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
-        <div class="line">وقد اجتاز لجنة اختبار مختصة وحصل على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
+        <div class="line">قد ${completeVerb} حفظ وتثبيت ${certEsc(data.juzWord)}/ <b>${certEsc(data.juzLabel)}</b></div>
+        <div class="line">وقد ${passVerb} لجنة اختبار مختصة و${scoreVerb} على تقدير عام/ <span class="score">${certEsc(data.gradeLabel)}</span></div>
       </div>
 
-      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة نستودعه التقوى، راجين له مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
+      <div class="closing">◇ وإننا إذ ${grantVerb} هذه الإفادة ${depositVerb} التقوى، راجين ${forPronoun} مسيرة قرآنية مُزدانة بجميل الأثر وحسن الخلق والعمل ◇</div>
 
       <div class="cert-spacer"></div>
 
@@ -4955,7 +4961,11 @@ function fitCertPreview(){
 }
 
 // عند اختيار اختبار: إن كانت له إفادة صادرة سابقاً، نجلب قالبها المحفوظ لعرضه كما صدر بالضبط
-// (بدل الرجوع دائماً للقالب الافتراضي)، فيبقى تبديل القالب هنا اختياراً واعياً من المشرف لا خطأً عرضياً
+// (بدل الرجوع دائماً للقالب الافتراضي)، فيبقى تبديل القالب هنا اختياراً واعياً من المشرف لا خطأً عرضياً.
+// أما اسم الموقّع فلا نُعيد تحميل القيمة القديمة المحفوظة من أول إصدار للشهادة — نُبقي دائماً على القيمة
+// التي حسبها resolveCertSignerForTeacherName عند اختيار الطالب (أي اسم التوقيع الحالي المضبوط للمشرف
+// الميداني المسؤول)، حتى لو كانت الشهادة قد صدرت سابقاً باسم مختلف (مثل اسم المشرف الأدمن قبل ضبط
+// اسم التوقيع الخاص)؛ هذا يضمن أن تحديث "اسم التوقيع على الشهادات" ينعكس فوراً حتى على شهادات قديمة معاد فتحها
 async function onCertExamPick(){
   const exam=getSelectedCertExam();
   const tplSel=document.getElementById('certTemplate');
@@ -4963,7 +4973,6 @@ async function onCertExamPick(){
     const existing=await getCertByExamId(exam.id).catch(()=>null);
     if(existing){
       tplSel.value = existing.certTemplate && CERT_TEMPLATES[existing.certTemplate] ? existing.certTemplate : 'markaz';
-      if(existing.supervisorName) document.getElementById('certSupervisorName').value=existing.supervisorName;
     } else {
       tplSel.value = resolveCertTemplateForTeacher(exam.teacherId);
     }
