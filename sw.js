@@ -3,7 +3,7 @@
 // الصفحة مغلقة تماماً (أندرويد/كروم فقط). المنطق الكامل في sync-shared.js
 importScripts('sync-shared.js');
 
-const CACHE = 'noor-v-20260916-multirole';
+const CACHE = 'noor-v-20261008-examiner-offline';
 
 // كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
 const ASSETS = [
@@ -23,7 +23,10 @@ const ASSETS = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
-  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&display=swap',
+  // مكتبات تصدير PDF في صفحة المختبر (لتعمل بدون إنترنت)
+  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 ];
 
 self.addEventListener('install', e => {
@@ -56,12 +59,23 @@ self.addEventListener('fetch', e => {
   if (isHTML) {
     // شبكة أولاً لصفحات HTML (login/teacher/supervisor/examiner..)
     // لضمان وصول أي تحديث فوراً للجهاز، مع رجوع للنسخة المخزّنة فقط عند انعدام الإنترنت
-    e.respondWith(
-      fetch(req).then(res => {
+    // مهلة 4 ثوانٍ: إن كانت الشبكة بطيئة/متقطعة نفتح النسخة المخزّنة فوراً ويكتمل التحديث في الخلفية
+    const netP = fetch(req).then(res => {
+      if (res && res.status === 200) {
         const resClone = res.clone();
         caches.open(CACHE).then(c => c.put(req, resClone));
-        return res;
-      }).catch(() => caches.match(req).then(r => r || caches.match('./login.html')))
+      }
+      return res;
+    }).catch(() => null);
+    e.waitUntil(netP);
+    const timer = new Promise(r => setTimeout(() => r(null), 4000));
+    e.respondWith(
+      Promise.race([netP, timer]).then(res => {
+        if (res) return res;
+        return caches.match(req, { ignoreSearch: true })
+          .then(r => r || netP)
+          .then(r => r || caches.match('./login.html'));
+      })
     );
     return;
   }
