@@ -511,6 +511,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 // تفعيل العمل بدون إنترنت: تُخزَّن البيانات محلياً وتتم مزامنتها تلقائياً عند رجوع الاتصال
+try{ db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED }); }catch(e){ console.warn('cache settings', e); }
 db.enablePersistence({ synchronizeTabs: true }).catch(err => {
   console.warn('تعذّر تفعيل وضع عدم الاتصال:', err.code);
 });
@@ -527,6 +528,8 @@ let unsubUsers=null, unsubResults=null, unsubSettings=null, unsubMySupervisors=n
 let _fsLegacyResults=[], _fsMultiResults=[];
 let passingGrade = 70;
 let pendingExam = null; // { nominationId, teacherId, studentId, type, juzNum, juzName }
+let _hydrated = false;   // true عند استرجاع نسخة محلية محفوظة (للعمل بدون إنترنت)
+let lastDataAt = 0;      // آخر وقت جُلبت فيه بيانات المحفّظين فعلياً من الخادم
 
 // JUZ DATA (same as teacher.html)
 const SCATTERED_JUZ=[{num:'30',name:'عمّ'},{num:'29',name:'تبارك'},{num:'28',name:'قد سمع'},{num:'27',name:'الذاريات'},{num:'26',name:'الأحقاف'},{num:'25',name:'الشورى'},{num:'24',name:'الزمر'},{num:'23',name:'ياسين'},{num:'22',name:'الأحزاب'},{num:'21',name:'العنكبوت'},{num:'20',name:'القصص'},{num:'19',name:'الشعراء'},{num:'18',name:'النور'},{num:'17',name:'الحج'},{num:'16',name:'مريم'},{num:'15',name:'الكهف'},{num:'14',name:'النحل'},{num:'13',name:'ابراهيم'},{num:'12',name:'هود'},{num:'11',name:'يونس'},{num:'10',name:'التوبة'},{num:'9',name:'الأنفال'},{num:'8',name:'الأعراف'},{num:'7',name:'الأنعام'},{num:'6',name:'المائدة'},{num:'5',name:'النساء'},{num:'4',name:'آل عمران'},{num:'3',name:'البقرة'},{num:'2',name:'البقرة'},{num:'1',name:'البقرة'}];
@@ -555,6 +558,15 @@ function computeNewJuzAfterPass(type, juzNum){
 // ════════════════════════════════════════
 function ini(n){const p=(n||'').trim().split(' ');return p.length>=2?p[0][0]+p[1][0]:(n||'?')[0]||'?';}
 function uid(){return '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// مهلة لأي عملية شبكة — حتى لا "تعلق" الواجهة أو الطابور عندما يكون الاتصال ضعيفاً/متقطعاً
+function withTimeout(promise, ms, label){
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>{ const e=new Error('timeout'+(label?(': '+label):'')); e.isTimeout=true; reject(e); }, ms||15000);
+    Promise.resolve(promise).then(v=>{clearTimeout(t);resolve(v);}, e=>{clearTimeout(t);reject(e);});
+  });
+}
+function isNetworkErr(e){ return !!(e && (e.isTimeout || ['unavailable','deadline-exceeded','cancelled'].includes(e.code))); }
 function TODAY(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function toast(msg,type=''){
   const wrap=document.getElementById('toastWrap');
@@ -590,6 +602,8 @@ function doLogout(){
   if(unsubMySupervisorsMulti){unsubMySupervisorsMulti();unsubMySupervisorsMulti=null;}
   if(unsubScopedTeacherIds){unsubScopedTeacherIds();unsubScopedTeacherIds=null;}
   if(_teacherDataInterval){clearInterval(_teacherDataInterval);_teacherDataInterval=null;}
+  try{ localStorage.removeItem('examinerUserCache'); }catch(e){}
+  clearOfflineSnapshot().catch(()=>{});   // نمسح نسخة البيانات المحلية (لا نمسح طابور النتائج غير المُزامَنة)
   sessionStorage.removeItem('userCache'); auth.signOut().then(()=>window.location.href='login.html');
 }
 
@@ -601,17 +615,27 @@ function doLogout(){
 let _refreshingTeacherData=false;
 async function refreshTeacherData(){
   if(_refreshingTeacherData || !allTeachers.length) return;
-  if(!navigator.onLine) return; // لا داعي لمحاولات شبكة فاشلة أثناء انقطاع الاتصال
   _refreshingTeacherData=true;
   try{
+    const online=navigator.onLine;
+    let gotFresh=false;
     await Promise.all(allTeachers.map(async t=>{
+      const have=!!allTeacherData[t.id];
+      if(!online && have) return;                 // بدون إنترنت: نحتفظ بالنسخة المحلية كما هي
       try{
-        const doc=await db.collection('userdata').doc(t.id).get();
+        const ref=db.collection('userdata').doc(t.id);
+        const doc=online ? await ref.get() : await ref.get({source:'cache'});
+        const fromCache=doc.metadata && doc.metadata.fromCache;
+        if(fromCache && have) return;             // لا نستبدل نسخة محلية بنسخة كاش أقدم
+        if(fromCache && !doc.exists) return;      // غير موجودة في الكاش ≠ فارغة
         allTeacherData[t.id]=doc.exists?doc.data():{};
+        if(!fromCache) gotFresh=true;
       }catch(e){ console.warn('teacher data fetch err', t.id, e); }
     }));
+    if(gotFresh) lastDataAt=Date.now();
     applyQueuedGradesLocally();
     renderAll();
+    updateConnStatus();
   } finally { _refreshingTeacherData=false; }
 }
 
@@ -620,7 +644,7 @@ auth.onAuthStateChanged(user=>{
   clearTimeout(authTimeout);
   if(!user){window.location.href='login.html';return;}
 
-  const enter = d => {
+  const enter = async d => {
     currentUser=user;
     currentExaminerDoc=d;
     document.getElementById('navAvatar').textContent=ini(d.name||'مخ');
@@ -629,23 +653,53 @@ auth.onAuthStateChanged(user=>{
     if(btnSR) btnSR.style.display = NoorRoles.activeRoles(d).length > 1 ? 'flex' : 'none';
     const ls=document.getElementById('loadingScreen'); ls.classList.add('hide'); setTimeout(()=>ls.classList.add('gone'),300);
     initDate();
+    await hydrateFromSnapshot();   // استرجاع المرشحين من التخزين المحلي فوراً — يعمل حتى بدون إنترنت
     initLiveListeners();
   };
 
-  const cached = sessionStorage.getItem('userCache');
-  if(cached){
+  const readCache = (store,key) => {
     try{
-      const d = JSON.parse(cached);
-      if(d.uid === user.uid && NoorRoles.hasRole(d,'examiner')){ enter(d); return; }
-    }catch(e){}
+      const d = JSON.parse(store.getItem(key)||'null');
+      return (d && d.uid===user.uid && NoorRoles.hasRole(d,'examiner')) ? d : null;
+    }catch(e){ return null; }
+  };
+  const saveUserCache = d => {
+    try{ sessionStorage.setItem('userCache', JSON.stringify(d)); }catch(e){}
+    try{ localStorage.setItem('examinerUserCache', JSON.stringify(d)); }catch(e){}
+  };
+
+  // 1) جلسة حالية (يضعها login.html)
+  const cachedSession = readCache(sessionStorage,'userCache');
+  if(cachedSession){ saveUserCache(cachedSession); enter(cachedSession); return; }
+
+  // 2) نسخة محفوظة من زيارة سابقة (تسمح بفتح الصفحة بعد إغلاق المتصفح وبدون إنترنت)
+  const cachedLocal = readCache(localStorage,'examinerUserCache');
+  if(cachedLocal){
+    saveUserCache(cachedLocal);
+    enter(cachedLocal);
+    if(navigator.onLine){   // تحقق صامت من أن الصلاحية ما زالت سارية
+      db.collection('users').doc(user.uid).get().then(doc=>{
+        if(!doc.exists || (doc.metadata && doc.metadata.fromCache)) return;
+        const d = { uid:user.uid, ...doc.data() };
+        const g = NoorRoles.guardPage('examiner', d);
+        if(!g.ok){
+          try{ localStorage.removeItem('examinerUserCache'); }catch(e){}
+          sessionStorage.removeItem('userCache');
+          window.location.href = g.redirect; return;
+        }
+        saveUserCache(d);
+      }).catch(()=>{});
+    }
+    return;
   }
 
+  // 3) أول مرة: جلب من الخادم
   db.collection('users').doc(user.uid).get().then(doc=>{
     if(!doc.exists){ window.location.href='login.html'; return; }
     const d = { uid:user.uid, ...doc.data() };
     const g = NoorRoles.guardPage('examiner', d);
     if(!g.ok){ window.location.href = g.redirect; return; }
-    sessionStorage.setItem('userCache', JSON.stringify(d));
+    saveUserCache(d);
     enter(d);
   }).catch(()=>window.location.href='login.html');
 });
@@ -679,6 +733,7 @@ function subscribeScopedTeacherIds(fsId){
   if(!fsId){ scopedTeacherIds=new Set(); applyTeacherScope(); return; }
   unsubScopedTeacherIds = db.collection('userdata').where('fieldSupervisorId','==',fsId)
     .onSnapshot(snap=>{
+      if(_hydrated && snap.metadata.fromCache && snap.empty) return;   // كاش فارغ ≠ لا يوجد محفّظون
       scopedTeacherIds = new Set(snap.docs.map(d=>d.id));
       applyTeacherScope();
     }, err=>toast('⚠️ خطأ تحميل محفّظي المشرف الميداني: '+err.message,'error'));
@@ -769,6 +824,7 @@ function initLiveListeners(){
   // البديل: جلب دفعة واحدة (batched) عند فتح الصفحة وتحديثها دورياً، بدل مستمع دائم لكل محفّظ.
   if(unsubUsers) unsubUsers();
   unsubUsers = db.collection('users').onSnapshot(snap=>{
+    if(_hydrated && snap.metadata.fromCache && snap.empty) return;
     rawTeachers = snap.docs
       .map(d=>({id:d.id,...d.data()}))
       .filter(u=>u.status==='approved' && NoorRoles.hasRole(u,'teacher'));
@@ -791,11 +847,13 @@ function initLiveListeners(){
   if(unsubMySupervisorsMulti) unsubMySupervisorsMulti();
   unsubMySupervisors = db.collection('users').where('role','==','fieldSupervisor').where('examinerId','==',currentUser.uid)
     .onSnapshot(snap=>{
+      if(_hydrated && snap.metadata.fromCache && snap.empty) return;
       _fsLegacyResults = snap.docs.map(d=>({id:d.id,...d.data()}));
       mergeMyFieldSupervisors();
     }, err=>toast('⚠️ خطأ تحميل المشرف الميداني المسؤول: '+err.message,'error'));
   unsubMySupervisorsMulti = db.collection('users').where('roles','array-contains','fieldSupervisor').where('examinerId','==',currentUser.uid)
     .onSnapshot(snap=>{
+      if(_hydrated && snap.metadata.fromCache && snap.empty) return;
       _fsMultiResults = snap.docs.map(d=>({id:d.id,...d.data()}));
       mergeMyFieldSupervisors();
     }, err=>console.log('fs multi-role err',err));
@@ -806,6 +864,7 @@ function initLiveListeners(){
   // 3) نتائج الاختبارات — لحظي، ومن المصدر الصحيح (مجموعة examResults نفسها)
   if(unsubResults) unsubResults();
   unsubResults = db.collection('examResults').onSnapshot(snap=>{
+    if(_hydrated && snap.metadata.fromCache && snap.empty) return;
     allExamResults = snap.docs.map(d=>d.data()).sort((a,b)=>new Date(b.examDate)-new Date(a.examDate));
     offlineQueueCache.forEach(item=>{
       if(item.resultRecord && !allExamResults.some(r=>r.id===item.resultRecord.id)) allExamResults.unshift(item.resultRecord);
@@ -853,6 +912,8 @@ function renderAll(){
 
   renderNominations(noms);
   renderResults(results);
+  refreshManualStudents();   // تحديث قائمة طلاب "اختبار مباشر" كلما وصلت بيانات جديدة
+  scheduleSnapshotSave();    // حفظ نسخة محلية للعمل بدون إنترنت
 }
 
 function renderNominations(noms){
@@ -1120,68 +1181,131 @@ function calcTotal(qrows){
 // ════════════════════════════════════════
 //  OFFLINE QUEUE  (indexedDB)
 // ════════════════════════════════════════
-const IDB_NAME='examinerOffline', IDB_STORE='queue', IDB_VER=1;
+const IDB_NAME='examinerOffline', IDB_STORE='queue', IDB_CACHE='cache', IDB_VER=2;
+let _idbPromise=null;
 function openIDB(){
-  return new Promise((res,rej)=>{
+  if(_idbPromise) return _idbPromise;
+  _idbPromise=new Promise((res,rej)=>{
     const req=indexedDB.open(IDB_NAME,IDB_VER);
-    req.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE,{keyPath:'id'});
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains(IDB_STORE)) d.createObjectStore(IDB_STORE,{keyPath:'id'});
+      if(!d.objectStoreNames.contains(IDB_CACHE)) d.createObjectStore(IDB_CACHE,{keyPath:'id'});
+    };
+    req.onsuccess=e=>{ const d=e.target.result; d.onversionchange=()=>{ d.close(); _idbPromise=null; }; res(d); };
+    req.onerror=e=>{ _idbPromise=null; rej(e.target.error); };
   });
+  return _idbPromise;
 }
-async function idbPush(record){
-  const db2=await openIDB();
-  return new Promise((res,rej)=>{
-    const tx=db2.transaction(IDB_STORE,'readwrite');
-    tx.objectStore(IDB_STORE).put(record);
-    tx.oncomplete=res; tx.onerror=e=>rej(e.target.error);
-  });
+function _idbTx(store, mode, fn){
+  return openIDB().then(d=>new Promise((res,rej)=>{
+    const tx=d.transaction(store,mode);
+    const out=fn(tx.objectStore(store));
+    tx.oncomplete=()=>res(out && 'result' in out ? out.result : undefined);
+    tx.onerror=e=>rej(e.target.error);
+    tx.onabort=e=>rej(tx.error||new Error('idb abort'));
+  }));
 }
-async function idbGetAll(){
-  const db2=await openIDB();
-  return new Promise((res,rej)=>{
-    const tx=db2.transaction(IDB_STORE,'readonly');
-    const req=tx.objectStore(IDB_STORE).getAll();
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
-  });
+const idbPush   = record => _idbTx(IDB_STORE,'readwrite',st=>st.put(record));
+const idbGetAll = ()     => _idbTx(IDB_STORE,'readonly', st=>st.getAll());
+const idbDelete = id     => _idbTx(IDB_STORE,'readwrite',st=>st.delete(id));
+const idbCachePut = rec  => _idbTx(IDB_CACHE,'readwrite',st=>st.put(rec));
+const idbCacheGet = id   => _idbTx(IDB_CACHE,'readonly', st=>st.get(id));
+const clearOfflineSnapshot = () => _idbTx(IDB_CACHE,'readwrite',st=>st.delete('snapshot'));
+
+// ═══════════════════════════════════════════════════════════
+//  نسخة محلية كاملة من بيانات المختبِر (المحفّظون + الطلاب + الترشيحات + النتائج)
+//  تُحفظ في IndexedDB كلما تغيّرت البيانات، وتُسترجع فور فتح الصفحة —
+//  فتظهر قائمة المرشحين كاملة حتى لو فُتحت الصفحة بدون أي اتصال
+// ═══════════════════════════════════════════════════════════
+let _snapTimer=null;
+function scheduleSnapshotSave(immediate){
+  if(immediate){ clearTimeout(_snapTimer); _snapTimer=null; saveSnapshot(); return; }
+  if(_snapTimer) return;                       // تجميع التحديثات المتتالية في حفظ واحد
+  _snapTimer=setTimeout(()=>{ _snapTimer=null; saveSnapshot(); }, 2500);
 }
-async function idbDelete(id){
-  const db2=await openIDB();
-  return new Promise((res,rej)=>{
-    const tx=db2.transaction(IDB_STORE,'readwrite');
-    tx.objectStore(IDB_STORE).delete(id);
-    tx.oncomplete=res; tx.onerror=e=>rej(e.target.error);
-  });
+async function saveSnapshot(){
+  // لا نحفظ أبداً حالة فارغة فوق نسخة سليمة
+  if(!currentUser || !allTeachers.length || !Object.keys(allTeacherData).length) return;
+  try{
+    const clean = o => JSON.parse(JSON.stringify(o));
+    await idbCachePut({
+      id:'snapshot', uid:currentUser.uid, savedAt:Date.now(), lastDataAt,
+      rawTeachers: rawTeachers.map(t=>({id:t.id, name:t.name, circle:t.circle||''})),
+      myFieldSupervisors: myFieldSupervisors.map(f=>({id:f.id, name:f.name})),
+      selectedFieldSupervisorId,
+      scopedTeacherIds: [...scopedTeacherIds],
+      allTeacherData: clean(allTeacherData),
+      passingGrade,
+      results: clean(getAllResults().slice(0,1500))
+    });
+  }catch(e){ console.warn('snapshot save failed', e); }
+}
+async function hydrateFromSnapshot(){
+  try{
+    const snap=await idbCacheGet('snapshot');
+    if(snap && snap.uid===currentUser.uid){
+      rawTeachers = snap.rawTeachers||[];
+      myFieldSupervisors = snap.myFieldSupervisors||[];
+      selectedFieldSupervisorId = snap.selectedFieldSupervisorId||'';
+      scopedTeacherIds = new Set(snap.scopedTeacherIds||[]);
+      allTeacherData = snap.allTeacherData||{};
+      if(snap.passingGrade) passingGrade = snap.passingGrade;
+      allExamResults = snap.results||[];
+      lastDataAt = snap.lastDataAt||snap.savedAt||0;
+      allTeachers = rawTeachers.filter(t=>scopedTeacherIds.has(t.id));
+      _hydrated = allTeachers.length>0;
+      populateManualTeachers();
+      renderFsFilterBanner();
+      document.getElementById('passBannerVal').textContent = passingGrade + ' / 100';
+    }
+  }catch(e){ console.warn('hydrate failed', e); }
+  // أعد تطبيق أي نتائج رُصدت ولم تُزامَن بعد فوق النسخة المسترجعة
+  await refreshOfflineQueueCache();
+  applyQueuedGradesLocally();
+  renderAll();
 }
 
-async function syncOfflineQueue(){
-  if(!navigator.onLine) return;
-  const queue=await idbGetAll();
-  await refreshOfflineQueueCache();
-  if(!queue.length) return;
-  let synced=0;
-  for(const item of queue){
-    try{
-      if(item.action==='delete_nomination'){
-        await removeNominationFromTeacherDoc(item.teacherId, item.nominationId);
-      } else {
-        await db.collection('examResults').doc(item.resultRecord.id).set(item.resultRecord);
-        await applyExamGradeToTeacherDoc(item.teacherId, {
-          nominationId:item.nominationId, passed:item.resultRecord.passed, totalScore:item.resultRecord.totalScore,
-          studentId:item.studentId, juzUpdated:item.juzUpdated, juzAfter:item.juzAfter,
-          examinerId:currentUser.uid, examDate:item.resultRecord.examDate,
-          createIfMissing:item.createIfMissing, studentName:item.studentName, type:item.type,
-          juzNum:item.juzNum, juzName:item.juzName, notes:item.notes
-        });
-        await sendNotification(item.resultRecord).catch(()=>{});
-      }
-      await idbDelete(item.id);
-      synced++;
-    }catch(err){ console.warn('sync failed for',item.id,err); }
+// تنفيذ عملية واحدة من الطابور على الخادم (كلها idempotent — آمنة عند التكرار)
+async function syncOneItem(item){
+  if(item.action==='delete_nomination'){
+    await withTimeout(removeNominationFromTeacherDoc(item.teacherId, item.nominationId), 20000, 'delete');
+    return;
   }
-  await refreshOfflineQueueCache();
-  if(synced>0) toast(`☁️ تمت مزامنة ${synced} عملية مع الخادم`);
+  const r=item.resultRecord;
+  await withTimeout(db.collection('examResults').doc(r.id).set(r), 20000, 'result');
+  await withTimeout(applyExamGradeToTeacherDoc(item.teacherId, {
+    nominationId:item.nominationId, passed:r.passed, totalScore:r.totalScore,
+    studentId:item.studentId, juzUpdated:item.juzUpdated, juzAfter:item.juzAfter,
+    examinerId:r.examinerId, examDate:r.examDate,
+    createIfMissing:item.createIfMissing, studentName:item.studentName, type:item.type,
+    juzNum:item.juzNum, juzName:item.juzName, notes:item.notes
+  }), 20000, 'teacher');
+  await withTimeout(sendNotification(r), 8000, 'notify').catch(()=>{});
+}
+
+let _syncingQueue=false;
+async function syncOfflineQueue(){
+  if(_syncingQueue || !navigator.onLine) return;
+  _syncingQueue=true;
+  try{
+    const queue=(await idbGetAll()).sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0));
+    await refreshOfflineQueueCache();
+    if(!queue.length) return;
+    let synced=0;
+    for(const item of queue){
+      try{
+        await syncOneItem(item);
+        await idbDelete(item.id);        // لا يُحذف من الطابور إلا بعد نجاح كل الخطوات
+        synced++;
+      }catch(err){
+        console.warn('sync failed for',item.id,err);
+        if(isNetworkErr(err)) break;     // الاتصال ضعيف — أوقف وأعد المحاولة لاحقاً
+      }
+    }
+    await refreshOfflineQueueCache();
+    if(synced>0){ toast(`☁️ تمت مزامنة ${synced} عملية مع الخادم`); refreshTeacherData(); }
+  } finally { _syncingQueue=false; }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1270,21 +1394,13 @@ async function performDeleteNomination(teacherId, nominationId){
     allTeacherData[teacherId].exams=(allTeacherData[teacherId].exams||[]).filter(e=>e.id!==nominationId);
   }
   renderAll();
-
-  if(navigator.onLine){
-    try{
-      await removeNominationFromTeacherDoc(teacherId, nominationId);
-      toast('🗑️ تم حذف الترشيح');
-    }catch(e){
-      await idbPush({id:uid(), action:'delete_nomination', teacherId, nominationId});
-      await refreshOfflineQueueCache();
-      toast('⚠️ تعذّر الحذف — سيُنفَّذ تلقائياً عند الاتصال','error');
-    }
-  } else {
-    await idbPush({id:uid(), action:'delete_nomination', teacherId, nominationId});
-    await refreshOfflineQueueCache();
-    toast('📴 لا يوجد إنترنت — سيُحذف تلقائياً عند الاتصال','error');
-  }
+  scheduleSnapshotSave(true);
+  // نكتب في الطابور المحلي أولاً دائماً ثم نحاول المزامنة (لا يضيع الحذف مهما كان الاتصال)
+  try{ await idbPush({id:uid(), queuedAt:Date.now(), action:'delete_nomination', teacherId, nominationId}); }
+  catch(e){ console.error(e); toast('⚠️ تعذّر حفظ الحذف محلياً','error'); return; }
+  await refreshOfflineQueueCache();
+  if(navigator.onLine){ toast('🗑️ تم حذف الترشيح'); syncOfflineQueue(); }
+  else toast('📴 لا يوجد إنترنت — سيُحذف تلقائياً عند الاتصال','error');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1331,8 +1447,10 @@ function updateConnStatus(){
   if(online && n===0){ el.style.display='none'; return; }
   el.style.display='flex';
   if(!online){
+    let age='';
+    if(lastDataAt){ const d=new Date(lastDataAt); age=' · آخر تحديث '+d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}); }
     el.style.background='#fdeaea'; el.style.color='#b91c1c';
-    el.textContent = n>0 ? `📴 غير متصل — ${n} نتيجة بانتظار الحفظ` : '📴 غير متصل';
+    el.textContent = '📴 غير متصل'+age+(n>0?` · ${n} نتيجة بانتظار الحفظ`:'');
   } else {
     el.style.background='#fff7e0'; el.style.color='#8a6d00';
     el.textContent = `🔄 جاري مزامنة ${n} نتيجة...`;
@@ -1431,38 +1549,33 @@ async function submitExam(){
   }
   showResultDetailFromData(resultRecord);
 
-  // ── حفظ في Firestore أو في الطابور إذا لا يوجد إنترنت ──
+  // ── حفظ آمن: نكتب النتيجة في الطابور المحلي (IndexedDB) أولاً دائماً ثم نحاول المزامنة ──
+  // (الاعتماد على navigator.onLine وحده غير كافٍ: قد يكون الواي فاي متصلاً بلا إنترنت فعلي)
   const studentId = pendingExam.studentId;
-  const teacherWriteExtra = {
+  const queueItem = {
+    id:resultRecord.id, queuedAt:Date.now(), resultRecord,
+    nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId, studentId, juzUpdated, juzAfter,
     createIfMissing: !!pendingExam.isDirect,
     studentName: pendingExam.studentName, type: pendingExam.type,
     juzNum: pendingExam.juzNum, juzName: pendingExam.juzName, notes
   };
-  if(navigator.onLine){
-    try{
-      await db.collection('examResults').doc(resultRecord.id).set(resultRecord);
-      await applyExamGradeToTeacherDoc(pendingExam.teacherId, {
-        nominationId:pendingExam.nominationId, passed, totalScore, studentId, juzUpdated, juzAfter,
-        examinerId:currentUser.uid, examDate:resultRecord.examDate, ...teacherWriteExtra
-      });
-      await sendNotification(resultRecord).catch(()=>{});
-    }catch(e){
-      // فشل الحفظ رغم وجود إنترنت — احفظ للطابور
-      await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId, studentId, juzUpdated, juzAfter, ...teacherWriteExtra});
-      await refreshOfflineQueueCache();
-      toast('⚠️ تعذّر الحفظ — سيُزامن تلقائياً عند الاتصال','error');
-    }
+  scheduleSnapshotSave(true);
+  let queued=true;
+  try{ await idbPush(queueItem); }catch(e){ queued=false; console.error('idb push failed', e); }
+  await refreshOfflineQueueCache();
+  if(!queued){
+    try{ await syncOneItem(queueItem); toast('☁️ تم الحفظ'); }
+    catch(err){ toast('⚠️ تعذّر حفظ النتيجة — دوّن العلامة يدوياً وأعد المحاولة','error'); }
+  } else if(navigator.onLine){
+    syncOfflineQueue();
   } else {
-    // لا يوجد إنترنت — احفظ للطابور
-    await idbPush({id:resultRecord.id, resultRecord, nominationId:pendingExam.nominationId, teacherId:pendingExam.teacherId, studentId, juzUpdated, juzAfter, ...teacherWriteExtra});
-    await refreshOfflineQueueCache();
     toast('📴 لا يوجد إنترنت — سيُحفظ تلقائياً عند الاتصال','error');
   }
 }
 
 async function sendNotification(r){
   const notif={
-    id:uid(),
+    id:'exam_'+r.id,
     type:'examResult',
     targetTeacherId:r.teacherId,
     studentName:r.studentName,
@@ -1476,7 +1589,8 @@ async function sendNotification(r){
     read:false,
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
   };
-  await db.collection('notifications').add(notif);
+  // معرّف ثابت => لا يتكرر الإشعار لو أُعيدت المزامنة
+  await db.collection('notifications').doc(notif.id).set(notif);
 }
 
 // ════════════════════════════════════════
@@ -1535,19 +1649,55 @@ function showResultDetailFromData(r){
 // ════════════════════════════════════════
 function populateManualTeachers(){
   const sel=document.getElementById('manTeacher');
+  const prev=sel.value;
   sel.innerHTML='<option value="">— اختر المحفّظ —</option>'+
-    allTeachers.map(t=>`<option value="${t.id}">${t.name}${t.circle?' — '+t.circle:''}</option>`).join('');
+    allTeachers.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}${t.circle?' — '+esc(t.circle):''}</option>`).join('');
+  if(prev && allTeachers.some(t=>t.id===prev)) sel.value=prev;   // لا نُفقد اختيار المستخدم عند كل تحديث
 }
 
-function onManTeacherChange(){
+// جلب بيانات محفّظ عند الحاجة (إن لم تصل بعد) — من الخادم ثم من الكاش المحلي
+async function ensureTeacherData(tid){
+  if(allTeacherData[tid]) return;
+  try{
+    const doc=await withTimeout(db.collection('userdata').doc(tid).get(), 10000, 'userdata');
+    if(doc.exists) allTeacherData[tid]=doc.data();
+  }catch(e){
+    try{
+      const doc=await db.collection('userdata').doc(tid).get({source:'cache'});
+      if(doc.exists) allTeacherData[tid]=doc.data();
+    }catch(_){}
+  }
+}
+
+function fillManualStudents(){
   const tid=document.getElementById('manTeacher').value;
   const sel=document.getElementById('manStudent');
-  if(!tid){sel.innerHTML='<option value="">— اختر الطالب —</option>';return;}
-  const td=allTeacherData[tid]||{};
-  const students=(td.students||[]).filter(s=>!s.archived);
+  const prev=sel.value;
+  if(!tid){ sel.innerHTML='<option value="">— اختر الطالب —</option>'; return; }
+  const td=allTeacherData[tid];
+  if(!td){ sel.innerHTML='<option value="">… جارٍ تحميل الطلاب …</option>'; return; }
+  const students=(td.students||[]).filter(s=>!s.archived)
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar'));
+  if(!students.length){ sel.innerHTML='<option value="">— لا يوجد طلاب لهذا المحفّظ —</option>'; return; }
   sel.innerHTML='<option value="">— اختر الطالب —</option>'+
-    students.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    students.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  if(prev && students.some(s=>s.id===prev)) sel.value=prev;
+}
+function refreshManualStudents(){ fillManualStudents(); }
+
+async function onManTeacherChange(){
+  const tid=document.getElementById('manTeacher').value;
+  fillManualStudents();
   renderManJuz();
+  if(tid && !allTeacherData[tid]){
+    await ensureTeacherData(tid);
+    if(document.getElementById('manTeacher').value===tid){
+      if(!allTeacherData[tid]){
+        document.getElementById('manStudent').innerHTML='<option value="">— تعذّر تحميل الطلاب —</option>';
+        toast('⚠️ تعذّر تحميل طلاب المحفّظ — تحقق من الاتصال','error');
+      } else fillManualStudents();
+    }
+  }
 }
 
 function renderManJuz(){
@@ -1950,6 +2100,7 @@ function switchTab(name, btn){
   btn.classList.add('active');
   if(name==='results') renderResults(getAllResults());
   if(name==='nominated') refreshTeacherData();
+  if(name==='manual'){ refreshTeacherData(); fillManualStudents(); }
 }
 
 // Close modals on overlay click
@@ -1960,8 +2111,12 @@ function switchTab(name, btn){
 // Init juz
 renderManJuz();
 
-// مزامنة أي نتائج معلقة عند الفتح
-if(navigator.onLine) syncOfflineQueue();
+// حفظ فوري للنسخة المحلية عند إخفاء الصفحة/إغلاقها، ومحاولة مزامنة عند العودة إليها
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='hidden') scheduleSnapshotSave(true);
+  else if(navigator.onLine && currentUser) syncOfflineQueue();
+});
+// (المزامنة عند الفتح تتم داخل initLiveListeners بعد تسجيل الدخول)
 </script>
 </body>
 </html>
