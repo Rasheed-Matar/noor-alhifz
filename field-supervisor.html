@@ -1001,6 +1001,42 @@ const secondaryAuth = secondaryApp.auth();
 function nidToEmail(nid){ return nid + '@noor-alhifz.app'; }
 const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 
+// إنشاء حساب الطالب (Auth) + وثيقة users الخاصة به، ويُرجع studentId الذي سُجّل فعلياً.
+// سبب الخلل السابق: قواعد Firestore تسمح بإنشاء وثيقة users فقط لصاحبها (uid == userId) أو للمدير،
+// والمشرف الميداني ليس أياً منهما — فكانت الكتابة تُرفض بعد أن يكون حساب Auth قد أُنشئ، فيبقى الطلب
+// معلّقاً ويفشل أي تكرار بـ "رقم الهوية مسجّل بالفعل". الحل: تُكتب الوثيقة عبر التطبيق الثانوي وهو لا يزال
+// مسجّلاً بحساب الطالب الجديد نفسه (فيتحقق شرط صاحب الوثيقة) قبل تسجيل خروجه.
+// كما يُعالج حالة حساب Auth يتيم (أُنشئ في محاولة سابقة فاشلة دون وثيقة users) فيُكمل إنشاءه بدل الفشل.
+async function createStudentAccount(nid, userDoc){
+  const email = nidToEmail(nid);
+  let cred, recovered = false, firstErr = null;
+  try{
+    cred = await secondaryAuth.createUserWithEmailAndPassword(email, nid);
+  }catch(e){
+    if(e.code!=='auth/email-already-in-use') throw e;
+    firstErr = e;
+    try{ cred = await secondaryAuth.signInWithEmailAndPassword(email, nid); }
+    catch(_){ throw firstErr; }
+    recovered = true;
+  }
+  try{
+    const ref = secondaryApp.firestore().collection('users').doc(cred.user.uid);
+    if(recovered){
+      const ex = await ref.get();
+      if(ex.exists){
+        const d = ex.data()||{};
+        // محاولة سابقة اكتملت وثيقتها لنفس المحفّظ ولم يكتمل تحديث قائمة الطلاب — نعيد استخدام نفس المعرّف
+        if(d.role==='student' && d.teacherId===userDoc.teacherId && d.studentId) return d.studentId;
+        throw firstErr;
+      }
+    }
+    await ref.set(userDoc);
+    return userDoc.studentId;
+  } finally {
+    try{ await secondaryAuth.signOut(); }catch(_){}
+  }
+}
+
 let currentUser=null, currentFsName='المشرف الميداني';
 let allUsers=[]; // كل محفّظي هذا المشرف الميداني فقط (مفلترة مسبقاً من الخادم بـ fieldSupervisorId)
 let unsubUsers=null, unsubData=[];
@@ -1446,32 +1482,29 @@ function saveNewStudentAdmin(){
   const btn = event.target;
   btn.textContent='⏳ جارٍ الإضافة...'; btn.disabled=true;
 
-  const email = nidToEmail(nid);
-  secondaryAuth.createUserWithEmailAndPassword(email, nid).then(cred=>{
-    const studentUid = cred.user.uid;
-    return secondaryAuth.signOut().then(()=>{
-      return db.collection('users').doc(studentUid).set({
-        name: fullName,
-        firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
-        nationalId: nid, dob, placeOfBirth: pob, gender,
-        phone, circle: teacherObj?.circle||'حلقة القرآن',
-        role: 'student', status: 'approved',
-        teacherId: teacherId, studentId: studentLocalId,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    }).then(()=>{
-      const teacherRef = db.collection('userdata').doc(teacherId);
-      return db.runTransaction(async tx=>{
-        const snap = await tx.get(teacherRef);
-        const currentStudents = (snap.exists && snap.data().students) || [];
-        tx.set(teacherRef, {students: [...currentStudents, newStudent]}, {merge:true});
-      });
+  (async ()=>{
+    const finalId = await createStudentAccount(nid, {
+      name: fullName,
+      firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+      nationalId: nid, dob, placeOfBirth: pob, gender,
+      phone, circle: teacherObj?.circle||'حلقة القرآن',
+      role: 'student', status: 'approved',
+      teacherId: teacherId, studentId: studentLocalId,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-  }).then(()=>{
+    newStudent.id = finalId;
+    const teacherRef = db.collection('userdata').doc(teacherId);
+    await db.runTransaction(async tx=>{
+      const snap = await tx.get(teacherRef);
+      const currentStudents = (snap.exists && snap.data().students) || [];
+      if(currentStudents.some(s=>s.id===finalId)) return;
+      tx.set(teacherRef, {students: [...currentStudents, newStudent]}, {merge:true});
+    });
+  })().then(()=>{
     // إضافة الطالب فوراً للواجهة قبل وصول تحديث الخادم — فيظهر في الجدول
     // مباشرة دون انتظار ولا وميض
     const idx=allUsers.findIndex(u=>u.id===teacherId);
-    if(idx>=0 && !(allUsers[idx].students||[]).some(s=>s.id===studentLocalId)){
+    if(idx>=0 && !(allUsers[idx].students||[]).some(s=>s.id===newStudent.id)){
       allUsers[idx].students=[...(allUsers[idx].students||[]), newStudent];
       scheduleRender();
     }
@@ -1543,12 +1576,9 @@ function approveAddStudentRequest(teacherId, requestId){
       nationalId: req.nationalId, dob: req.dob, placeOfBirth: req.placeOfBirth, gender: req.gender,
       parentPhone: req.parentPhone, juz: req.juz||0, notes: req.notes||'', archived: false, addedAt: new Date().toISOString()
     };
-    const email = nidToEmail(req.nationalId);
     try{
-      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, req.nationalId);
-      const studentUid = cred.user.uid;
-      await secondaryAuth.signOut();
-      await db.collection('users').doc(studentUid).set({
+      // الوثيقة تُكتب عبر التطبيق الثانوي بصفة الطالب نفسه (انظر createStudentAccount) — القواعد لا تسمح للمشرف الميداني بإنشائها
+      const finalId = await createStudentAccount(req.nationalId, {
         name: req.name,
         firstName:req.firstName, fatherName:req.fatherName, grandfatherName:req.grandfatherName, familyName:req.familyName,
         nationalId: req.nationalId, dob: req.dob, placeOfBirth: req.placeOfBirth, gender: req.gender,
@@ -1557,13 +1587,15 @@ function approveAddStudentRequest(teacherId, requestId){
         teacherId: teacherId, studentId: studentLocalId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      newStudent.id = finalId;
       const teacherRef = db.collection('userdata').doc(teacherId);
       await db.runTransaction(async tx=>{
         const snap = await tx.get(teacherRef);
         const currentStudents = (snap.exists && snap.data().students) || [];
         const currentRequests = (snap.exists && snap.data().addStudentRequests) || [];
         const updatedRequests = currentRequests.map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
-        tx.set(teacherRef, {students: [...currentStudents, newStudent], addStudentRequests: updatedRequests}, {merge:true});
+        const updatedStudents = currentStudents.some(s=>s.id===finalId) ? currentStudents : [...currentStudents, newStudent];
+        tx.set(teacherRef, {students: updatedStudents, addStudentRequests: updatedRequests}, {merge:true});
       });
       toast('✅ تم إضافة الطالب — كلمة المرور الافتراضية: رقم الهوية');
       sendAdminNotification(`المشرف الميداني ${currentFsName} وافق على إضافة الطالب "${req.name}" لدى المحفّظ ${teacher.name}`);
@@ -1604,13 +1636,9 @@ function approveDeleteRequest(teacherId,requestId){
   confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',async ()=>{
     const teacherRef=db.collection('userdata').doc(teacherId);
     try{
-      const sessSnap=await teacherRef.collection('sessions')
-        .where('studentId','==',req.studentId).get();
-      if(!sessSnap.empty){
-        const batch=db.batch();
-        sessSnap.forEach(doc=>batch.delete(doc.ref));
-        await batch.commit();
-      }
+      // أولاً: إزالة الطالب وإغلاق الطلب في معاملة واحدة على الوثيقة الحيّة — هذا هو الجزء الأساسي ولا يجوز
+      // أن يتعطّل بسبب تنظيف الجلسات (كان الحذف سابقاً يبدأ بحذف الجلسات، وقواعد Firestore لا تسمح بحذفها
+      // للمشرف الميداني فكان الخطأ يوقف العملية كلها قبل أن يُحذف الطالب أصلاً)
       await db.runTransaction(async tx=>{
         const snap=await tx.get(teacherRef);
         const liveStudents=(snap.exists && snap.data().students)||[];
@@ -1619,6 +1647,18 @@ function approveDeleteRequest(teacherId,requestId){
         const updatedRequests=liveRequests.map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
         tx.set(teacherRef,{students:updatedStudents, deletionRequests:updatedRequests},{merge:true});
       });
+      // ثانياً: تنظيف جلسات الطالب (تتطلب قاعدة حذف الجلسات للمشرف الميداني في firestore.rules)
+      let cleanupFailed=false;
+      try{
+        const sessSnap=await teacherRef.collection('sessions').where('studentId','==',req.studentId).get();
+        for(let i=0;i<sessSnap.docs.length;i+=400){
+          const batch=db.batch();
+          sessSnap.docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));
+          await batch.commit();
+        }
+      }catch(e){ cleanupFailed=true; console.warn('sessions cleanup failed:',e.code,e); }
+      if(cleanupFailed) toast('🗑️ حُذف الطالب، لكن تعذّر حذف سجل جلساته (حدّث قواعد Firestore)');
+      else
       toast('🗑️ تم حذف الطالب نهائياً');
       sendAdminNotification(`المشرف الميداني ${currentFsName} وافق على حذف الطالب "${req.studentName}" لدى المحفّظ ${teacher.name}`);
     }catch(e){ toast('⚠️ خطأ: '+e.message); }
