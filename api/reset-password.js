@@ -1,33 +1,49 @@
 const admin = require('firebase-admin');
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FB_PROJECT_ID,
-      clientEmail: process.env.FB_CLIENT_EMAIL,
-      privateKey: (process.env.FB_PRIVATE_KEY || '').replace(/\\n/g, '\n')
-    })
-  });
+// تهيئة Firebase Admin بشكل كسول وآمن: أي خطأ في متغيرات البيئة يُرجَع كـ JSON
+// (مع ترويسات CORS) بدل أن تنهار الدالة ويظهر للمتصفح "Failed to fetch"
+let initError = null;
+function ensureInit() {
+  if (admin.apps.length) return;
+  try {
+    const { FB_PROJECT_ID, FB_CLIENT_EMAIL, FB_PRIVATE_KEY } = process.env;
+    if (!FB_PROJECT_ID || !FB_CLIENT_EMAIL || !FB_PRIVATE_KEY) {
+      throw new Error('متغيرات البيئة ناقصة في Vercel: FB_PROJECT_ID / FB_CLIENT_EMAIL / FB_PRIVATE_KEY');
+    }
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: FB_PROJECT_ID,
+        clientEmail: FB_CLIENT_EMAIL,
+        privateKey: FB_PRIVATE_KEY.replace(/\\n/g, '\n')
+      })
+    });
+    initError = null;
+  } catch (e) {
+    initError = e;
+  }
 }
 
-// عدّل هذه القائمة لتطابق نطاق موقعك فقط
-const ORIGINS = [
-  'https://rasheed-matar.github.io',
-  'http://localhost:5500',
-  'http://127.0.0.1:5500'
-];
-
 module.exports = async (req, res) => {
-  const origin = req.headers.origin || '';
-  if (ORIGINS.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+  // الأمان هنا قائم على التحقق من idToken (وليس على الكوكيز)، لذلك السماح لأي نطاق آمن
+  // ويحل مشكلة الدخول من github.io أو نطاق مخصص أو PWA أو localhost
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  ensureInit();
+  if (initError) {
+    console.error('firebase-admin init error:', initError);
+    return res.status(500).json({ error: initError.message || 'فشل تهيئة Firebase Admin' });
+  }
+
   try {
-    const { idToken, nationalId, newPassword } = req.body || {};
+    let body = req.body || {};
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (_) { body = {}; } }
+    const { idToken, nationalId, newPassword } = body;
 
     if (!idToken || !nationalId || !newPassword) {
       return res.status(400).json({ error: 'بيانات ناقصة (idToken / nationalId / newPassword)' });
