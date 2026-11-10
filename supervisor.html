@@ -1655,6 +1655,14 @@ const secondaryAuth = secondaryApp.auth();
 // نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
 const ADMIN_API = 'https://noor-admin-api.vercel.app/api/reset-password';
 
+function resetErrMsg(e){
+  if(e && (e.name==='TypeError' || /failed to fetch|networkerror|load failed/i.test(e.message||''))){
+    return navigator.onLine
+      ? 'تعذّر الوصول لخادم إعادة التعيين (تحقق من رابط ADMIN_API ونشر Vercel)'
+      : 'لا يوجد اتصال بالإنترنت';
+  }
+  return e.message;
+}
 function nidToEmail(nid){ return nid + '@noor-alhifz.app'; }
 const uidGen = () => '_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 
@@ -2470,7 +2478,7 @@ async function adminResetPassword(uid, kind){
     toast('✅ تم تعيين كلمة المرور الجديدة بنجاح');
     closeModal('modal-detail');
   } catch(e){
-    toast('⚠️ تعذّرت إعادة التعيين: '+e.message);
+    toast('⚠️ تعذّرت إعادة التعيين: '+resetErrMsg(e));
   }
 }
 
@@ -2941,7 +2949,7 @@ async function tryAutoResetPassword(reqId, nationalId, authUid, phone, name){
     }
     resolvePwResetRequest(reqId);
   }catch(e){
-    toast('⚠️ تعذّرت إعادة التعيين: ' + e.message, 'error');
+    toast('⚠️ تعذّرت إعادة التعيين: ' + resetErrMsg(e), 'error');
   }
 }
 
