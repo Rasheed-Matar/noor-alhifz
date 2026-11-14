@@ -1,27 +1,4 @@
-const admin = require('firebase-admin');
-
-// تهيئة Firebase Admin بشكل كسول وآمن: أي خطأ في متغيرات البيئة يُرجَع كـ JSON
-// (مع ترويسات CORS) بدل أن تنهار الدالة ويظهر للمتصفح "Failed to fetch"
-let initError = null;
-function ensureInit() {
-  if (admin.apps.length) return;
-  try {
-    const { FB_PROJECT_ID, FB_CLIENT_EMAIL, FB_PRIVATE_KEY } = process.env;
-    if (!FB_PROJECT_ID || !FB_CLIENT_EMAIL || !FB_PRIVATE_KEY) {
-      throw new Error('متغيرات البيئة ناقصة في Vercel: FB_PROJECT_ID / FB_CLIENT_EMAIL / FB_PRIVATE_KEY');
-    }
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: FB_PROJECT_ID,
-        clientEmail: FB_CLIENT_EMAIL,
-        privateKey: FB_PRIVATE_KEY.replace(/\\n/g, '\n')
-      })
-    });
-    initError = null;
-  } catch (e) {
-    initError = e;
-  }
-}
+const { admin, ensureInit } = require('./_admin-init');
 
 module.exports = async (req, res) => {
   // الأمان هنا قائم على التحقق من idToken (وليس على الكوكيز)، لذلك السماح لأي نطاق آمن
@@ -34,7 +11,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  ensureInit();
+  const initError = ensureInit();
   if (initError) {
     console.error('firebase-admin init error:', initError);
     return res.status(500).json({ error: initError.message || 'فشل تهيئة Firebase Admin' });
