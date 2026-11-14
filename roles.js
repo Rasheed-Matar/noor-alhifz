@@ -15,7 +15,7 @@
   };
 
   const LABELS = {
-    admin:           'مشرف',
+    admin:           'مدير المركز',
     fieldSupervisor: 'مشرف ميداني',
     examiner:        'مختبر جودة',
     teacher:         'محفّظ',
