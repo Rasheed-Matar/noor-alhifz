@@ -2,6 +2,9 @@
   "functions": {
     "api/reset-password.js": {
       "maxDuration": 10
+    },
+    "api/self-reset-password.js": {
+      "maxDuration": 10
     }
   }
 }
