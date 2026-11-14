@@ -3,7 +3,7 @@
 // الصفحة مغلقة تماماً (أندرويد/كروم فقط). المنطق الكامل في sync-shared.js
 importScripts('sync-shared.js');
 
-const CACHE = 'noor-v-20261008-examiner-offline';
+const CACHE = 'noor-v-20261114-manager-dashboard';
 
 // كل ملفات واجهة التطبيق التي يجب أن تعمل بدون إنترنت
 const ASSETS = [
