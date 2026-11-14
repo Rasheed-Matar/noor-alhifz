@@ -156,6 +156,11 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
 .modal-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--em),var(--em2));border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .modal-title{font-family:'Amiri',serif;font-size:19px;color:var(--em);}
 .modal-desc{font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:16px;}
+.modal{max-height:92vh;overflow-y:auto;}
+input.fi[type=date]{min-height:46px;text-align:right;direction:ltr;padding:12px 14px;}
+.fgt-link{display:block;width:100%;margin-top:12px;background:none;border:none;font-family:'Tajawal',sans-serif;font-size:13px;color:var(--em2);cursor:pointer;text-align:center;font-weight:500;}
+.fgt-link:hover{text-decoration:underline;}
+.pw-hint{font-size:11.5px;color:#8a8672;margin:-8px 0 14px;line-height:1.6;}
 
 @media (max-width:600px){.card{padding:28px 22px 24px;}}
 </style>
@@ -251,10 +256,60 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
       <div class="modal-title">استعادة كلمة المرور</div>
     </div>
 
-    <!-- طلب استعادة: يُرسَل للمشرف ليراجعه ويعيد تعيين كلمة المرور يدوياً -->
-    <div id="fgtStep1">
+    <!-- استعادة ذاتية: التحقق بالهوية + تاريخ الميلاد + الجوال المسجَّل ثم اختيار كلمة مرور جديدة -->
+    <div id="fgtSelf">
       <div class="modal-desc">
-        أدخل رقم هويتك الوطنية ورقم الهاتف المسجَّل بحسابك، وسيصل طلبك مباشرة للمشرف ليتحقق منه ويرسل لك كلمة مرور جديدة عبر واتساب.
+        أدخل بياناتك كما هي مسجَّلة في المركز، ثم اختر كلمة مرور جديدة وستتمكن من الدخول مباشرة.
+      </div>
+      <div class="err" id="sr-err"><span id="sr-err-txt"></span></div>
+      <div class="form-group">
+        <label>رقم الهوية الوطنية</label>
+        <div class="inp-wrap">
+          <input class="fi" id="sr-nid" type="text" inputmode="numeric" placeholder="٩ أرقام" style="direction:ltr;text-align:right;letter-spacing:2px;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>تاريخ الميلاد</label>
+        <div class="inp-wrap">
+          <input class="fi" id="sr-dob" type="date" min="1920-01-01"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>رقم الجوال المسجَّل بالحساب</label>
+        <div class="inp-wrap">
+          <input class="fi" id="sr-phone" type="text" inputmode="numeric" placeholder="05XXXXXXXX" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>كلمة المرور الجديدة</label>
+        <div class="inp-wrap">
+          <input class="fi" id="sr-pass" type="password" placeholder="6 أحرف على الأقل" autocomplete="new-password" style="letter-spacing:0;padding-left:40px;"/>
+          <button class="eye-btn" onclick="togglePw('sr-pass',this)" type="button" tabindex="-1">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>تأكيد كلمة المرور</label>
+        <div class="inp-wrap">
+          <input class="fi" id="sr-pass2" type="password" placeholder="أعد كتابتها" autocomplete="new-password" style="letter-spacing:0;padding-left:40px;" onkeydown="if(event.key==='Enter')submitSelfReset()"/>
+        </div>
+      </div>
+      <div class="pw-hint">اختر كلمة مرور مختلفة عن رقم الهوية.</div>
+      <button class="btn" id="srBtn" onclick="submitSelfReset()">تعيين كلمة المرور الجديدة ←</button>
+      <button class="fgt-link" onclick="showForgotStep('fgtStep1')">بياناتي غير متطابقة — أرسل طلباً للمشرف</button>
+      <button class="btn-sec" onclick="closeForgot()">إلغاء</button>
+    </div>
+    <!-- حالة نجاح الاستعادة الذاتية -->
+    <div id="fgtSelfDone" style="display:none;text-align:center;">
+      <div style="font-size:40px;margin-bottom:8px;">✅</div>
+      <div class="modal-desc">تم تعيين كلمة المرور الجديدة بنجاح. يمكنك الآن تسجيل الدخول بها.</div>
+      <button class="btn" onclick="closeForgot();document.getElementById('login-pass').focus();">تسجيل الدخول</button>
+    </div>
+    <!-- طلب للمشرف (بديل): يُرسَل للمشرف ليراجعه ويعيد تعيين كلمة المرور يدوياً -->
+    <div id="fgtStep1" style="display:none;">
+      <div class="modal-desc">
+        إن لم تتطابق بياناتك أو تغيّر رقم جوالك، أدخل رقم هويتك الوطنية ورقم الهاتف، وسيصل طلبك للمشرف ليتحقق منه ويرسل لك كلمة مرور جديدة عبر واتساب.
       </div>
       <div class="err" id="fgt-err"><span id="fgt-err-txt"></span></div>
       <div class="form-group">
@@ -270,6 +325,7 @@ input.fi:focus{border-color:var(--em);background:#fff;box-shadow:0 0 0 3px rgba(
         </div>
       </div>
       <button class="btn" id="fgtVerifyBtn" onclick="submitForgotRequest()">إرسال الطلب للمشرف ←</button>
+      <button class="fgt-link" onclick="showForgotStep('fgtSelf')">→ رجوع للاستعادة الذاتية</button>
       <button class="btn-sec" onclick="closeForgot()">إلغاء</button>
     </div>
 
@@ -387,14 +443,58 @@ function doLogin() {
 //  استعادة كلمة المرور — إرسال طلب يراجعه المشرف يدوياً
 //  (لا تحتاج Cloud Functions ولا خطة Blaze)
 // ════════════════════════════════════════
+const SELF_RESET_API = 'https://noor-alhifz.vercel.app/api/self-reset-password';
+const FORGOT_STEPS = ['fgtSelf','fgtSelfDone','fgtStep1','fgtStep3'];
+function showForgotStep(id) {
+  FORGOT_STEPS.forEach(s => { document.getElementById(s).style.display = (s === id) ? 'block' : 'none'; });
+}
 function openForgot() {
-  // إعادة ضبط النافذة لحالتها الأولى في كل مرة تُفتح فيها
-  document.getElementById('fgtStep1').style.display = 'block';
-  document.getElementById('fgtStep3').style.display = 'none';
-  document.getElementById('fgt-nid').value = '';
-  document.getElementById('fgt-phone').value = '';
-  clearErr('fgt-err');
+  // إعادة ضبط النافذة لحالتها الأولى في كل مرة تُفتح فيها (تبدأ بالاستعادة الذاتية)
+  showForgotStep('fgtSelf');
+  const loginNid = document.getElementById('login-nid').value.trim();
+  document.getElementById('sr-nid').value = /^[0-9]{9}$/.test(loginNid) ? loginNid : '';
+  ['sr-dob','sr-phone','sr-pass','sr-pass2','fgt-nid','fgt-phone'].forEach(i => { document.getElementById(i).value = ''; });
+  clearErr('sr-err'); clearErr('fgt-err');
   document.getElementById('forgotModal').classList.add('open');
+}
+// استعادة كلمة المرور ذاتياً: يتحقق الخادم من الهوية + تاريخ الميلاد + الجوال ثم يعيّن كلمة المرور الجديدة
+async function submitSelfReset() {
+  clearErr('sr-err');
+  const nid = document.getElementById('sr-nid').value.trim();
+  const dob = document.getElementById('sr-dob').value;
+  const phone = document.getElementById('sr-phone').value.trim();
+  const p1 = document.getElementById('sr-pass').value;
+  const p2 = document.getElementById('sr-pass2').value;
+  const fail = m => showErr('sr-err','sr-err-txt',m);
+  if (!/^[0-9]{9}$/.test(nid)) return fail('رقم الهوية يجب أن يكون 9 أرقام');
+  if (!dob) return fail('أدخل تاريخ الميلاد');
+  if (phone.replace(/\D/g,'').length < 9) return fail('أدخل رقم الجوال المسجَّل بالحساب');
+  if (p1.length < 6) return fail('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+  if (p1 === nid) return fail('اختر كلمة مرور مختلفة عن رقم الهوية');
+  if (p1 !== p2) return fail('كلمتا المرور غير متطابقتين');
+  if (!navigator.onLine) return fail('لا يوجد اتصال بالإنترنت، حاول عند عودة الاتصال');
+  const btn = document.getElementById('srBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ التحقق...';
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch(SELF_RESET_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ nationalId: nid, dob, phone, newPassword: p1 })
+    });
+    let data = {};
+    try { data = await r.json(); } catch (_) {}
+    if (!r.ok || !data.ok) { fail(data.error || 'تعذّر إتمام العملية، حاول لاحقاً'); return; }
+    document.getElementById('login-nid').value = nid;
+    document.getElementById('login-pass').value = '';
+    ['sr-pass','sr-pass2','sr-phone','sr-dob'].forEach(i => { document.getElementById(i).value = ''; });
+    showForgotStep('fgtSelfDone');
+  } catch (e) {
+    fail(e.name === 'AbortError' ? 'انتهت مهلة الاتصال، حاول مجدداً' : 'تعذّر الاتصال بالخادم، تحقّق من الإنترنت وحاول مجدداً');
+  } finally {
+    clearTimeout(to);
+    btn.disabled = false; btn.textContent = 'تعيين كلمة المرور الجديدة ←';
+  }
 }
 function closeForgot() { document.getElementById('forgotModal').classList.remove('open'); }
 
@@ -414,8 +514,7 @@ async function submitForgotRequest() {
       status: 'pending',
       requestedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    document.getElementById('fgtStep1').style.display = 'none';
-    document.getElementById('fgtStep3').style.display = 'block';
+    showForgotStep('fgtStep3');
   } catch (e) {
     console.warn('forgot request err', e);
     showErr('fgt-err','fgt-err-txt','تعذّر إرسال الطلب، تحقّق من الإنترنت وحاول مجدداً');
