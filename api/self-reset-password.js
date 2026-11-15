@@ -156,6 +156,15 @@ module.exports = async (req, res) => {
     );
     await clearFails(nidKey);
 
+    // أي طلبات استعادة معلّقة لنفس الهوية لم تعد لازمة — نغلقها كي لا تتراكم في عدّاد الطلبات لدى مدير المركز
+    try {
+      const pend = await admin.firestore().collection('passwordResetRequests')
+        .where('nationalId', '==', nid).where('status', '==', 'pending').get();
+      await Promise.all(pend.docs.map(d => d.ref.update({
+        status: 'resolved', resolvedBy: 'self', resolvedAt: admin.firestore.FieldValue.serverTimestamp()
+      })));
+    } catch (e) { console.warn('close pending reset requests failed:', e.message); }
+
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('self-reset-password error:', e);
