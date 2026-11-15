@@ -63,22 +63,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .nav-date{color:rgba(255,255,255,.85);font-size:13px;}
 .nav-notif{position:relative;width:36px;height:36px;background:rgba(255,255,255,.15);border:none;border-radius:9px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;}
 .nav-notif:hover{background:rgba(255,255,255,.25);}
-.nav-notif-count{position:absolute;top:-5px;left:-5px;min-width:17px;height:17px;padding:0 4px;background:#e63946;color:#fff;border-radius:9px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--em);box-sizing:content-box;line-height:1;}
-.notif-panel{position:fixed;top:58px;left:12px;width:min(380px,calc(100vw - 24px));max-height:70vh;background:#fff;color:#1a2a1f;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:3000;display:none;flex-direction:column;overflow:hidden;border:1px solid #e3ebe5;}
-.notif-panel.open{display:flex;}
-.np-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2ee;font-weight:800;font-size:14px;}
-.np-head button{background:none;border:none;color:var(--em);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:4px 6px;}
-.np-head button:disabled{color:#aaa;cursor:default;}
-.np-list{overflow-y:auto;flex:1;}
-.np-item{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid #f1f4f1;cursor:pointer;align-items:flex-start;}
-.np-item:hover{background:#f6faf7;}
-.np-item .np-dot{width:8px;height:8px;border-radius:50%;background:#e63946;margin-top:6px;flex-shrink:0;}
-.np-item .np-from{font-size:12px;font-weight:800;color:var(--em);}
-.np-item .np-text{font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
-.np-item .np-time{font-size:11px;color:#8a9a8a;margin-top:2px;}
-.np-empty{padding:28px 14px;text-align:center;color:#8a9a8a;font-size:13px;}
-.np-foot{padding:10px 14px;border-top:1px solid #eef2ee;background:#f8fbf9;font-size:12.5px;}
-.np-foot a{color:var(--em);font-weight:800;cursor:pointer;}
 .nav-notif-dot{position:absolute;top:6px;left:6px;width:8px;height:8px;background:var(--gold2);border-radius:50%;border:2px solid var(--em);}
 .nav-user{display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;cursor:pointer;}
 .nav-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
@@ -504,16 +488,15 @@ select.form-input{cursor:pointer;}
   </div>
   <div class="topnav-left">
     <span class="nav-date" id="navDate"></span>
-    <button class="nav-notif" id="navBellBtn" onclick="toggleNotifPanel(event)" aria-label="الإشعارات">
+    <button class="nav-notif" onclick="showPage('requests')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span class="nav-notif-count" id="navNotifCount" style="display:none;">0</span>
+      <span class="nav-notif-dot" id="navNotifDot" style="display:none;"></span>
     </button>
     <div class="nav-user" onclick="showPage('settings')">
       <div class="nav-avatar" id="navAvatar">م</div>
     </div>
   </div>
 </nav>
-<div class="notif-panel" id="notifPanel"></div>
 
 <div class="layout">
 
@@ -1108,12 +1091,6 @@ select.form-input{cursor:pointer;}
           <div class="form-group-s"><label class="form-label-s">البريد الإلكتروني</label><input class="form-inp-s" id="setEmail" readonly style="background:#f5f0e8;color:#999;"></div>
           <div class="form-group-s"><label class="form-label-s">رقم الجوال (واتساب / SMS) <span style="color:#7a8a7a;font-weight:400;">— ليتمكّن المحفّظون من مراسلتك</span></label><input class="form-inp-s" id="setPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="05xxxxxxxx" style="direction:ltr;text-align:right;" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
           <button class="btn-save" style="width:100%;" onclick="saveAdminSettings()">حفظ التغييرات</button>
-        </div>
-        <div class="settings-section">
-          <div class="settings-title">🧹 تنظيف بقايا الطلاب المحذوفين</div>
-          <div style="font-size:12.5px;color:#6a7a6a;line-height:1.7;margin-bottom:10px;">يبحث عن حسابات طلاب قديمة حُذفوا سابقاً من القوائم لكن بقيت حساباتهم (وهي سبب رسالة «المستخدم موجود مسبقاً» عند إعادة إضافتهم) ويحذفها نهائياً. لا يمسّ نتائج الاختبارات ولا الشهادات.</div>
-          <button class="btn-save" style="width:100%;" id="btnOrphanScan" onclick="runOrphanCleanup()">🔍 فحص وتنظيف</button>
-          <div id="orphanResult" style="font-size:12.5px;margin-top:10px;line-height:1.7;"></div>
         </div>
         <div class="settings-section">
           <div class="settings-title">
@@ -1711,45 +1688,9 @@ db.enablePersistence({ synchronizeTabs: true }).catch(err => {
 // بدون أن يؤثر ذلك على جلسة دخول المشرف الحالية
 const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = secondaryApp.auth();
-wrapSecondaryCreate(secondaryAuth);
 
 // نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
 const ADMIN_API = 'https://noor-alhifz.vercel.app/api/reset-password';
-const USER_ADMIN_API = 'https://noor-alhifz.vercel.app/api/user-admin';
-
-// استدعاء خادم إدارة المستخدمين (مزامنة البيانات / الحذف الكامل / تحرير رقم الهوية)
-async function callUserAdmin(action, payload){
-  const idToken = await auth.currentUser.getIdToken(true);
-  let r;
-  try{
-    r = await fetch(USER_ADMIN_API, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(Object.assign({idToken, action}, payload||{}))
-    });
-  }catch(e){ throw new Error('تعذّر الوصول إلى الخادم (تحقق من الاتصال ونشر Vercel)'); }
-  let j={}; try{ j=await r.json(); }catch(e){}
-  if(!r.ok) throw new Error(j.error||('خطأ من الخادم ('+r.status+')'));
-  return j;
-}
-
-// عند وجود حساب دخول يتيم بنفس رقم الهوية (بقايا طالب محذوف) يُحرَّر تلقائياً ثم تُعاد المحاولة
-function wrapSecondaryCreate(a){
-  const orig=a.createUserWithEmailAndPassword.bind(a);
-  a.createUserWithEmailAndPassword=async function(email,pass){
-    try{ return await orig(email,pass); }
-    catch(e){
-      if(e && e.code==='auth/email-already-in-use'){
-        const m=/^(\d{9})@noor-alhifz\.app$/.exec(String(email||''));
-        if(m){
-          let rel=null;
-          try{ rel=await callUserAdmin('releaseNid',{nationalId:m[1]}); }catch(_){ rel=null; }
-          if(rel && rel.released){ return await orig(email,pass); }
-        }
-      }
-      throw e;
-    }
-  };
-}
 
 function resetErrMsg(e){
   if(e && (e.name==='TypeError' || /failed to fetch|networkerror|load failed/i.test(e.message||''))){
@@ -2814,13 +2755,16 @@ function renderDashboard(){
   document.getElementById('dStatSessions').textContent=weekSessions;
   document.getElementById('dStatPending').textContent=pendingDeletes.length+pendingAdds.length;
 
-  // شارة «الطلبات» = أعمال معلّقة تحتاج قراراً فقط (حذف/إضافة/استعادة كلمة مرور)
-  // أما الإشعارات والرسائل فتظهر على الجرس ويختفي عدّادها بمجرد قراءتها
+  const navDot=document.getElementById('navNotifDot');
   const reqBadge=document.getElementById('navReqBadge');
-  const totalPending=pendingDeletes.length+pendingAdds.length+pwResetRequests.length;
-  if(totalPending){ reqBadge.style.display='inline-block'; reqBadge.textContent=totalPending; }
-  else { reqBadge.style.display='none'; }
-  renderNotifBell();
+  // إشعارات المشرفين الميدانيين (حضور/غياب محفّظ، إضافة/حذف طالب) تصل عبر appMessages
+  // بنفس آلية رسائل المحفّظين، فتُحتسَب هنا أيضاً ضمن شارة الجرس — لا تُحتسَب ردود
+  // المحفّظين العادية هنا حتى لا يتغيّر السلوك الحالي لتلك الرسائل بلا داعٍ
+  const fsUnread=(incomingTeacherMessages||[]).filter(m=>!m.read && m.fromRole==='fieldSupervisor').length;
+  const totalPending=pendingDeletes.length+pendingAdds.length+pwResetRequests.length+fsUnread;
+  if(totalPending){
+    navDot.style.display='block'; reqBadge.style.display='inline-block'; reqBadge.textContent=totalPending;
+  } else { navDot.style.display='none'; reqBadge.style.display='none'; }
 
   renderDashTeams();
 
@@ -3118,9 +3062,9 @@ function renderPwResetRequests(){
     const dateStr=r.requestedAt&&r.requestedAt.toDate?r.requestedAt.toDate().toLocaleString('ar-EG'):'—';
     return `
       <tr>
-        <td style="direction:ltr;text-align:right;">${certEsc(r.nationalId)}</td>
-        <td style="direction:ltr;text-align:right;">${certEsc(r.phone)}</td>
-        <td>${certEsc(name)}</td>
+        <td style="direction:ltr;text-align:right;">${r.nationalId}</td>
+        <td style="direction:ltr;text-align:right;">${r.phone}</td>
+        <td>${name}</td>
         <td>${role}</td>
         <td style="font-size:12px;color:#7a8a7a;">${dateStr}</td>
         <td><div class="td-action">
@@ -3211,11 +3155,28 @@ ${newPass}
 function approveDeleteRequest(teacherId,requestId){
   const teacher=allUsers.find(u=>u.id===teacherId); if(!teacher) return;
   const req=(teacher.deletionRequests||[]).find(r=>r.id===requestId); if(!req) return;
-  confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ سيُحذف حسابه وبياناته وجلساته وحضوره (وتبقى نتائج الاختبارات والشهادات الصادرة). لا يمكن التراجع عن هذا الإجراء.',async ()=>{
+  confirmAction('حذف الطالب نهائياً','هل تريد الموافقة على حذف الطالب "'+req.studentName+'" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.',async ()=>{
+    const teacherRef=db.collection('userdata').doc(teacherId);
     try{
-      toast('⏳ جارٍ الحذف الكامل...');
-      await callUserAdmin('deleteStudent',{teacherId, studentId:req.studentId, requestId});
-      toast('🗑️ تم حذف الطالب نهائياً من كل البيانات');
+      // حذف كل وثائق جلسات هذا الطالب من المجموعة الفرعية (كل جلسة وثيقة مستقلة الآن)
+      const sessSnap=await teacherRef.collection('sessions')
+        .where('studentId','==',req.studentId).get();
+      if(!sessSnap.empty){
+        const batch=db.batch();
+        sessSnap.forEach(doc=>batch.delete(doc.ref));
+        await batch.commit();
+      }
+      // ملاحظة: قد تبقى إشارات لمعرّف الطالب داخل وثائق الحضور/التقييم اليومي القديمة
+      // (سجلات تاريخية لأيام سابقة) — هذا غير ضار لأن الطالب لم يعد يظهر بقائمة الطلاب أصلاً
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(teacherRef);
+        const liveStudents=(snap.exists && snap.data().students)||[];
+        const liveRequests=(snap.exists && snap.data().deletionRequests)||[];
+        const updatedStudents=liveStudents.filter(s=>s.id!==req.studentId);
+        const updatedRequests=liveRequests.map(r=>r.id===requestId?{...r,status:'approved',resolvedAt:new Date().toISOString()}:r);
+        tx.set(teacherRef,{students:updatedStudents, deletionRequests:updatedRequests},{merge:true});
+      });
+      toast('🗑️ تم حذف الطالب نهائياً');
     }catch(e){ toast('⚠️ خطأ: '+e.message); }
   });
 }
@@ -3378,10 +3339,8 @@ function saveTeacherEdits(uid){
     familyMembersCount: famCountRaw===''?null:parseInt(famCountRaw)
   };
 
-  db.collection('users').doc(uid).update(updates).then(async ()=>{
-    // مزامنة الاسم/الحلقة/رقم الهوية في كل الأماكن المخزّنة (طلاب، شهادات، نتائج اختبارات، رسائل…)
-    try{ await callUserAdmin('syncTeacher',{teacherId:uid}); toast('✅ تم حفظ تعديلات المحفّظ وتحديثها في كل الصفحات'); }
-    catch(e){ toast('✅ حُفظت التعديلات، لكن تعذّرت المزامنة الشاملة: '+e.message); }
+  db.collection('users').doc(uid).update(updates).then(()=>{
+    toast('✅ تم حفظ تعديلات المحفّظ');
     closeModal('modal-detail');
   }).catch(e=>toast('⚠️ خطأ: '+e.message));
 }
@@ -3613,21 +3572,21 @@ function saveStudentEdits(teacherId, localId){
   if(dupAcrossUsers||dupAcrossStudents){ toast('⚠️ رقم الهوية مستخدم بالفعل لمستخدم آخر'); return; }
 
   const fullName=buildFullName(fname,father,grand,family);
-  const patch={
-    name:fullName, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+  const updatedStudents=(teacherObj.students||[]).map(x=>x.id===localId?{
+    ...x, name:fullName, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
     nationalId:nid, parentPhone:phone, dob, placeOfBirth:pob, gender, juz, notes
-  };
-  const teacherRef=db.collection('userdata').doc(teacherId);
-  // تعديل عنصر الطالب فقط داخل Transaction على النسخة الحيّة (لا نكتب مصفوفة قديمة فوق تعديلات المحفّظ)
-  db.runTransaction(async tx=>{
-    const snap=await tx.get(teacherRef);
-    const live=(snap.exists&&snap.data().students)||[];
-    if(!live.some(x=>x.id===localId)) throw new Error('الطالب لم يعد موجوداً لدى هذا المحفّظ');
-    tx.update(teacherRef,{students:live.map(x=>x.id===localId?Object.assign({},x,patch):x)});
-  }).then(async ()=>{
-    // مزامنة حساب الدخول + نتائج الاختبارات + الشهادات + الرسائل (من الخادم)
-    try{ await callUserAdmin('syncStudent',{teacherId, studentId:localId}); toast('✅ تم حفظ تعديلات الطالب وتحديثها في كل الصفحات'); }
-    catch(e){ toast('✅ حُفظت التعديلات، لكن تعذّرت المزامنة الشاملة: '+e.message); }
+  }:x);
+
+  db.collection('userdata').doc(teacherId).set({students:updatedStudents},{merge:true}).then(()=>{
+    const authDoc=findStudentAuthDoc(teacherId, localId);
+    if(authDoc){
+      return db.collection('users').doc(authDoc.id).update({
+        name:fullName, firstName:fname, fatherName:father, grandfatherName:grand, familyName:family,
+        nationalId:nid, phone, dob, placeOfBirth:pob, gender
+      });
+    }
+  }).then(()=>{
+    toast('✅ تم حفظ تعديلات الطالب');
     closeModal('modal-detail');
   }).catch(e=>toast('⚠️ خطأ: '+e.message));
 }
@@ -3872,8 +3831,8 @@ function renderIncomingMessages(){
     return `<div class="sent-item" style="align-items:flex-start;${m.read?'':'background:rgba(230,57,70,.05);'}cursor:pointer;" onclick="markMsgRead('${m.id}')">
       <div class="sent-icon" style="background:${m.read?'#e8f5ee':'#fde8e8'};">${m.read?'📨':'🔴'}</div>
       <div class="sent-info">
-        <div class="sent-to">${certEsc(m.fromName||'محفّظ')}${m.fromRole==='fieldSupervisor'?' <span style="font-size:11px;color:var(--gold3);font-weight:600;">(مشرف ميداني)</span>':''}</div>
-        <div class="sent-preview" style="white-space:pre-wrap;overflow:visible;">${certEsc(m.text||'')}</div>
+        <div class="sent-to">${m.fromName||'محفّظ'}${m.fromRole==='fieldSupervisor'?' <span style="font-size:11px;color:var(--gold3);font-weight:600;">(مشرف ميداني)</span>':''}</div>
+        <div class="sent-preview" style="white-space:pre-wrap;overflow:visible;">${m.text||''}</div>
       </div>
       <div class="sent-time">${time}</div>
     </div>`;
@@ -3883,90 +3842,8 @@ function renderIncomingMessages(){
 function markMsgRead(id){
   const m=incomingTeacherMessages.find(x=>x.id===id);
   if(!m||m.read) return;
-  m.read=true; // تحديث محلي فوري كي يختفي من العدّاد دون انتظار الشبكة
-  renderNotifBell(); renderIncomingMessages();
-  db.collection('appMessages').doc(id).update({read:true}).catch(e=>{ m.read=false; renderNotifBell(); renderIncomingMessages(); console.warn('markRead err',e); });
+  db.collection('appMessages').doc(id).update({read:true}).catch(e=>console.warn('markRead err',e));
 }
-
-async function runOrphanCleanup(){
-  const btn=document.getElementById('btnOrphanScan'), out=document.getElementById('orphanResult');
-  btn.disabled=true; out.textContent='⏳ جارٍ الفحص...';
-  try{
-    const scan=await callUserAdmin('cleanupOrphans',{dryRun:true});
-    const n=scan.orphans.length, m=scan.authOnly.length;
-    if(!n&&!m){ out.textContent='✅ لا توجد بقايا — كل شيء نظيف.'; btn.disabled=false; return; }
-    const names=scan.orphans.slice(0,8).map(o=>certEsc(o.name||o.nationalId)).join('، ');
-    out.innerHTML=`وُجد <b>${n}</b> حساب طالب يتيم و<b>${m}</b> حساب دخول بلا بيانات${names?`<br><span style="color:#6a7a6a;">${names}${n>8?' …':''}</span>`:''}`;
-    confirmAction('حذف البقايا نهائياً',`سيتم حذف ${n+m} حساباً يتيماً نهائياً. هل تريد المتابعة؟`,async ()=>{
-      btn.disabled=true;
-      try{
-        let total=0, rem=1, guard=0;
-        while(rem>0 && guard++<30){
-          out.textContent='⏳ جارٍ الحذف... ('+total+')';
-          const r=await callUserAdmin('cleanupOrphans',{dryRun:false});
-          total+=(r.purgedAccounts||0)+(r.purgedAuthOnly||0); rem=r.remaining||0;
-          if(!(r.purgedAccounts||r.purgedAuthOnly)) break;
-        }
-        out.textContent='✅ تم حذف '+total+' حساباً يتيماً'+(rem?` (بقي ${rem} — أعد الضغط)`:'');
-      }catch(e){ out.textContent='⚠️ '+e.message; }
-      btn.disabled=false;
-    });
-  }catch(e){ out.textContent='⚠️ '+e.message; }
-  btn.disabled=false;
-}
-
-async function markAllMsgsRead(){
-  const unread=incomingTeacherMessages.filter(m=>!m.read);
-  if(!unread.length) return;
-  unread.forEach(m=>m.read=true);
-  renderNotifBell(); renderIncomingMessages();
-  try{
-    for(let i=0;i<unread.length;i+=400){
-      const b=db.batch();
-      unread.slice(i,i+400).forEach(m=>b.update(db.collection('appMessages').doc(m.id),{read:true}));
-      await b.commit();
-    }
-    toast('✅ تم تعليم كل الإشعارات كمقروءة');
-  }catch(e){
-    unread.forEach(m=>m.read=false); renderNotifBell(); renderIncomingMessages();
-    toast('⚠️ تعذّر تعليم الإشعارات: '+e.message);
-  }
-}
-
-// ── مركز الإشعارات (الجرس) ──
-function renderNotifBell(){
-  const cnt=document.getElementById('navNotifCount');
-  const panel=document.getElementById('notifPanel');
-  if(!cnt||!panel) return;
-  const unread=(incomingTeacherMessages||[]).filter(m=>!m.read);
-  if(unread.length){ cnt.style.display='flex'; cnt.textContent=unread.length>99?'99+':unread.length; }
-  else cnt.style.display='none';
-  if(!panel.classList.contains('open')) return;
-  const pend=getPendingDeleteRequests().length+getPendingAddStudentRequests().length+pwResetRequests.length;
-  const shown=unread.slice(0,40);
-  const items=shown.map(m=>{
-    const time=m.createdAt?.toDate?m.createdAt.toDate().toLocaleString('ar',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'';
-    const who=(m.fromRole==='fieldSupervisor'?'مشرف ميداني — ':'')+(m.fromName||'محفّظ');
-    return `<div class="np-item" data-id="${certEsc(m.id)}"><span class="np-dot"></span><div style="flex:1;min-width:0;"><div class="np-from">${certEsc(who)}</div><div class="np-text">${certEsc(m.text||'')}</div><div class="np-time">${certEsc(time)}</div></div></div>`;
-  }).join('');
-  panel.innerHTML=`<div class="np-head"><span>🔔 الإشعارات${unread.length?` (${unread.length})`:''}</span><button id="npReadAll" ${unread.length?'':'disabled'}>تعليم الكل كمقروء</button></div>
-    <div class="np-list">${items||'<div class="np-empty">لا توجد إشعارات جديدة 🎉</div>'}${unread.length>shown.length?`<div class="np-empty">+${unread.length-shown.length} إشعار آخر — «تعليم الكل كمقروء» أو افتح صفحة الطلبات</div>`:''}</div>
-    <div class="np-foot">${pend?`📋 لديك <b>${pend}</b> طلب معلّق — <a id="npGoReq">فتح الطلبات</a>`:'لا توجد طلبات معلّقة'}</div>`;
-  const ra=document.getElementById('npReadAll'); if(ra) ra.onclick=markAllMsgsRead;
-  const gr=document.getElementById('npGoReq'); if(gr) gr.onclick=()=>{ closeNotifPanel(); showPage('requests'); };
-  panel.querySelectorAll('.np-item').forEach(el=>el.onclick=()=>markMsgRead(el.dataset.id));
-}
-function toggleNotifPanel(ev){
-  if(ev) ev.stopPropagation();
-  const p=document.getElementById('notifPanel');
-  p.classList.toggle('open');
-  renderNotifBell();
-}
-function closeNotifPanel(){ const p=document.getElementById('notifPanel'); if(p) p.classList.remove('open'); }
-document.addEventListener('click',e=>{
-  const p=document.getElementById('notifPanel');
-  if(p && p.classList.contains('open') && !p.contains(e.target)) closeNotifPanel();
-});
 
 // ════════════════════════════════════════
 //  STATS
@@ -4619,8 +4496,6 @@ async function transferOneStudent(fromTeacherId, localId, toTeacherId){
     if(authDoc) await authDoc.ref.update({teacherId:toTeacherId, studentId:newId});
   }catch(e){ warnings.push('تعذّر تحديث حساب دخول الطالب — قد تتعطّل بوابته حتى تُصحَّح يدوياً: '+(e.message||e)); }
 
-  try{ await callUserAdmin('syncStudent',{teacherId:toTeacherId, studentId:newId}); }
-  catch(e){ warnings.push('تعذّرت المزامنة الشاملة بعد النقل: '+(e.message||e)); }
   return {newId, warnings};
 }
 
@@ -7280,7 +7155,6 @@ showPage=function(page){
 // ════════════════════════════════════════
 const secondaryAppAct = firebase.initializeApp(firebaseConfig, 'ActivateSecondary');
 const secondaryAuthAct = secondaryAppAct.auth();
-wrapSecondaryCreate(secondaryAuthAct);
 
 function openActivateModal(){
   // ملء قائمة الحلقات
