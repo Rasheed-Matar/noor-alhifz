@@ -1851,6 +1851,19 @@ function enterApp(user,data){
   document.getElementById('set-circle').value=data.circle||'';
 
   window._teacherName = data.name||'';
+  if(!window._tSelfUnsub){
+    window._tSelfUnsub = NoorRoles.watchSelf(db, user.uid, 'teacher', d=>{
+      window._teacherName = d.name||'';
+      window._teacherCircle = d.circle||'حلقة القرآن';
+      document.getElementById('hdr-teacher-name').textContent = d.name||user.email;
+      document.getElementById('sb-name').textContent = d.name||user.email;
+      document.getElementById('sb-circle').textContent = d.circle||'حلقة القرآن';
+      document.getElementById('hdr-avatar').textContent = ini(d.name||'م');
+      const sn=document.getElementById('set-name'), sc=document.getElementById('set-circle');
+      if(sn && document.activeElement!==sn) sn.value = d.name||'';
+      if(sc && document.activeElement!==sc) sc.value = d.circle||'';
+    });
+  }
   window._teacherGender = data.gender||'محفّظ';
   window._teacherCircle = data.circle||'حلقة القرآن';
   cacheAuthTokens(user); // يخزّن رمز الدخول محلياً كي يستخدمه الـ Service Worker لاحقاً عند المزامنة الخلفية
@@ -2087,6 +2100,11 @@ function saveSettings(){
     document.getElementById('sb-circle').textContent=circle||'حلقة القرآن';
     document.getElementById('hdr-avatar').textContent=ini(name);
     toast('✅ تم حفظ التعديلات');
+    // مزامنة الاسم/الحلقة في كل الأماكن المخزّنة (طلاب، شهادات، نتائج اختبارات…)
+    currentUser.getIdToken().then(tk=>fetch('https://noor-alhifz.vercel.app/api/user-admin',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idToken:tk,action:'syncTeacher',teacherId:currentUser.uid})
+    })).catch(e=>console.warn('syncTeacher',e));
   }).catch(e=>toast('⚠️ خطأ: '+e.message,'error'));
 }
 
