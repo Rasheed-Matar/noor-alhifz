@@ -156,11 +156,36 @@
 
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+  /* ── 7) مراقب الحساب الحي ──
+     كانت الصفحات تقرأ وثيقة المستخدم مرة واحدة عند الدخول وتحتفظ بها في sessionStorage ('userCache')
+     دون تحديثها، فأي تعديل يجريه المدير (اسم، حلقة، رقم، صلاحيات، إيقاف) لا يظهر لصاحب الحساب حتى يسجّل
+     خروجه ويدخل من جديد. هذا المراقب يتابع وثيقة المستخدم لحظياً: يحدّث النسخة المخزّنة، ويستدعي
+     onData(d) لتحديث الواجهة، ويُخرج المستخدم إن حُذف حسابه أو سُحبت صلاحية هذه الصفحة منه.
+     يرجع دالة لإيقاف المراقبة. */
+  function watchSelf(db, uid, pageRole, onData) {
+    return db.collection('users').doc(uid).onSnapshot(function (snap) {
+      if (!snap.exists) {
+        // وثيقة غير موجودة في الكاش المحلي ليست دليلاً على حذف الحساب (قد يكون المستخدم بلا اتصال)
+        if (snap.metadata && snap.metadata.fromCache) return;
+        clearActive();
+        try { sessionStorage.removeItem('userCache'); } catch (e) {}
+        var go = function () { w.location.href = 'login.html'; };
+        if (w.firebase && firebase.auth) firebase.auth().signOut().then(go, go); else go();
+        return;
+      }
+      var d = Object.assign({ uid: uid }, snap.data());
+      try { sessionStorage.setItem('userCache', JSON.stringify(d)); } catch (e) {}
+      var g = guardPage(pageRole, d);
+      if (!g.ok) { w.location.href = g.redirect; return; }
+      try { if (onData) onData(d); } catch (e) { console.warn('watchSelf onData', e); }
+    }, function (e) { console.warn('watchSelf err', e); });
+  }
+
   w.NoorRoles = {
     PAGES, LABELS, ICONS,
     getRoles, activeRoles, hasRole, isApproved,
     pageOf, labelOf,
     getActive, setActive, clearActive,
-    guardPage, routeAfterLogin, showPicker, switchRole
+    guardPage, routeAfterLogin, showPicker, switchRole, watchSelf
   };
 })(window);
