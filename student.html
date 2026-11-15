@@ -1107,6 +1107,16 @@ function enterApp(user, userData){
   loadExamResults();
   loadTeacherName();
   listenStudentMessages();
+  // متابعة حية لبيانات حسابي: أي تعديل من المدير/المحفّظ ينعكس فوراً على الواجهة
+  if(window._stSelfUnsub) try{window._stSelfUnsub();}catch(e){}
+  window._stSelfUnsub = NoorRoles.watchSelf(db, user.uid, 'student', d=>{
+    const nm = d.name||user.email;
+    document.getElementById('hdrAvatar').textContent = ini(nm);
+    document.getElementById('hdrName').textContent   = nm;
+    document.getElementById('wb-name').textContent   = nm;
+    if(myStudentData) myStudentData.name = nm;
+    if(d.teacherId && d.teacherId!==myTeacherId){ location.reload(); }
+  });
 
   pendingFirstLogin = !!userData.firstLogin;
   myLastOpenDate = userData.lastOpenDate || null;
@@ -1353,7 +1363,8 @@ function loadExamResults(){
 // ════════════════════════════════════════
 function loadTeacherName(){
   if(!myTeacherId) return;
-  db.collection('users').doc(myTeacherId).get().then(doc=>{
+  if(window._stTeacherNameUnsub) try{window._stTeacherNameUnsub();}catch(e){}
+  window._stTeacherNameUnsub = db.collection('users').doc(myTeacherId).onSnapshot(doc=>{
     if(doc.exists){
       myTeacherName = doc.data().name || '';
       const lbl=document.getElementById('msgRecipTeacherLbl');
@@ -1361,7 +1372,7 @@ function loadTeacherName(){
       const hdrEl=document.getElementById('hdrCircle');
       if(hdrEl) hdrEl.textContent = myTeacherName ? `📖 محفّظك: ${myTeacherName}` : 'بوابة الطالب';
     }
-  }).catch(e=>console.warn('loadTeacherName err',e));
+  }, e=>console.warn('loadTeacherName err',e));
 }
 
 function setMsgRecipient(val){
