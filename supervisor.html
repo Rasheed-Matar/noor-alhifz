@@ -6,9 +6,11 @@
 <meta name="theme-color" content="#1a6b4a">
 <title>مركز الكتاب — لوحة مدير المركز</title>
 <meta property="og:title" content="مركز الكتاب — لوحة مدير المركز">
-<meta property="og:description" content="نظام مركز الكتاب لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
+<meta property="og:description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
+<meta property="og:image" content="https://rasheed-matar.github.io/noor-alhifz/og-image.png">
+<meta property="og:url" content="https://rasheed-matar.github.io/noor-alhifz/supervisor.html">
 <meta property="og:type" content="website">
-<meta name="description" content="نظام مركز الكتاب لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
+<meta name="description" content="نظام نور الحفظ لإدارة حلقات تحفيظ القرآن الكريم — مركز الكتاب">
 <link rel="manifest" href="manifest.json">
 <script src="pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@700&display=swap" rel="stylesheet"/>
@@ -104,17 +106,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
 .btn-primary{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--em3),var(--em));color:#fff;border:none;border-radius:12px;padding:10px 18px;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 3px 12px rgba(27,107,74,.3);transition:all .2s;}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(27,107,74,.4);}
 
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px;}
-.exam-sum{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:22px;}
-.exam-sum-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
-.exam-sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.exam-sum-item{background:#f8faf7;border:1px solid #e6ece4;border-radius:12px;padding:10px 8px;text-align:center;}
-.exam-sum-item b{display:block;font-size:24px;color:var(--em3);line-height:1.2;}
-.exam-sum-item span{font-size:12px;color:#6b7a6b;font-weight:700;}
-.exam-sum-item small{display:block;font-size:11px;color:#8a9a8a;margin-top:2px;min-height:14px;}
-.exam-sum-item.combined{background:#f3f7ff;border-color:#dbe6fa;} .exam-sum-item.combined b{color:#2a5db0;}
-.exam-sum-item.scattered{background:#fff9ec;border-color:#f3e6c4;} .exam-sum-item.scattered b{color:#a8730b;}
-@media(max-width:700px){.exam-sum-grid{grid-template-columns:repeat(2,1fr);}}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
 .stat-card{background:rgba(253,250,243,.95);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 2px 12px var(--shadow);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:pointer;}
 .stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px var(--shadow);}
 .stat-card::before{content:'';position:absolute;top:0;right:0;left:0;height:3px;}
@@ -615,17 +607,7 @@ select.form-input{cursor:pointer;}
         <div class="stat-card green" onclick="showPage('teachers')">
           <div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
           <div class="stat-num" id="dStatTeachers">0</div>
-          <div class="stat-label">المحفّظون النشطون</div>
-        </div>
-        <div class="stat-card blue">
-          <div class="stat-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-          <div class="stat-num" id="dStatCircles">0</div>
-          <div class="stat-label">الحلقات</div>
-        </div>
-        <div class="stat-card gold">
-          <div class="stat-icon gold"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-          <div class="stat-num" id="dStatFs">0</div>
-          <div class="stat-label">المشرفون الميدانيون</div>
+          <div class="stat-label">المحفظون النشطون</div>
         </div>
         <div class="stat-card gold" onclick="showPage('students')">
           <div class="stat-icon gold"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>
@@ -641,23 +623,6 @@ select.form-input{cursor:pointer;}
           <div class="stat-icon coral"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
           <div class="stat-num" id="dStatPending">0</div>
           <div class="stat-label">طلبات معلّقة</div>
-        </div>
-      </div>
-
-      <div class="exam-sum" id="dashExamSum">
-        <div class="exam-sum-head">
-          <div class="card-title"><span class="card-title-dot green"></span>الاختبارات المنجزة</div>
-          <select class="filter-sel" id="dashExamPeriod" onchange="onDashExamPeriod(this.value)" style="padding:6px 10px;min-width:130px;">
-            <option value="all">الإجمالي (كل الفترات)</option>
-            <option value="month">هذا الشهر</option>
-            <option value="30">آخر 30 يوماً</option>
-          </select>
-        </div>
-        <div class="exam-sum-grid">
-          <div class="exam-sum-item"><b id="dExamTotal">0</b><span>إجمالي الاختبارات</span></div>
-          <div class="exam-sum-item combined"><b id="dExamCombined">0</b><span>مجتمع</span><small id="dExamCombinedPass"></small></div>
-          <div class="exam-sum-item scattered"><b id="dExamScattered">0</b><span>متفرّق</span><small id="dExamScatteredPass"></small></div>
-          <div class="exam-sum-item"><b id="dExamPassRate">—</b><span>نسبة النجاح</span><small id="dExamPassTxt"></small></div>
         </div>
       </div>
 
@@ -1725,12 +1690,14 @@ select.form-input{cursor:pointer;}
 //  FIREBASE CONFIG
 // ════════════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIzaSyDimDPHuCT-Ehu463HC-SJty0pFX9Kv-_8",
-  authDomain: "noor-alhifz-test.firebaseapp.com",
-  projectId: "noor-alhifz-test",
-  storageBucket: "noor-alhifz-test.firebasestorage.app",
-  messagingSenderId: "157444749319",
-  appId: "1:157444749319:web:7cc3415078199f5f89d2a2"
+  apiKey: "AIzaSyAJuRiluapshZAego74Pmu-fK5EsT5UhJ0",
+  authDomain: "noor-alhifz.firebaseapp.com",
+  databaseURL: "https://noor-alhifz-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "noor-alhifz",
+  storageBucket: "noor-alhifz.firebasestorage.app",
+  messagingSenderId: "581069233423",
+  appId: "1:581069233423:web:d62ad40c001a60acb7727a",
+  measurementId: "G-P3BM91H62E"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -1747,8 +1714,8 @@ const secondaryAuth = secondaryApp.auth();
 wrapSecondaryCreate(secondaryAuth);
 
 // نقطة نهاية إعادة تعيين كلمة المرور (Vercel + firebase-admin) — عدّل الرابط بعد النشر
-const ADMIN_API = '/api/reset-password';
-const USER_ADMIN_API = '/api/user-admin';
+const ADMIN_API = 'https://noor-alhifz.vercel.app/api/reset-password';
+const USER_ADMIN_API = 'https://noor-alhifz.vercel.app/api/user-admin';
 
 // استدعاء خادم إدارة المستخدمين (مزامنة البيانات / الحذف الكامل / تحرير رقم الهوية)
 async function callUserAdmin(action, payload){
@@ -1925,7 +1892,6 @@ function startListening(){
   if(!unsubExamResultsFull){
     unsubExamResultsFull=db.collection('examResults').onSnapshot(snap=>{
       allExamResultsFull=snap.docs.map(d=>d.data());
-      try{ renderDashExamSummary(); renderDashTeams(); }catch(e){}
     },e=>console.log('examResults full err',e));
   }
   if(!unsubIncomingMsgs){
@@ -2846,9 +2812,6 @@ function renderDashboard(){
   document.getElementById('dStatTeachers').textContent=teachers.length;
   document.getElementById('dStatStudents').textContent=allStudents.length;
   document.getElementById('dStatSessions').textContent=weekSessions;
-  document.getElementById('dStatCircles').textContent=new Set(teachers.map(t=>String(t.circle||'').trim()||t.id)).size;
-  document.getElementById('dStatFs').textContent=getFieldSupervisors().filter(f=>f.status==='approved').length;
-  renderDashExamSummary();
   document.getElementById('dStatPending').textContent=pendingDeletes.length+pendingAdds.length;
 
   // شارة «الطلبات» = أعمال معلّقة تحتاج قراراً فقط (حذف/إضافة/استعادة كلمة مرور)
@@ -2910,40 +2873,6 @@ function toggleAllDashTeams(open){
   });
 }
 
-let _dashExamPeriod='all';
-function onDashExamPeriod(v){ _dashExamPeriod=v; renderDashExamSummary(); renderDashTeams(); }
-function _examPeriodSince(){
-  if(_dashExamPeriod==='month'){ const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; }
-  if(_dashExamPeriod==='30'){ const d=new Date(); d.setDate(d.getDate()-30); d.setHours(0,0,0,0); return d; }
-  return null;
-}
-function _examPeriodLabel(){ return _dashExamPeriod==='month'?'هذا الشهر':_dashExamPeriod==='30'?'آخر 30 يوماً':'الإجمالي'; }
-function _periodExamResults(){
-  const since=_examPeriodSince();
-  return (allExamResultsFull||[]).filter(r=>!since || new Date(r.examDate)>=since);
-}
-function _examBreakdown(list){
-  const b={total:list.length,passed:0,combined:0,combinedPassed:0,scattered:0,scatteredPassed:0};
-  list.forEach(r=>{
-    if(r.passed) b.passed++;
-    if(r.type==='combined'){ b.combined++; if(r.passed) b.combinedPassed++; }
-    else if(r.type==='scattered'){ b.scattered++; if(r.passed) b.scatteredPassed++; }
-  });
-  return b;
-}
-function renderDashExamSummary(){
-  const el=document.getElementById('dExamTotal'); if(!el) return;
-  // نحصر النتائج في محفّظي المركز الفعّالين حتى تتطابق الأرقام مع الفرق
-  const ids=new Set(getTeachers().map(t=>t.id));
-  const b=_examBreakdown(_periodExamResults().filter(r=>ids.has(r.teacherId)));
-  el.textContent=b.total;
-  document.getElementById('dExamCombined').textContent=b.combined;
-  document.getElementById('dExamScattered').textContent=b.scattered;
-  document.getElementById('dExamCombinedPass').textContent=b.combined?`نجح ${b.combinedPassed} · رسب ${b.combined-b.combinedPassed}`:'';
-  document.getElementById('dExamScatteredPass').textContent=b.scattered?`نجح ${b.scatteredPassed} · رسب ${b.scattered-b.scatteredPassed}`:'';
-  document.getElementById('dExamPassRate').textContent=b.total?Math.round(b.passed/b.total*100)+'%':'—';
-  document.getElementById('dExamPassTxt').textContent=b.total?`${b.passed} ناجح من ${b.total}`:'لا اختبارات في هذه الفترة';
-}
 function _teacherDashStats(t, today, weekByTeacher, resByTeacher){
   const active=(t.students||[]).filter(s=>!s.archived);
   const att=t.todayAttendance||{};
@@ -2956,16 +2885,15 @@ function _teacherDashStats(t, today, weekByTeacher, resByTeacher){
     pct: active.length?Math.round(present/active.length*100):0,
     week:(weekByTeacher[t.id]||0),
     examsTotal:res.length, examsPassed:res.filter(r=>r.passed).length,
-    examsCombined:res.filter(r=>r.type==='combined').length, examsScattered:res.filter(r=>r.type==='scattered').length,
     pendingNoms:(t.exams||[]).filter(e=>e.status==='pending_lab').length,
     pendingReq,
     teacherAtt:(t.teacherAttendance||{})[today]||''
   };
 }
 function _sumStats(list){
-  const z={teachers:list.length,students:0,present:0,week:0,examsTotal:0,examsPassed:0,examsCombined:0,examsScattered:0,pendingNoms:0,pendingReq:0,teachersPresent:0,teachersRecorded:0};
+  const z={teachers:list.length,students:0,present:0,week:0,examsTotal:0,examsPassed:0,pendingNoms:0,pendingReq:0,teachersPresent:0,teachersRecorded:0};
   list.forEach(({st})=>{
-    z.students+=st.students; z.present+=st.present; z.week+=st.week; z.examsTotal+=st.examsTotal; z.examsPassed+=st.examsPassed; z.examsCombined+=st.examsCombined; z.examsScattered+=st.examsScattered;
+    z.students+=st.students; z.present+=st.present; z.week+=st.week; z.examsTotal+=st.examsTotal; z.examsPassed+=st.examsPassed;
     z.pendingNoms+=st.pendingNoms; z.pendingReq+=st.pendingReq;
     if(st.teacherAtt){ z.teachersRecorded++; if(st.teacherAtt==='present'||st.teacherAtt==='late') z.teachersPresent++; }
   });
@@ -2987,9 +2915,9 @@ function renderDashTeams(){
 
   // فهارس سريعة: جلسات الأسبوع ونتائج اختبارات آخر 30 يوماً لكل محفّظ
   const weekByTeacher={}; weekSessionsCache.forEach(s=>{ weekByTeacher[s.teacherId]=(weekByTeacher[s.teacherId]||0)+1; });
+  const since=new Date(); since.setDate(since.getDate()-30); since.setHours(0,0,0,0);
   const resByTeacher={};
-  _periodExamResults().forEach(r=>{ if(r.teacherId){ (resByTeacher[r.teacherId]=resByTeacher[r.teacherId]||[]).push(r); } });
-  const perLbl=_examPeriodLabel();
+  (allExamResultsFull||[]).forEach(r=>{ if(r.teacherId && new Date(r.examDate)>=since){ (resByTeacher[r.teacherId]=resByTeacher[r.teacherId]||[]).push(r); } });
 
   // توزيع المحفّظين على الفِرَق
   const fsIds=new Set(fsList.map(f=>f.id));
@@ -3028,7 +2956,7 @@ function renderDashTeams(){
       kpi(sum.teachers,'محفّظ'), kpi(sum.students,'طالب'),
       kpi(sum.pct+'%','حضور اليوم', sum.students?(sum.pct>=70?'':sum.pct>=40?'warn':'bad'):''),
       kpi(sum.week,'جلسات الأسبوع'),
-      kpi(sum.examsCombined,'اختبارات مجتمع'), kpi(sum.examsScattered,'اختبارات متفرّق'),
+      kpi(sum.examsTotal?`${sum.examsPassed}/${sum.examsTotal}`:'—','اختبارات 30 يوماً'),
       (sum.pendingNoms?kpi(sum.pendingNoms,'ترشيحات معلّقة','warn'):''),
       (sum.pendingReq?kpi(sum.pendingReq,'طلبات معلّقة','warn'):'')
     ].join('');
@@ -3039,13 +2967,13 @@ function renderDashTeams(){
         <td>${st.students}</td>
         <td>${st.present}/${st.students} <span class="badge ${_pctCls(st.pct)}">${st.pct}%</span></td>
         <td>${st.week}</td>
-        <td>${st.examsTotal?`<span class="badge badge-blue">مجتمع ${st.examsCombined}</span> <span class="badge badge-gold">متفرّق ${st.examsScattered}</span> <span style="font-size:11px;color:#7a8a7a;">(نجح ${st.examsPassed})</span>`:'—'}${st.pendingNoms?` <span class="badge badge-gold" title="ترشيحات بانتظار المختبر">${st.pendingNoms} معلّق</span>`:''}</td>
+        <td>${st.examsTotal?`${st.examsPassed}/${st.examsTotal}`:'—'}${st.pendingNoms?` <span class="badge badge-gold" title="ترشيحات بانتظار المختبر">${st.pendingNoms} معلّق</span>`:''}</td>
         <td>${_teacherAttBadge(st.teacherAtt)}</td>
         <td><div class="td-action" onclick="event.stopPropagation()"><button class="td-btn edit" onclick="openTeacherDetail('${t.id}')">عرض</button><button class="td-btn msg" onclick="quickMsgTeacher('${t.id}')">رسالة</button></div></td>
       </tr>`;
     }).join('') : '';
     const body = shown.length
-      ? `<div class="table-wrap"><table><thead><tr><th>المحفّظ / الحلقة</th><th>الطلاب</th><th>حضور الطلاب اليوم</th><th>جلسات الأسبوع</th><th>اختبارات منجزة (${perLbl})</th><th>حضور المحفّظ</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+      ? `<div class="table-wrap"><table><thead><tr><th>المحفّظ / الحلقة</th><th>الطلاب</th><th>حضور الطلاب اليوم</th><th>جلسات الأسبوع</th><th>اختبارات 30 يوماً</th><th>حضور المحفّظ</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
       : `<div class="team-empty">${team.teachers.length?'لا نتائج مطابقة للبحث في هذا الفريق':'لا يوجد محفّظون مسنَدون لهذا المشرف الميداني بعد'}</div>`;
     return `<div class="team-card ${team.unassigned?'unassigned':''} ${open?'open':''}" id="dteam-${team.id}">
       <div class="team-head" onclick="toggleDashTeam('${team.id}')">
@@ -3680,22 +3608,9 @@ function saveStudentEdits(teacherId, localId){
   if(!isValidNid(nid)){ toast('⚠️ رقم الهوية يجب أن يكون 9 أرقام'); return; }
   if(phone && !/^05[0-9]{8}$/.test(phone)){ toast('⚠️ رقم الجوال يجب أن يبدأ بـ 05 ويتكوّن من 10 أرقام'); return; }
 
-  // فحص التكرار: فقط إذا تغيّر رقم الهوية فعلاً، ومع تجاهل حساب الطالب نفسه وأي حساب يتيم (بقايا طالب محذوف)
-  const curStu=(teacherObj.students||[]).find(x=>x.id===localId)||{};
-  if(String(curStu.nationalId||'').trim()!==nid){
-    const liveIds=new Set(); getAllStudents().forEach(s=>liveIds.add(s.id));
-    const clash=[];
-    allUsers.forEach(u=>{
-      if(String(u.nationalId||'').trim()!==nid) return;
-      if(u.id===teacherId) { clash.push('المحفّظ '+(u.name||'')); return; }
-      const isStu=NoorRoles.hasRole(u,'student');
-      if(isStu && u.teacherId===teacherId && u.studentId===localId) return; // حساب هذا الطالب نفسه
-      if(isStu && NoorRoles.getRoles(u).length===1 && u.studentId && !liveIds.has(u.studentId)) return; // يتيم — يُحرَّر تلقائياً
-      clash.push((u.name||'مستخدم')+' ('+(roleLabelAr[u.role]||u.role||'')+')');
-    });
-    getAllStudents().forEach(s=>{ if(s.id!==localId && String(s.nationalId||'').trim()===nid) clash.push('الطالب '+s.name+' (لدى '+s.teacherName+')'); });
-    if(clash.length){ toast('⚠️ رقم الهوية مستخدم بالفعل: '+clash[0]); return; }
-  }
+  const dupAcrossUsers=allUsers.find(u=>u.nationalId===nid && u.id!==teacherId && !(u.role==='student' && u.teacherId===teacherId && u.studentId===localId));
+  const dupAcrossStudents=getAllStudents().find(s=>s.id!==localId && s.nationalId===nid);
+  if(dupAcrossUsers||dupAcrossStudents){ toast('⚠️ رقم الهوية مستخدم بالفعل لمستخدم آخر'); return; }
 
   const fullName=buildFullName(fname,father,grand,family);
   const patch={
