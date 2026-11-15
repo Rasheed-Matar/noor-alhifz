@@ -5,6 +5,9 @@
     },
     "api/self-reset-password.js": {
       "maxDuration": 10
+    },
+    "api/user-admin.js": {
+      "maxDuration": 60
     }
   }
 }
